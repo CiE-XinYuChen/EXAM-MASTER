@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>错题本</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>错题本</h1>
+    {% if questions %}
+    <ul>
+        {% for q in questions %}
+            <li><a href="{{ url_for('show_question', qid=q.id) }}">[{{ q.id }}] {{ q.stem }}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>当前没有错题。</p>
+    {% endif %}
+</div>
+</body>
+</html>

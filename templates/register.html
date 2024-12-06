@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>注册</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h1>注册</h1>
+    <form method="post">
+        <label>用户名：<input type="text" name="username" required></label>
+        <label>密码：<input type="password" name="password" required></label>
+        <input type="submit" value="注册">
+    </form>
+    <a href="{{ url_for('login') }}">已有账号？去登录</a>
+</div>
+</body>
+</html>

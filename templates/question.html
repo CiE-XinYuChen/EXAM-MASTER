@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>题目</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+    <a href="{{ url_for('show_favorites') }}">我的收藏</a>
+</nav>
+<div class="main-container">
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div style="color: green; font-weight: bold; margin: 20px 0;">
+        {% for msg in messages %}
+            {{ msg }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <h1>题目 {{ question.id }}</h1>
+    <p>{{ question.stem }}</p>
+
+    {% if result_msg %}
+    <div style="color: red; font-weight: bold; margin: 20px 0;">
+        {{ result_msg }}
+    </div>
+    {% if next_qid is defined %}
+        {% if next_qid %}
+        <!-- 顺序答题情况下有下一题 -->
+        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" style="display:inline-block; margin-bottom:20px; padding:10px 20px; background:#333; color:#fff; text-decoration:none; border-radius:4px;">下一题</a>
+        {% else %}
+        <!-- 无下一题 -->
+        <p>没有更多题目了！</p>
+        <a href="{{ url_for('index') }}">返回首页</a>
+        {% endif %}
+    {% else %}
+    <!-- 非顺序答题模式的情况显示下一题按钮（可选） -->
+    <a href="{{ url_for('random_question') }}" style="display:inline-block; margin-bottom:20px; padding:10px 20px; background:#333; color:#fff; text-decoration:none; border-radius:4px;">下一题(随机)</a>
+    {% endif %}
+    {% endif %}
+
+    <form method="post" action="{{ url_for('show_question', qid=question.id) }}">
+        <div class="options">
+            {% for opt_key, opt_val in question.options.items() %}
+                <label>
+                    {% if question.type == '单选题' %}
+                        <input type="radio" name="answer" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
+                    {% else %}
+                        <input type="checkbox" name="answer" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
+                    {% endif %}
+                </label><br>
+            {% endfor %}
+        </div>
+        <input type="submit" value="提交答案" class="btn-submit">
+    </form>
+
+    <!-- 收藏按钮 -->
+    <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" style="display:inline;">
+        <input type="submit" value="收藏本题" class="btn-submit">
+    </form>
+
+</div>
+</body>
+</html>

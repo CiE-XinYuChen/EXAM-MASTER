@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>模拟考试</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>模拟考试</h1>
+    <form id="examForm" method="post" action="{{ url_for('submit_exam') }}">
+        {% for question in questions %}
+        <div style="margin-bottom:20px; border-bottom:1px solid #ccc;">
+            <h2>题目 {{ question.id }}</h2>
+            <p>{{ question.stem }}</p>
+            {% for opt_key, opt_val in question.options.items() %}
+            <label>
+                {% if question.type == '单选题' %}
+                    <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
+                {% else %}
+                    <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
+                {% endif %}
+            </label><br>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        <input type="submit" value="提交试卷" class="btn-submit">
+    </form>
+
+    <!-- 用于显示考试结果的区域 -->
+    <div id="examResult" style="margin-top:20px; font-size:1.5em; font-weight:bold;"></div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const examForm = document.getElementById('examForm');
+    examForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // 阻止表单默认提交行为
+
+        // 使用FormData获取用户选择的答案
+        const formData = new FormData(examForm);
+
+        // 使用fetch以POST方式提交到后端submit_exam路由
+        fetch(examForm.getAttribute('action'), {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 显示考试结果在当前页面
+                const resultDiv = document.getElementById('examResult');
+                const correctCount = data.correct_count;
+                const total = data.total;
+                const score = data.score.toFixed(2);
+                resultDiv.innerText = `考试结束！ 正确率： ${correctCount}/${total} = ${score}%`;
+            } else {
+                alert("提交失败，请重试");
+            }
+        })
+        .catch(err => {
+            console.error("提交考试请求失败:", err);
+            alert("提交考试请求失败，请稍后再试");
+        });
+    });
+});
+</script>
+</body>
+</html>

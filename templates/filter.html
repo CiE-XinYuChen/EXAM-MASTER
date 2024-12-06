@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>题目筛选</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>按分类和难度筛选题目</h1>
+    <form method="post">
+        <label>分类：
+            <select name="category">
+                <option value="">不限</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>难度：
+            <select name="difficulty">
+                <option value="">不限</option>
+                {% for diff in difficulties %}
+                <option value="{{ diff }}" {% if diff == selected_difficulty %}selected{% endif %}>{{ diff }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <input type="submit" value="筛选">
+    </form>
+
+    {% if results %}
+    <h2>筛选结果</h2>
+    <ul>
+        {% for r in results %}
+        <li><a href="{{ url_for('show_question', qid=r.id) }}">{{ r.stem }}</a></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+</body>
+</html>

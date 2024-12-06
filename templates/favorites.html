@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>我的收藏</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>我的收藏</h1>
+    {% if favorites %}
+    <table>
+        <tr>
+            <th>题号</th>
+            <th>题干</th>
+            <th>标记</th>
+            <th>操作</th>
+        </tr>
+        {% for f in favorites %}
+        <tr>
+            <td>{{ f.question_id }}</td>
+            <td><a href="{{ url_for('show_question', qid=f.question_id) }}">{{ f.stem }}</a></td>
+            <td id="tag_display_{{ f.question_id }}">{{ f.tag }}</td>
+            <td>
+                <form method="post" action="{{ url_for('unfavorite_question', qid=f.question_id) }}" style="display:inline;">
+                    <input type="submit" value="取消收藏" class="btn-submit">
+                </form>
+
+                <form class="update-tag-form" data-qid="{{ f.question_id }}" method="post" action="{{ url_for('update_tag', qid=f.question_id) }}" style="display:inline;">
+                    <input type="text" name="tag" placeholder="标记" value="{{ f.tag }}" style="padding:5px;">
+                    <input type="submit" value="更新标记" class="btn-submit">
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>你还没有收藏任何题目。</p>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.update-tag-form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // 阻止表单默认提交
+
+            const qid = form.getAttribute('data-qid');
+            const formData = new FormData(form);
+
+            fetch(form.getAttribute('action'), {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.msg);
+                    const tagCell = document.querySelector('#tag_display_' + qid);
+                    if (tagCell) {
+                        const newTag = formData.get('tag');
+                        tagCell.textContent = newTag;
+                    }
+                } else {
+                    alert("标记更新失败：" + data.msg);
+                }
+            })
+            .catch(err => {
+                console.error("更新标记请求失败：", err);
+                alert("更新标记请求失败，请稍后重试");
+            });
+        });
+    });
+});
+</script>
+
+</body>
+</html>

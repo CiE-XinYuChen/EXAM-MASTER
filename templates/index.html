@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>首页</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('random_question') }}">随机答题</a>
+    <a href="{{ url_for('search') }}">搜索题目</a>
+    <a href="{{ url_for('show_history') }}">答题历史</a>
+    <a href="{{ url_for('wrong_questions') }}">错题本</a>
+    <a href="{{ url_for('filter_questions') }}">分类/难度筛选</a>
+    <a href="{{ url_for('show_favorites') }}">我的收藏</a>
+    <a href="{{ url_for('statistics') }}">统计与反馈</a>
+    <a href="{{ url_for('logout') }}">退出登录</a>
+</nav>
+<div class="main-container">
+    <h1>FUCK-EXAM</h1>
+    <p>请选择上方功能开始答题。</p>
+    <p>技术支持：ShayneChen（xinyu-c@outlook.com）</p>
+    <!-- 模式选择示例（如需要定时模式和模拟考试模式） -->
+    <h2>特殊练习模式</h2>
+    <form method="post" action="{{ url_for('start_timed_mode') }}">
+        <input type="submit" value="开启定时模式 (示例)">
+    </form>
+    <form method="post" action="{{ url_for('start_exam') }}">
+        <input type="submit" value="开启模拟考试模式 (示例)">
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>统计与反馈</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>统计与反馈</h1>
+    <p>总体正确率：{{ overall_accuracy|round(2) }}%</p>
+
+    <h2>按难度统计</h2>
+    <table>
+        <tr><th>难度</th><th>总题数</th><th>正确数</th><th>正确率</th></tr>
+        {% for stat in difficulty_stats %}
+        <tr>
+            <td>{{ stat.difficulty }}</td>
+            <td>{{ stat.total }}</td>
+            <td>{{ stat.correct_count }}</td>
+            <td>{{ stat.accuracy|round(2) }}%</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>最常错题目（Top 10）</h2>
+    {% if worst_questions %}
+    <ul>
+        {% for wq in worst_questions %}
+        <li>[{{ wq.question_id }}] {{ wq.stem }}（错次数：{{ wq.wrong_times }}）</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>暂无错题数据。</p>
+    {% endif %}
+</div>
+</body>
+</html>

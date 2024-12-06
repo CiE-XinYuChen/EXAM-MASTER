@@ -1,0 +1,124 @@
+body {
+    font-family: "Microsoft YaHei", sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f7f7f7;
+    color: #333;
+}
+
+nav {
+    background: #333;
+    padding: 10px;
+    text-align: left;
+}
+
+nav a {
+    color: #fff;
+    margin: 0 10px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5 {
+    margin: 20px;
+}
+
+p {
+    margin: 20px;
+}
+
+.container {
+    width: 300px;
+    margin: 50px auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0px 0px 10px #ccc;
+}
+
+.main-container {
+    width: 80%;
+    max-width: 1200px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 4px;
+    box-shadow: 0px 0px 10px #ccc;
+}
+
+.options {
+    margin: 20px 0;
+}
+
+input[type="radio"], input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+table {
+    width: 90%;
+    margin: 20px auto;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+ul {
+    margin: 20px;
+    list-style: none;
+    padding: 0;
+}
+
+ul li {
+    margin: 10px 0;
+}
+
+input[type="text"],
+input[type="password"],
+textarea {
+    padding: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    width: 100%;
+    max-width: 300px;
+}
+
+input[type="submit"], .btn-submit {
+    background: #333;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-top: 10px;
+}
+
+input[type="submit"]:hover, .btn-submit:hover {
+    background: #555;
+}
+
+a {
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}

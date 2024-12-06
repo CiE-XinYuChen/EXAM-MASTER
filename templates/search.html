@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>题目搜索</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>搜索题目</h1>
+    <form method="post">
+        <label>关键词：<input type="text" name="query" value="{{ query }}"></label>
+        <input type="submit" value="搜索">
+    </form>
+
+    {% if query %}
+    <h2>搜索结果</h2>
+    {% if results %}
+    <ul>
+        {% for r in results %}
+            <li><a href="{{ url_for('show_question', qid=r.id) }}">[{{ r.id }}] {{ r.stem }}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>未找到匹配的题目。</p>
+    {% endif %}
+    {% endif %}
+</div>
+</body>
+</html>

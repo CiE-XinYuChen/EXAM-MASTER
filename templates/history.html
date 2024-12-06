@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>答题历史</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+    <a href="{{ url_for('index') }}">首页</a>
+</nav>
+<div class="main-container">
+    <h1>答题历史记录</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>题号</th>
+            <th>题干</th>
+            <th>你的答案</th>
+            <th>是否正确</th>
+            <th>答题时间</th>
+        </tr>
+        {% for record in history %}
+        <tr>
+            <td>{{ record.id }}</td>
+            <td>{{ record.question_id }}</td>
+            <td>{{ record.stem }}</td>
+            <td>{{ record.user_answer }}</td>
+            <td>{{ '是' if record.correct == 1 else '否' }}</td>
+            <td>{{ record.timestamp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+</body>
+</html>
