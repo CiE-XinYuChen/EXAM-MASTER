@@ -155,25 +155,61 @@ def fetch_question(qid):
         }
     return None
 
-def random_question_id():
+def random_question_id(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT id FROM questions ORDER BY RANDOM() LIMIT 1')
+    c.execute('''
+        SELECT id FROM questions 
+        WHERE id NOT IN (
+            SELECT question_id FROM history WHERE user_id=?
+        )
+        ORDER BY RANDOM() 
+        LIMIT 1
+    ''', (user_id,))
     row = c.fetchone()
     conn.close()
     if row:
         return row['id']
     return None
 
+
+@app.route('/reset_history', methods=['POST'])
+def reset_history():
+    if not is_logged_in():
+        return redirect(url_for('login'))
+    user_id = get_user_id()
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('DELETE FROM history WHERE user_id=?', (user_id,))
+    conn.commit()
+    conn.close()
+    flash("答题历史已重置。现在您可以重新开始答题。")
+    return redirect(url_for('random_question'))
+
+
+
 @app.route('/random', methods=['GET'])
 def random_question():
     if not is_logged_in():
         return redirect(url_for('login'))
-    qid = random_question_id()
+    user_id = get_user_id()
+    qid = random_question_id(user_id)
+    conn = get_db()
+    c = conn.cursor()
+    # 获取总题数
+    c.execute('SELECT COUNT(*) as total FROM questions')
+    total = c.fetchone()['total']
+    # 获取已答题数
+    c.execute('SELECT COUNT(*) as answered FROM history WHERE user_id=?', (user_id,))
+    answered = c.fetchone()['answered']
+    conn.close()
+    
     if not qid:
-        return "题库为空"
+        # 传递 question=None 以及进度数据
+        return render_template('question.html', question=None, answered=answered, total=total)
     q = fetch_question(qid)
-    return render_template('question.html', question=q)
+    return render_template('question.html', question=q, answered=answered, total=total)
+
 
 @app.route('/question/<qid>', methods=['GET','POST'])
 def show_question(qid):
@@ -191,10 +227,25 @@ def show_question(qid):
         c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
                   (get_user_id(), qid, user_answer_str, correct))
         conn.commit()
+        # 获取总题数和已答题数
+        c.execute('SELECT COUNT(*) as total FROM questions')
+        total = c.fetchone()['total']
+        c.execute('SELECT COUNT(*) as answered FROM history WHERE user_id=?', (get_user_id(),))
+        answered = c.fetchone()['answered']
         conn.close()
         result_msg = "回答正确" if correct == 1 else f"回答错误，正确答案：{q['answer']}"
-        return render_template('question.html', question=q, result_msg=result_msg)
-    return render_template('question.html', question=q)
+        return render_template('question.html', question=q, result_msg=result_msg, answered=answered, total=total)
+    
+    # GET 请求时，获取进度数据
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT COUNT(*) as total FROM questions')
+    total = c.fetchone()['total']
+    c.execute('SELECT COUNT(*) as answered FROM history WHERE user_id=?', (get_user_id(),))
+    answered = c.fetchone()['answered']
+    conn.close()
+    return render_template('question.html', question=q, answered=answered, total=total)
+
 
 @app.route('/history')
 def show_history():

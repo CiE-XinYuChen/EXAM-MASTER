@@ -1,48 +1,37 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<title>定时模式</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<script>
-window.onload = function() {
-    var remaining = {{ remaining|int }};
-    var timer = setInterval(function(){
-        remaining -= 1;
-        document.getElementById('countdown').innerText = remaining + "秒";
-        if(remaining <= 0){
-            clearInterval(timer);
-            document.getElementById('examForm').submit();
-        }
-    },1000);
-}
-</script>
-</head>
-<body>
-<nav>
-    <a href="{{ url_for('index') }}">首页</a>
-</nav>
-<div class="main-container">
-    <h1>定时模式</h1>
-    <p>剩余时间：<span id="countdown">{{ remaining }}秒</span></p>
-    <form id="examForm" method="post" action="{{ url_for('submit_timed_mode') }}">
-        {% for question in questions %}
-        <div style="margin-bottom:20px; border-bottom:1px solid #ccc;">
-            <h2>题目 {{ question.id }}</h2>
-            <p>{{ question.stem }}</p>
-            {% for opt_key, opt_val in question.options.items() %}
-            <label>
-                {% if question.type == '单选题' %}
-                    <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
-                {% else %}
-                    <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
-                {% endif %}
-            </label><br>
+<!-- templates/timed_mode.html -->
+{% extends 'base.html' %}
+
+{% block title %}定时模式 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="standard-container">
+    <div class="content-section">
+        <h1>定时模式</h1>
+        <p>剩余时间：<span id="countdown" class="countdown">{{ remaining }}秒</span></p>
+        <form id="examForm" method="post" action="{{ url_for('submit_timed_mode') }}" class="exam-form">
+            {% for question in questions %}
+            <div class="question-block">
+                <h2>题目 {{ question.id }}</h2>
+                <p class="question-stem">{{ question.stem }}</p>
+                <div class="options">
+                    {% for opt_key, opt_val in question.options.items() %}
+                    <label class="option-label">
+                        {% if question.type == '单选题' %}
+                            <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" required> {{ opt_key }}. {{ opt_val }}
+                        {% else %}
+                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}"> {{ opt_key }}. {{ opt_val }}
+                        {% endif %}
+                    </label><br>
+                    {% endfor %}
+                </div>
+            </div>
             {% endfor %}
-        </div>
-        {% endfor %}
-        <input type="submit" value="提交答案" class="btn-submit">
-    </form>
+            <button type="submit" class="btn btn-submit">提交答案</button>
+        </form>
+    </div>
 </div>
-</body>
-</html>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='timed_mode.js') }}"></script>
+{% endblock %}

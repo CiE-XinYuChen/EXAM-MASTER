@@ -1,44 +1,57 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<title>题目筛选</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<nav>
-    <a href="{{ url_for('index') }}">首页</a>
-</nav>
-<div class="main-container">
-    <h1>按分类和难度筛选题目</h1>
-    <form method="post">
-        <label>分类：
-            <select name="category">
-                <option value="">不限</option>
-                {% for cat in categories %}
-                <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>难度：
-            <select name="difficulty">
-                <option value="">不限</option>
-                {% for diff in difficulties %}
-                <option value="{{ diff }}" {% if diff == selected_difficulty %}selected{% endif %}>{{ diff }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <input type="submit" value="筛选">
-    </form>
+<!-- templates/fliter.html -->
+{% extends 'base.html' %}
 
-    {% if results %}
-    <h2>筛选结果</h2>
-    <ul>
-        {% for r in results %}
-        <li><a href="{{ url_for('show_question', qid=r.id) }}">{{ r.stem }}</a></li>
-        {% endfor %}
-    </ul>
-    {% endif %}
+{% block title %}题目筛选 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="standard-container">
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <h3>筛选导航</h3>
+        <ul>
+            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
+            <li><a href="{{ url_for('search') }}">搜索题目</a></li>
+            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
+            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
+            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
+            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
+            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
+        </ul>
+    </div>
+    <div class="content-section">
+        <h1>按分类和难度筛选题目</h1>
+        <form method="post" class="filter-form">
+            <div class="form-group">
+                <label for="category">分类：</label>
+                <select name="category" id="category" class="form-select">
+                    <option value="">不限</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="difficulty">难度：</label>
+                <select name="difficulty" id="difficulty" class="form-select">
+                    <option value="">不限</option>
+                    {% for diff in difficulties %}
+                    <option value="{{ diff }}" {% if diff == selected_difficulty %}selected{% endif %}>{{ diff }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-submit">筛选</button>
+        </form>
+
+        {% if results %}
+        <h2>筛选结果</h2>
+        <ul class="styled-list">
+            {% for r in results %}
+            <li><a href="{{ url_for('show_question', qid=r.id) }}">{{ r.stem }}</a></li>
+            {% endfor %}
+        </ul>
+        {% elif request.method == 'POST' %}
+        <p>没有符合条件的题目。</p>
+        {% endif %}
+    </div>
 </div>
-</body>
-</html>
+{% endblock %}

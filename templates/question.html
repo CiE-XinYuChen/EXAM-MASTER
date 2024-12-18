@@ -1,69 +1,94 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<title>题目</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<nav>
-    <a href="{{ url_for('index') }}">首页</a>
-    <a href="{{ url_for('show_favorites') }}">我的收藏</a>
-</nav>
-<div class="main-container">
+<!-- templates/question.html -->
+{% extends 'base.html' %}
 
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <div style="color: green; font-weight: bold; margin: 20px 0;">
-        {% for msg in messages %}
-            {{ msg }}
-        {% endfor %}
+{% block title %}题目 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="standard-container">
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <h3>答题导航</h3>
+        <ul>
+            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
+            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
+            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
+            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
+            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
+            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
+        </ul>
     </div>
-    {% endif %}
-    {% endwith %}
+    <div class="content-section">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for msg in messages %}
+                        <p class="flash-message">{{ msg }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
 
-    <h1>题目 {{ question.id }}</h1>
-    <p>{{ question.stem }}</p>
-
-    {% if result_msg %}
-    <div style="color: red; font-weight: bold; margin: 20px 0;">
-        {{ result_msg }}
-    </div>
-    {% if next_qid is defined %}
-        {% if next_qid %}
-        <!-- 顺序答题情况下有下一题 -->
-        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" style="display:inline-block; margin-bottom:20px; padding:10px 20px; background:#333; color:#fff; text-decoration:none; border-radius:4px;">下一题</a>
-        {% else %}
-        <!-- 无下一题 -->
-        <p>没有更多题目了！</p>
-        <a href="{{ url_for('index') }}">返回首页</a>
-        {% endif %}
-    {% else %}
-    <!-- 非顺序答题模式的情况显示下一题按钮（可选） -->
-    <a href="{{ url_for('random_question') }}" style="display:inline-block; margin-bottom:20px; padding:10px 20px; background:#333; color:#fff; text-decoration:none; border-radius:4px;">下一题(随机)</a>
-    {% endif %}
-    {% endif %}
-
-    <form method="post" action="{{ url_for('show_question', qid=question.id) }}">
-        <div class="options">
-            {% for opt_key, opt_val in question.options.items() %}
-                <label>
-                    {% if question.type == '单选题' %}
-                        <input type="radio" name="answer" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
-                    {% else %}
-                        <input type="checkbox" name="answer" value="{{ opt_key }}">{{ opt_key }}. {{ opt_val }}
-                    {% endif %}
-                </label><br>
-            {% endfor %}
+        <!-- 显示答题进度 -->
+        {% if answered is not none and total is not none %}
+        <div class="progress-container">
+            <p>答题进度: 您已答 {{ answered }} / {{ total }} 题 ({{ (answered / total * 100)|round(2) if total > 0 else 0 }}%)</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: {{ (answered / total * 100) if total > 0 else 0 }}%;"></div>
+            </div>
         </div>
-        <input type="submit" value="提交答案" class="btn-submit">
-    </form>
+        {% endif %}
 
-    <!-- 收藏按钮 -->
-    <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" style="display:inline;">
-        <input type="submit" value="收藏本题" class="btn-submit">
-    </form>
+        {% if question %}
+            <div class="question-section">
+                <h1>题目 {{ question.id }}</h1>
+                <p class="question-stem">{{ question.stem }}</p>
 
+                {% if result_msg %}
+                <div class="result-message">
+                    {{ result_msg }}
+                </div>
+                {% if next_qid is defined %}
+                    {% if next_qid %}
+                        <!-- 顺序答题情况下有下一题 -->
+                        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-next">下一题</a>
+                    {% else %}
+                        <!-- 无下一题 -->
+                        <p>没有更多题目了！</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
+                    {% endif %}
+                {% else %}
+                    <!-- 非顺序答题模式的情况显示下一题按钮（随机答题） -->
+                    <a href="{{ url_for('random_question') }}" class="btn btn-next">下一题(随机)</a>
+                {% endif %}
+                {% endif %}
+
+                <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="answer-form">
+                    <div class="options">
+                        {% for opt_key, opt_val in question.options.items() %}
+                            <label class="option-label">
+                                {% if question.type == '单选题' %}
+                                    <input type="radio" name="answer" value="{{ opt_key }}" required> {{ opt_key }}. {{ opt_val }}
+                                {% else %}
+                                    <input type="checkbox" name="answer" value="{{ opt_key }}"> {{ opt_key }}. {{ opt_val }}
+                                {% endif %}
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-submit">提交答案</button>
+                </form>
+
+                <!-- 收藏按钮 -->
+                <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" class="favorite-form">
+                    <button type="submit" class="btn btn-favorite">收藏本题</button>
+                </form>
+            </div>
+        {% else %}
+            <!-- 当没有更多题目时显示的内容 -->
+            <div class="no-more-questions">
+                <p>恭喜！您已经答完所有题目。</p>
+                <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
+            </div>
+        {% endif %}
+    </div>
 </div>
-</body>
-</html>
+{% endblock %}
