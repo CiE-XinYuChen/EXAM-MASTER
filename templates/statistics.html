@@ -1,41 +1,77 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<title>统计与反馈</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<nav>
-    <a href="{{ url_for('index') }}">首页</a>
-</nav>
-<div class="main-container">
-    <h1>统计与反馈</h1>
-    <p>总体正确率：{{ overall_accuracy|round(2) }}%</p>
+<!-- templates/statistics.html -->
+{% extends 'base.html' %}
 
-    <h2>按难度统计</h2>
-    <table>
-        <tr><th>难度</th><th>总题数</th><th>正确数</th><th>正确率</th></tr>
-        {% for stat in difficulty_stats %}
-        <tr>
-            <td>{{ stat.difficulty }}</td>
-            <td>{{ stat.total }}</td>
-            <td>{{ stat.correct_count }}</td>
-            <td>{{ stat.accuracy|round(2) }}%</td>
-        </tr>
-        {% endfor %}
-    </table>
+{% block title %}统计与反馈 - ExamMaster{% endblock %}
 
-    <h2>最常错题目（Top 10）</h2>
-    {% if worst_questions %}
-    <ul>
-        {% for wq in worst_questions %}
-        <li>[{{ wq.question_id }}] {{ wq.stem }}（错次数：{{ wq.wrong_times }}）</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p>暂无错题数据。</p>
-    {% endif %}
+{% block content %}
+<div class="standard-container">
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <h3>统计导航</h3>
+        <ul>
+            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
+            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
+            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
+            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
+            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
+            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
+        </ul>
+    </div>
+    <div class="content-section">
+        <h1>统计与反馈</h1>
+        
+        <!-- 总体正确率 -->
+        <div class="overall-accuracy">
+            <h2>总体正确率</h2>
+            <p>{{ overall_accuracy|round(2) }}%</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: {{ overall_accuracy }}%;"></div>
+            </div>
+        </div>
+
+        <!-- 按难度统计 -->
+        <div class="difficulty-stats">
+            <h2>按难度统计</h2>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>难度</th>
+                        <th>总题数</th>
+                        <th>正确数</th>
+                        <th>正确率</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in difficulty_stats %}
+                    <tr>
+                        <td>{{ stat.difficulty }}</td>
+                        <td>{{ stat.total }}</td>
+                        <td>{{ stat.correct_count }}</td>
+                        <td>{{ stat.accuracy|round(2) }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 最常错题目 -->
+        <div class="worst-questions">
+            <h2>最常错题目（Top 10）</h2>
+            {% if worst_questions %}
+            <ul class="styled-list">
+                {% for wq in worst_questions %}
+                <li>
+                    <a href="{{ url_for('show_question', qid=wq.question_id) }}">
+                        [{{ wq.question_id }}] {{ wq.stem }}
+                    </a>
+                    （错次数：{{ wq.wrong_times }}）
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>暂无错题数据。</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
-</body>
-</html>
+{% endblock %}

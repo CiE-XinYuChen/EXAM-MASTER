@@ -1,45 +1,59 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<title>我的收藏</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-<nav>
-    <a href="{{ url_for('index') }}">首页</a>
-</nav>
-<div class="main-container">
-    <h1>我的收藏</h1>
-    {% if favorites %}
-    <table>
-        <tr>
-            <th>题号</th>
-            <th>题干</th>
-            <th>标记</th>
-            <th>操作</th>
-        </tr>
-        {% for f in favorites %}
-        <tr>
-            <td>{{ f.question_id }}</td>
-            <td><a href="{{ url_for('show_question', qid=f.question_id) }}">{{ f.stem }}</a></td>
-            <td id="tag_display_{{ f.question_id }}">{{ f.tag }}</td>
-            <td>
-                <form method="post" action="{{ url_for('unfavorite_question', qid=f.question_id) }}" style="display:inline;">
-                    <input type="submit" value="取消收藏" class="btn-submit">
-                </form>
+<!-- templates/favorate.html -->
+{% extends 'base.html' %}
 
-                <form class="update-tag-form" data-qid="{{ f.question_id }}" method="post" action="{{ url_for('update_tag', qid=f.question_id) }}" style="display:inline;">
-                    <input type="text" name="tag" placeholder="标记" value="{{ f.tag }}" style="padding:5px;">
-                    <input type="submit" value="更新标记" class="btn-submit">
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <p>你还没有收藏任何题目。</p>
-    {% endif %}
+{% block title %}我的收藏 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="standard-container">
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <h3>收藏导航</h3>
+        <ul>
+            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
+            <li><a href="{{ url_for('search') }}">搜索题目</a></li>
+            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
+            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
+            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
+            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
+            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
+        </ul>
+    </div>
+    <div class="content-section">
+        <h1>我的收藏</h1>
+        {% if favorites %}
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>题号</th>
+                    <th>题干</th>
+                    <th>标记</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in favorites %}
+                <tr>
+                    <td>{{ f.question_id }}</td>
+                    <td><a href="{{ url_for('show_question', qid=f.question_id) }}">{{ f.stem }}</a></td>
+                    <td id="tag_display_{{ f.question_id }}">{{ f.tag }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('unfavorite_question', qid=f.question_id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-submit">取消收藏</button>
+                        </form>
+
+                        <form class="update-tag-form" data-qid="{{ f.question_id }}" method="post" action="{{ url_for('update_tag', qid=f.question_id) }}" style="display:inline;">
+                            <input type="text" name="tag" placeholder="标记" value="{{ f.tag }}" class="tag-input">
+                            <button type="submit" class="btn btn-submit">更新标记</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>你还没有收藏任何题目。</p>
+        {% endif %}
+    </div>
 </div>
 
 <script>
@@ -77,6 +91,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-</body>
-</html>
+{% endblock %}
