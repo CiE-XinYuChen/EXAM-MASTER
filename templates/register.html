@@ -4,6 +4,15 @@
 {% block title %}注册 - ExamMaster{% endblock %}
 
 {% block content %}
+<style>
+    .auth-form .form-group input {
+        width: calc(100% - 27px);
+        /* 调整宽度 */
+        margin-right: 10px;
+        /* 添加右侧外边距 */
+    }
+</style>
+
 <div class="auth-container">
     <h1>注册</h1>
     <form method="post" class="auth-form">

@@ -80,8 +80,18 @@ def load_questions_to_db(conn):
             for opt in ['A','B','C','D','E']:
                 if row.get(opt) and row[opt].strip():
                     options[opt] = row[opt]
-            c.execute('INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options) VALUES (?,?,?,?,?,?,?)',
-                      (row['题号'], row['题干'], row['答案'], row['难度'], row['题型'], row.get('类别','未分类'), json.dumps(options)))
+            c.execute(
+                "INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options) VALUES (?,?,?,?,?,?,?)",
+                (
+                    row["题号"],
+                    row["题干"],
+                    row["答案"],
+                    row["难度"],
+                    row["题型"],
+                    row.get("类别", "未分类"),
+                    json.dumps(options, ensure_ascii=False),
+                ),
+            )
         conn.commit()
 
 init_db()
@@ -185,8 +195,6 @@ def reset_history():
     conn.close()
     flash("答题历史已重置。现在您可以重新开始答题。")
     return redirect(url_for('random_question'))
-
-
 
 @app.route('/random', methods=['GET'])
 def random_question():
