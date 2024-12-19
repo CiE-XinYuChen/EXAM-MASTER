@@ -196,7 +196,6 @@ def reset_history():
     flash("答题历史已重置。现在您可以重新开始答题。")
     return redirect(url_for('random_question'))
 
-
 @app.route('/random', methods=['GET'])
 def random_question():
     if not is_logged_in():
