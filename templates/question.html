@@ -1,4 +1,3 @@
-<!-- templates/question.html -->
 {% extends 'base.html' %}
 
 {% block title %}题目 - ExamMaster{% endblock %}
@@ -10,6 +9,7 @@
         <h3>答题导航</h3>
         <ul>
             <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
+            <li><a href="{{ url_for('sequential_start') }}">顺序答题</a></li>
             <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
             <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
             <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
@@ -17,6 +17,7 @@
             <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
         </ul>
     </div>
+
     <div class="content-section">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -28,66 +29,89 @@
             {% endif %}
         {% endwith %}
 
-        <!-- 显示答题进度 -->
+        <!-- 进度条 -->
         {% if answered is not none and total is not none %}
         <div class="progress-container">
-            <p>答题进度: 您已答 {{ answered }} / {{ total }} 题 ({{ (answered / total * 100)|round(2) if total > 0 else 0 }}%)</p>
+            <p>答题进度: 您已答 {{ answered }} / {{ total }} 题 ({{ (answered / total * 100)|round(2) if total else 0 }}%)</p>
             <div class="progress-bar-container">
-                <div class="progress-bar" style="width: {{ (answered / total * 100) if total > 0 else 0 }}%;"></div>
+                <div class="progress-bar" style="width: {{ (answered / total * 100) if total else 0 }}%;"></div>
             </div>
         </div>
         {% endif %}
 
         {% if question %}
-            <div class="question-section">
-                <h1>题目 {{ question.id }}</h1>
-                <p class="question-stem">{{ question.stem }}</p>
+        <div class="question-section">
+            <h1>题目 {{ question.id }}</h1>
+            <p class="question-stem">{{ question.stem }}</p>
 
-                {% if result_msg %}
-                <div class="result-message">
-                    {{ result_msg }}
+            {% if result_msg %}
+                <div class="result-message">{{ result_msg }}</div>
+            {% endif %}
+
+            <!-- 选项：始终显示；提交后保持勾选并禁用 -->
+            <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="answer-form">
+                <div class="options">
+                    {% for opt_key, opt_val in question.options.items() %}
+                        {% set checked = user_answer is defined and (opt_key in user_answer) %}
+                        <label class="option-label {% if checked %}chosen{% endif %}">
+                            {% if question.type == '单选题' %}
+                                <input type="radio"
+                                       name="answer"
+                                       value="{{ opt_key }}"
+                                       {% if checked %}checked{% endif %}
+                                       {% if result_msg %}disabled{% endif %}
+                                       required>
+                            {% else %}
+                                <input type="checkbox"
+                                       name="answer"
+                                       value="{{ opt_key }}"
+                                       {% if checked %}checked{% endif %}
+                                       {% if result_msg %}disabled{% endif %}>
+                            {% endif %}
+                            {{ opt_key }}. {{ opt_val }}
+                        </label>
+                    {% endfor %}
                 </div>
+
+                {% if not result_msg %}
+                    <button type="submit" class="btn btn-submit">提交答案</button>
+                {% endif %}
+            </form>
+
+            {# 结果区的“下一题 / 返回”按钮 #}
+            {% if result_msg %}
                 {% if next_qid is defined %}
+                    {# -------- 已在顺序模式 -------- #}
                     {% if next_qid %}
-                        <!-- 顺序答题情况下有下一题 -->
-                        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-next">下一题</a>
+                        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-next">
+                            下一题
+                        </a>
                     {% else %}
-                        <!-- 无下一题 -->
                         <p>没有更多题目了！</p>
                         <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
                     {% endif %}
                 {% else %}
-                    <!-- 非顺序答题模式的情况显示下一题按钮（随机答题） -->
-                    <a href="{{ url_for('random_question') }}" class="btn btn-next">下一题(随机)</a>
+                    {# -------- 当前不在顺序模式，提供两种跳转 -------- #}
+                    <a href="{{ url_for('random_question') }}" class="btn btn-next">
+                        下一题(随机)
+                    </a>
+                    <a href="{{ url_for('sequential_start') }}" class="btn btn-next">
+                        下一题(顺序)
+                    </a>
                 {% endif %}
-                {% endif %}
+            {% endif %}
 
-                <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="answer-form">
-                    <div class="options">
-                        {% for opt_key, opt_val in question.options.items() %}
-                            <label class="option-label">
-                                {% if question.type == '单选题' %}
-                                    <input type="radio" name="answer" value="{{ opt_key }}" required> {{ opt_key }}. {{ opt_val }}
-                                {% else %}
-                                    <input type="checkbox" name="answer" value="{{ opt_key }}"> {{ opt_key }}. {{ opt_val }}
-                                {% endif %}
-                            </label>
-                        {% endfor %}
-                    </div>
-                    <button type="submit" class="btn btn-submit">提交答案</button>
-                </form>
-
-                <!-- 收藏按钮 -->
-                <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" class="favorite-form">
-                    <button type="submit" class="btn btn-favorite">收藏本题</button>
-                </form>
-            </div>
+            <!-- 收藏按钮 -->
+            <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" class="favorite-form">
+                <button type="submit" class="btn btn-favorite">收藏本题</button>
+            </form>
+        </div>
         {% else %}
-            <!-- 当没有更多题目时显示的内容 -->
-            <div class="no-more-questions">
-                <p>恭喜！您已经答完所有题目。</p>
-                <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
-            </div>
+        <!-- 题库做完 -->
+        <div class="no-more-questions">
+            <p>恭喜！您已经答完所有题目。</p>
+            <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
+        </div>
         {% endif %}
     </div>
 </div>

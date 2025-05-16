@@ -20,12 +20,19 @@ def get_db():
 def init_db():
     conn = get_db()
     c = conn.cursor()
+    
     # 用户表
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password_hash TEXT
     )''')
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN current_seq_qid TEXT')
+    except sqlite3.OperationalError:
+        # 列已存在就什么都不做
+        pass
+
     # 答题历史表
     c.execute('''CREATE TABLE IF NOT EXISTS history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -455,62 +462,80 @@ def sequential_start():
     user_id = get_user_id()
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT current_seq_qid FROM users WHERE id=?', (user_id,))
+
+    # 找到“第一道还没做过”的题目
+    c.execute('''
+        SELECT id FROM questions
+        WHERE id NOT IN (
+            SELECT question_id FROM history WHERE user_id=?
+        )
+        ORDER BY id ASC
+        LIMIT 1
+    ''', (user_id,))
     row = c.fetchone()
-    if row and row['current_seq_qid']:
-        # 已有进度，从current_seq_qid开始
-        current_qid = row['current_seq_qid']
-    else:
-        # 无进度，从第一题开始
-        c.execute('SELECT id FROM questions ORDER BY id ASC LIMIT 1')
-        first = c.fetchone()
-        if not first:
-            conn.close()
-            return "题库为空"
-        current_qid = first['id']
-        # 更新用户进度
-        c.execute('UPDATE users SET current_seq_qid=? WHERE id=?', (current_qid, user_id))
-        conn.commit()
+
+    if not row:
+        conn.close()
+        flash("恭喜，题库已经全部做完！")
+        return redirect(url_for('index'))
+
+    current_qid = row['id']
+    c.execute('UPDATE users SET current_seq_qid=? WHERE id=?',
+              (current_qid, user_id))
+    conn.commit()
     conn.close()
     return redirect(url_for('show_sequential_question', qid=current_qid))
 @app.route('/sequential/<qid>', methods=['GET', 'POST'])
 def show_sequential_question(qid):
     if not is_logged_in():
         return redirect(url_for('login'))
+
     q = fetch_question(qid)
     if q is None:
-        return "题目不存在或已无后续题目"
+        return "题目不存在"
+
+    user_id = get_user_id()
+    next_qid = None
+    result_msg = None
 
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
         user_answer_str = "".join(sorted(user_answer))
-        correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
+        correct = int(user_answer_str == "".join(sorted(q['answer'])))
 
         conn = get_db()
         c = conn.cursor()
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-                  (get_user_id(), qid, user_answer_str, correct))
-        # 找下一题ID
-        c.execute('SELECT id FROM questions WHERE id>? ORDER BY id ASC LIMIT 1', (qid,))
-        next_q = c.fetchone()
-        if next_q:
-            next_qid = next_q['id']
-            # 更新用户进度
-            c.execute('UPDATE users SET current_seq_qid=? WHERE id=?', (next_qid, get_user_id()))
-            conn.commit()
-            conn.close()
-            result_msg = "回答正确" if correct == 1 else f"回答错误，正确答案：{q['answer']}"
-            # 显示本题的result_msg，同时给出"下一题"按钮进行下一题
-            return render_template('question.html', question=q, result_msg=result_msg, next_qid=next_qid)
-        else:
-            # 没有下一题了，清空用户进度
-            c.execute('UPDATE users SET current_seq_qid=NULL WHERE id=?', (get_user_id(),))
-            conn.commit()
-            conn.close()
-            result_msg = "这是最后一题！" if correct == 1 else f"回答错误，正确答案：{q['answer']}（已无后续题目）"
-            return render_template('question.html', question=q, result_msg=result_msg, next_qid=None)
+        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) '
+                  'VALUES (?,?,?,?)',
+                  (user_id, qid, user_answer_str, correct))
 
-    return render_template('question.html', question=q)
+        # 查找下一道【未做过】且 id 更大的题
+        c.execute('''
+            SELECT id FROM questions
+            WHERE id>? AND id NOT IN (
+                SELECT question_id FROM history WHERE user_id=?
+            )
+            ORDER BY id ASC LIMIT 1
+        ''', (qid, user_id))
+        row = c.fetchone()
+        if row:
+            next_qid = row['id']
+            c.execute('UPDATE users SET current_seq_qid=? WHERE id=?',
+                      (next_qid, user_id))
+        else:
+            # 没有剩余题目，把进度清零
+            c.execute('UPDATE users SET current_seq_qid=NULL WHERE id=?',
+                      (user_id,))
+        conn.commit()
+        conn.close()
+
+        result_msg = "回答正确！" if correct else f"回答错误，正确答案：{q['answer']}"
+
+    return render_template('question.html',
+                           question=q,
+                           result_msg=result_msg,
+                           next_qid=next_qid,
+                           sequential_mode=True)
 
 
 @app.route('/timed_mode')
