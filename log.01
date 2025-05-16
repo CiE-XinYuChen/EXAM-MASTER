@@ -1,0 +1,32 @@
+ * Serving Flask app 'app'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:32217
+ * Running on http://172.17.0.4:32217
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 498-569-294
+172.17.0.1 - - [16/May/2025 23:39:33] "[32mGET / HTTP/1.1[0m" 302 -
+172.17.0.1 - - [16/May/2025 23:39:33] "GET /login HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:34] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:54] "GET /register HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:55] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:57] "GET /login HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:57] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:58] "GET /register HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:39:59] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:00] "[32mPOST /register HTTP/1.1[0m" 302 -
+172.17.0.1 - - [16/May/2025 23:40:00] "GET /login HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:01] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:03] "[32mPOST /login HTTP/1.1[0m" 302 -
+172.17.0.1 - - [16/May/2025 23:40:04] "GET / HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:04] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:07] "GET /random HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:07] "GET /login HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:08] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:08] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:08] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+172.17.0.1 - - [16/May/2025 23:40:15] "POST /question/240 HTTP/1.1" 200 -
+172.17.0.1 - - [16/May/2025 23:40:16] "GET /static/style.css HTTP/1.1" 200 -
