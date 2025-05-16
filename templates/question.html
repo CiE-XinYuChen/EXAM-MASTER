@@ -8,8 +8,8 @@
     <div class="sidebar">
         <h3>答题导航</h3>
         <ul>
-            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
             <li><a href="{{ url_for('sequential_start') }}">顺序答题</a></li>
+            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
             <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
             <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
             <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
@@ -92,11 +92,12 @@
                     {% endif %}
                 {% else %}
                     {# -------- 当前不在顺序模式，提供两种跳转 -------- #}
-                    <a href="{{ url_for('random_question') }}" class="btn btn-next">
-                        下一题(随机)
-                    </a>
-                    <a href="{{ url_for('sequential_start') }}" class="btn btn-next">
+                    
+                    <a href="{{ url_for('sequential_start') }}" class="btn btn-home">
                         下一题(顺序)
+                    </a>
+                    <a href="{{ url_for('random_question') }}" class="btn btn-home">
+                        下一题(随机)
                     </a>
                 {% endif %}
             {% endif %}

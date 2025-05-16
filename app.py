@@ -226,41 +226,60 @@ def random_question():
     return render_template('question.html', question=q, answered=answered, total=total)
 
 
-@app.route('/question/<qid>', methods=['GET','POST'])
+@app.route('/question/<qid>', methods=['GET', 'POST'])
 def show_question(qid):
     if not is_logged_in():
         return redirect(url_for('login'))
+
     q = fetch_question(qid)
     if q is None:
         return "题目不存在"
+
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
         user_answer_str = "".join(sorted(user_answer))
-        correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
+        correct = int(user_answer_str == "".join(sorted(q['answer'])))
+
         conn = get_db()
         c = conn.cursor()
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-                  (get_user_id(), qid, user_answer_str, correct))
+        c.execute(
+            'INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
+            (get_user_id(), qid, user_answer_str, correct)
+        )
         conn.commit()
-        # 获取总题数和已答题数
-        c.execute('SELECT COUNT(*) as total FROM questions')
+
+        # 总题数
+        c.execute('SELECT COUNT(*) AS total FROM questions')
         total = c.fetchone()['total']
-        c.execute('SELECT COUNT(*) as answered FROM history WHERE user_id=?', (get_user_id(),))
+
+        # *** 已答题数：去重 ***
+        c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?',
+                  (get_user_id(),))
         answered = c.fetchone()['answered']
+
         conn.close()
-        result_msg = "回答正确" if correct == 1 else f"回答错误，正确答案：{q['answer']}"
-        return render_template('question.html', question=q, result_msg=result_msg, answered=answered, total=total)
-    
-    # GET 请求时，获取进度数据
+
+        result_msg = "回答正确" if correct else f"回答错误，正确答案：{q['answer']}"
+        return render_template('question.html',
+                               question=q,
+                               result_msg=result_msg,
+                               answered=answered,
+                               total=total)
+
+    # ------- GET 请求 -------
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT COUNT(*) as total FROM questions')
+    c.execute('SELECT COUNT(*) AS total FROM questions')
     total = c.fetchone()['total']
-    c.execute('SELECT COUNT(*) as answered FROM history WHERE user_id=?', (get_user_id(),))
+    c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?',
+              (get_user_id(),))
     answered = c.fetchone()['answered']
     conn.close()
-    return render_template('question.html', question=q, answered=answered, total=total)
 
+    return render_template('question.html',
+                           question=q,
+                           answered=answered,
+                           total=total)
 
 @app.route('/history')
 def show_history():
@@ -459,32 +478,40 @@ def start_timed_mode():
 def sequential_start():
     if not is_logged_in():
         return redirect(url_for('login'))
+
     user_id = get_user_id()
     conn = get_db()
     c = conn.cursor()
 
-    # 找到“第一道还没做过”的题目
+    # ── 找到“第一道还没做过”的题目（题号纯数字时需转成整数排序） ──
     c.execute('''
-        SELECT id FROM questions
+        SELECT id
+        FROM questions
         WHERE id NOT IN (
-            SELECT question_id FROM history WHERE user_id=?
+            SELECT question_id FROM history WHERE user_id = ?
         )
-        ORDER BY id ASC
+        ORDER BY CAST(id AS INTEGER) ASC          -- 关键改动
         LIMIT 1
     ''', (user_id,))
     row = c.fetchone()
 
-    if not row:
+    if row is None:
         conn.close()
         flash("恭喜，题库已经全部做完！")
         return redirect(url_for('index'))
 
     current_qid = row['id']
-    c.execute('UPDATE users SET current_seq_qid=? WHERE id=?',
-              (current_qid, user_id))
+
+    # 记录顺序进度
+    c.execute(
+        'UPDATE users SET current_seq_qid = ? WHERE id = ?',
+        (current_qid, user_id)
+    )
     conn.commit()
     conn.close()
+
     return redirect(url_for('show_sequential_question', qid=current_qid))
+
 @app.route('/sequential/<qid>', methods=['GET', 'POST'])
 def show_sequential_question(qid):
     if not is_logged_in():
@@ -494,48 +521,63 @@ def show_sequential_question(qid):
     if q is None:
         return "题目不存在"
 
-    user_id = get_user_id()
-    next_qid = None
+    user_id   = get_user_id()
+    next_qid  = None
     result_msg = None
+    user_answer_str = ""
 
+    conn = get_db()
+    c = conn.cursor()
+
+    # ---------- POST：判题并写入历史 ----------
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
         user_answer_str = "".join(sorted(user_answer))
         correct = int(user_answer_str == "".join(sorted(q['answer'])))
 
-        conn = get_db()
-        c = conn.cursor()
         c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) '
                   'VALUES (?,?,?,?)',
                   (user_id, qid, user_answer_str, correct))
 
-        # 查找下一道【未做过】且 id 更大的题
+        # 找下一道【未做过】且题号更大的题（按数字）
         c.execute('''
             SELECT id FROM questions
-            WHERE id>? AND id NOT IN (
-                SELECT question_id FROM history WHERE user_id=?
-            )
-            ORDER BY id ASC LIMIT 1
-        ''', (qid, user_id))
+            WHERE CAST(id AS INTEGER) > ?
+              AND id NOT IN (
+                  SELECT question_id FROM history WHERE user_id = ?
+              )
+            ORDER BY CAST(id AS INTEGER) ASC
+            LIMIT 1
+        ''', (int(qid), user_id))
         row = c.fetchone()
         if row:
             next_qid = row['id']
-            c.execute('UPDATE users SET current_seq_qid=? WHERE id=?',
+            c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
                       (next_qid, user_id))
         else:
-            # 没有剩余题目，把进度清零
-            c.execute('UPDATE users SET current_seq_qid=NULL WHERE id=?',
+            c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?',
                       (user_id,))
-        conn.commit()
-        conn.close()
-
         result_msg = "回答正确！" if correct else f"回答错误，正确答案：{q['answer']}"
 
+    # ---------- 无论 GET / POST 都要刷新进度 ----------
+    c.execute('SELECT COUNT(*)               AS total     FROM questions')
+    total    = c.fetchone()['total']
+
+    c.execute('SELECT COUNT(DISTINCT question_id) AS answered '
+              'FROM history WHERE user_id = ?', (user_id,))
+    answered = c.fetchone()['answered']
+
+    conn.commit()
+    conn.close()
+
     return render_template('question.html',
-                           question=q,
-                           result_msg=result_msg,
-                           next_qid=next_qid,
-                           sequential_mode=True)
+                           question        = q,
+                           result_msg      = result_msg,
+                           next_qid        = next_qid,
+                           sequential_mode = True,
+                           user_answer     = user_answer_str,
+                           answered        = answered,
+                           total           = total)
 
 
 @app.route('/timed_mode')

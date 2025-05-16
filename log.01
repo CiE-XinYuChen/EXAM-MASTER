@@ -8,32 +8,3 @@
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 498-569-294
-172.17.0.1 - - [17/May/2025 00:10:17] "[32mGET / HTTP/1.1[0m" 302 -
-172.17.0.1 - - [17/May/2025 00:10:17] "GET /login HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:17] "GET /sequential/101 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:18] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:22] "POST /question/101 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:23] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:37] "GET /random HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:37] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:39] "[32mGET /sequential_start HTTP/1.1[0m" 302 -
-172.17.0.1 - - [17/May/2025 00:10:39] "GET /sequential/102 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:40] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:43] "POST /question/102 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:10:44] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:18] "[32mGET /sequential_start HTTP/1.1[0m" 302 -
-172.17.0.1 - - [17/May/2025 00:13:19] "GET /sequential/103 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:19] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:22] "POST /question/103 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:23] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:25] "[32mGET /sequential_start HTTP/1.1[0m" 302 -
-172.17.0.1 - - [17/May/2025 00:13:26] "GET /sequential/104 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:26] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:28] "POST /question/104 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:29] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:30] "[32mGET /sequential_start HTTP/1.1[0m" 302 -
-172.17.0.1 - - [17/May/2025 00:13:31] "GET /sequential/105 HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:32] "GET /static/style.css HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:34] "[32mGET /logout HTTP/1.1[0m" 302 -
-172.17.0.1 - - [17/May/2025 00:13:34] "GET /login HTTP/1.1" 200 -
-172.17.0.1 - - [17/May/2025 00:13:35] "GET /static/style.css HTTP/1.1" 200 -
