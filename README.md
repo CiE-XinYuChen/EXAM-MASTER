@@ -54,11 +54,6 @@
 
 ![image](https://github.com/user-attachments/assets/c9ed07e8-0c4c-47b6-a916-e7a32ee6082f)
 
-## TODO
-- [ ] 增加css
-- [ ] 增加完成后的提示
-- [ ] 增加完成后的正确答案显示
-- [ ] 通过ai，实现题目答案解析（用户自行提供key）
 
 
 ## 许可证
