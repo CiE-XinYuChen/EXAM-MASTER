@@ -52,7 +52,7 @@
 
 ## 截图预览
 
-![image](https://github.com/user-attachments/assets/bd8743e5-2d96-44c6-8968-5a5d33e3b576)
+![image](https://github.com/user-attachments/assets/c9ed07e8-0c4c-47b6-a916-e7a32ee6082f)
 
 ## TODO
 - [ ] 增加css
