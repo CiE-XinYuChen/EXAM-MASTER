@@ -1,25 +1,114 @@
 <!-- templates/index.html -->
+
 {% extends 'base.html' %}
 
 {% block title %}ExamMaster - 首页{% endblock %}
 
+{% block styles %}
+<style>
+    /* ===== 全局背景 & 布局 ===== */
+    body{
+        background:linear-gradient(135deg,#e8f0ff 0%,#f9fcff 100%);
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+    }
+
+    .main-container{
+        flex:1;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:2rem;
+    }
+
+    /* ===== 卡片样式 ===== */
+    .welcome-card{
+        background:#ffffff;
+        padding:3rem 4rem;
+        border-radius:1.5rem;
+        box-shadow:0 8px 24px rgba(0,0,0,.08);
+        text-align:center;
+        width:100%;
+        max-width:720px;
+    }
+    .welcome-card h1{
+        font-size:2.25rem;
+        font-weight:700;
+        margin-bottom:1rem;
+    }
+    .welcome-card p{
+        margin-bottom:.75rem;
+        color:#6b7280;
+    }
+
+    /* ===== 模式选择 ===== */
+    .mode-selection{
+        margin-top:2.5rem;
+    }
+    .mode-selection h2{
+        font-size:1.5rem;
+        font-weight:600;
+        margin-bottom:1.25rem;
+        color:#111827;
+    }
+    .mode-buttons{
+        display:flex;
+        justify-content:center;
+        gap:1rem;
+        margin-bottom:1rem;
+    }
+    .mode-btn{
+        padding:.75rem 2rem;
+        font-size:1rem;
+        border:none;
+        border-radius:9999px;
+        background:#22c55e;
+        color:#ffffff;
+        cursor:not-allowed; /* 暂不可用 */
+        opacity:.65;
+        transition:transform .15s ease,box-shadow .15s ease;
+    }
+    .mode-btn:hover{
+        transform:translateY(-2px);
+        box-shadow:0 4px 12px rgba(34,197,94,.35);
+    }
+    .mode-btn:active{
+        transform:translateY(0);
+        box-shadow:none;
+    }
+
+    /* ===== 页脚 ===== */
+    footer{
+        text-align:center;
+        padding:1rem 0;
+        font-size:.875rem;
+        color:#6b7280;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="main-container">
-    <div class="welcome-card">
-        <h1>欢迎来到 ExamMaster</h1>
-        <p>请选择上方功能开始答题。</p>
-        <p>技术支持：ShayneChen（xinyu-c@outlook.com）</p>
-    </div>
-    <div class="mode-selection">
-        <h2>特殊练习模式</h2>
-        <div class="mode-buttons">
-            <form method="post" action="{{ url_for('start_timed_mode') }}">
-                <button type="submit" class="btn mode-btn">开启定时模式</button>
-            </form>
-            <form method="post" action="{{ url_for('start_exam') }}">
-                <button type="submit" class="btn mode-btn">开启模拟考试模式</button>
-            </form>
+<main class="main-container">
+    <section class="welcome-card">
+        <h1>欢迎来到 <span style="color:#2563EB;">ExamMaster</span></h1>
+        <p>请选择上方功能开始答题，当前题录为：<span style="color:#0000CD;">毛概2023级(2025-05)</span></p>
+        <p>技术支持：<a href="mailto:xinyu-c@outlook.com">ShayneChen（xinyu-c@outlook.com）</a></p>
+        <p>本项目为<a href="https://github.com/CiE-XinYuChen/EXAM-MASTER">开源项目</a>，公益维护</p>
+
+        <div class="mode-selection">
+            <h2>特殊练习模式</h2>
+            <div class="mode-buttons">
+                <form method="post" action="{{ url_for('start_exam') }}">
+                    <button type="submit" class="btn mode-btn" disabled>开启模拟考试模式（暂不支持）</button>
+                </form>
+            </div>
         </div>
-    </div>
-</div>
+        <a href="https://beian.miit.gov.cn/" target="_blank">吉ICP备2023007431h号-2</a>
+        <footer>
+            &copy; {{ current_year | default(2025) }} ExamMaster，MIT License
+        </footer>
+
+    </section>
+</main>
 {% endblock %}

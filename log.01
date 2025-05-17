@@ -8,3 +8,18 @@
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 498-569-294
+172.17.0.1 - - [17/May/2025 09:08:37] "GET / HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:38] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:42] "[32mGET /sequential_start HTTP/1.1[0m" 302 -
+172.17.0.1 - - [17/May/2025 09:08:42] "GET /sequential/15 HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:42] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:52] "POST /question/15 HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:53] "GET /static/style.css HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:55] "[32mPOST /favorite/15 HTTP/1.1[0m" 302 -
+172.17.0.1 - - [17/May/2025 09:08:55] "[32mGET /sequential_start HTTP/1.1[0m" 302 -
+172.17.0.1 - - [17/May/2025 09:08:55] "GET /sequential/16 HTTP/1.1" 200 -
+172.17.0.1 - - [17/May/2025 09:08:55] "GET /static/style.css HTTP/1.1" 200 -
+ * Detected change in '/root/shayne/EXAM-MASTER/app.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 498-569-294
