@@ -406,7 +406,7 @@ def favorite_question(qid):
     conn.commit()
     conn.close()
     flash("收藏成功！")
-    return redirect(url_for('show_question', qid=qid))
+    return redirect(url_for('sequential_start'))
 
 @app.route('/unfavorite/<qid>', methods=['POST'])
 def unfavorite_question(qid):
