@@ -107,23 +107,107 @@
     
     <!-- JavaScript -->
     <script>
-        // 移动端菜单切换
+        // 移动端菜单切换和优化
         document.addEventListener('DOMContentLoaded', function() {
             const menuToggle = document.getElementById('menuToggle');
             const navLinks = document.getElementById('navLinks');
+            const navLinksItems = document.querySelectorAll('.nav-link');
+            const body = document.body;
             
+            // 移动端菜单切换
             if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', function() {
-                    navLinks.classList.toggle('active');
-                    const icon = menuToggle.querySelector('i');
-                    if (navLinks.classList.contains('active')) {
-                        icon.classList.remove('fa-bars');
-                        icon.classList.add('fa-times');
-                    } else {
-                        icon.classList.remove('fa-times');
-                        icon.classList.add('fa-bars');
+                menuToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleMenu();
+                });
+                
+                // 点击菜单项关闭菜单（仅在移动端）
+                navLinksItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        if (window.innerWidth <= 768) {
+                            closeMenu();
+                        }
+                    });
+                });
+                
+                // 点击其他区域关闭菜单
+                document.addEventListener('click', function(e) {
+                    if (navLinks.classList.contains('active') && 
+                        !navLinks.contains(e.target) && 
+                        e.target !== menuToggle) {
+                        closeMenu();
                     }
                 });
+                
+                // 监听窗口大小变化，调整菜单显示
+                window.addEventListener('resize', function() {
+                    if (window.innerWidth > 768 && navLinks.classList.contains('active')) {
+                        navLinks.classList.remove('active');
+                        updateMenuIcon(false);
+                        body.style.overflow = '';
+                    }
+                });
+            }
+            
+            // 菜单切换功能
+            function toggleMenu() {
+                const isActive = navLinks.classList.toggle('active');
+                updateMenuIcon(isActive);
+                
+                // 当菜单打开时禁止背景滚动（仅移动端）
+                if (window.innerWidth <= 768) {
+                    body.style.overflow = isActive ? 'hidden' : '';
+                }
+            }
+            
+            // 关闭菜单
+            function closeMenu() {
+                navLinks.classList.remove('active');
+                updateMenuIcon(false);
+                body.style.overflow = '';
+            }
+            
+            // 更新菜单图标
+            function updateMenuIcon(isActive) {
+                const icon = menuToggle.querySelector('i');
+                if (isActive) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            }
+            
+            // 添加移动端swipe手势支持
+            let touchStartX = 0;
+            let touchEndX = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.changedTouches[0].screenX;
+            }, false);
+            
+            document.addEventListener('touchend', function(e) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, false);
+            
+            function handleSwipe() {
+                const swipeThreshold = 100; // 最小滑动距离
+                
+                // 从左往右滑动，打开菜单
+                if (touchEndX - touchStartX > swipeThreshold && window.innerWidth <= 768) {
+                    if (!navLinks.classList.contains('active')) {
+                        toggleMenu();
+                    }
+                }
+                
+                // 从右往左滑动，关闭菜单
+                if (touchStartX - touchEndX > swipeThreshold && window.innerWidth <= 768) {
+                    if (navLinks.classList.contains('active')) {
+                        closeMenu();
+                    }
+                }
             }
             
             // Flash消息自动消失
@@ -135,6 +219,71 @@
                         alert.style.display = 'none';
                     }, 500);
                 }, 5000);
+            });
+            
+            // 检测是否为移动设备，添加相应的类
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                document.body.classList.add('mobile-device');
+            }
+            
+            // 处理表格滚动指示器
+            const tableContainers = document.querySelectorAll('.table-container');
+            tableContainers.forEach(container => {
+                // 添加滚动提示文本（仅在移动端）
+                if (window.innerWidth <= 768) {
+                    const hint = document.createElement('div');
+                    hint.className = 'table-scroll-hint';
+                    hint.innerHTML = '<i class="fas fa-arrows-left-right"></i> 左右滑动查看更多';
+                    container.insertBefore(hint, container.firstChild);
+                }
+                
+                // 检查表格是否可滚动
+                function checkScrollable() {
+                    if (container.scrollWidth > container.clientWidth) {
+                        container.classList.add('is-scrollable');
+                    } else {
+                        container.classList.remove('is-scrollable');
+                    }
+                }
+                
+                // 初始检查
+                checkScrollable();
+                
+                // 监听窗口大小变化
+                window.addEventListener('resize', checkScrollable);
+                
+                // 监听滚动事件，处理滚动指示器
+                container.addEventListener('scroll', function() {
+                    const scrollLeft = container.scrollLeft;
+                    const maxScroll = container.scrollWidth - container.clientWidth;
+                    
+                    // 如果滚动到最右侧，隐藏右侧指示器
+                    if (scrollLeft >= maxScroll - 5) {
+                        container.classList.add('scrolled-end');
+                    } else {
+                        container.classList.remove('scrolled-end');
+                    }
+                });
+            });
+            
+            // 处理卡片式移动表格
+            const cardTables = document.querySelectorAll('.table.table-card-mobile');
+            cardTables.forEach(table => {
+                // 获取表头内容，用于生成移动端标签
+                const headerCells = table.querySelectorAll('thead th');
+                const headerTexts = Array.from(headerCells).map(cell => cell.textContent.trim());
+                
+                // 为每个数据单元格添加data-label属性
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach((cell, index) => {
+                        if (index < headerTexts.length) {
+                            cell.setAttribute('data-label', headerTexts[index]);
+                        }
+                    });
+                });
             });
         });
     </script>
