@@ -147,10 +147,37 @@
                 });
             }
             
+            // 创建背景遮罩元素
+            let menuBackdrop;
+            
+            // 初始化遮罩
+            function initBackdrop() {
+                if (!document.querySelector('.menu-backdrop')) {
+                    menuBackdrop = document.createElement('div');
+                    menuBackdrop.className = 'menu-backdrop';
+                    document.body.appendChild(menuBackdrop);
+                    
+                    // 点击遮罩关闭菜单
+                    menuBackdrop.addEventListener('click', closeMenu);
+                } else {
+                    menuBackdrop = document.querySelector('.menu-backdrop');
+                }
+            }
+            
+            // 初始化
+            initBackdrop();
+            
             // 菜单切换功能
             function toggleMenu() {
                 const isActive = navLinks.classList.toggle('active');
                 updateMenuIcon(isActive);
+                
+                // 切换背景遮罩
+                if (isActive) {
+                    menuBackdrop.classList.add('active');
+                } else {
+                    menuBackdrop.classList.remove('active');
+                }
                 
                 // 当菜单打开时禁止背景滚动（仅移动端）
                 if (window.innerWidth <= 768) {
@@ -161,6 +188,7 @@
             // 关闭菜单
             function closeMenu() {
                 navLinks.classList.remove('active');
+                menuBackdrop.classList.remove('active');
                 updateMenuIcon(false);
                 body.style.overflow = '';
             }
