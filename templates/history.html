@@ -4,24 +4,14 @@
 {% block title %}答题历史 - ExamMaster{% endblock %}
 
 {% block content %}
-<div class="standard-container">
-    <!-- 侧边栏 -->
-    <div class="sidebar">
-        <h3>历史导航</h3>
-        <ul>
-            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
-            <li><a href="{{ url_for('search') }}">搜索题目</a></li>
-            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
-            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
-            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
-            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
-            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
-        </ul>
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-history"></i> 答题历史记录
     </div>
-    <div class="content-section">
-        <h1>答题历史记录</h1>
-        {% if history %}
-        <table class="styled-table">
+    
+    {% if history %}
+    <div class="table-container">
+        <table class="table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -39,15 +29,23 @@
                     <td>{{ record.question_id }}</td>
                     <td><a href="{{ url_for('show_question', qid=record.question_id) }}">{{ record.stem }}</a></td>
                     <td>{{ record.user_answer }}</td>
-                    <td>{{ '是' if record.correct == 1 else '否' }}</td>
+                    <td>
+                        {% if record.correct == 1 %}
+                        <span class="badge badge-success">是</span>
+                        {% else %}
+                        <span class="badge badge-danger">否</span>
+                        {% endif %}
+                    </td>
                     <td>{{ record.timestamp }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <p>你还没有任何答题历史记录。</p>
-        {% endif %}
     </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> 你还没有任何答题历史记录。
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

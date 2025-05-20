@@ -4,31 +4,48 @@
 {% block title %}定时模式 - ExamMaster{% endblock %}
 
 {% block content %}
-<div class="standard-container">
-    <div class="content-section">
-        <h1>定时模式</h1>
-        <p>剩余时间：<span id="countdown" class="countdown">{{ remaining }}秒</span></p>
-        <form id="examForm" method="post" action="{{ url_for('submit_timed_mode') }}" class="exam-form">
-            {% for question in questions %}
-            <div class="question-block">
-                <h2>题目 {{ question.id }}</h2>
-                <p class="question-stem">{{ question.stem }}</p>
-                <div class="options">
-                    {% for opt_key, opt_val in question.options.items() %}
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-stopwatch"></i> 定时模式
+    </div>
+    
+    <div class="countdown-container mb-4">
+        <div class="countdown-title">剩余时间</div>
+        <div id="countdown" class="countdown-timer">{{ remaining }}秒</div>
+    </div>
+    
+    <form id="examForm" method="post" action="{{ url_for('submit_timed_mode') }}" class="mb-4">
+        {% for question in questions %}
+        <div class="question-container mb-4">
+            <div class="question-header">
+                <span class="question-number">题目 {{ question.id }}</span>
+                {% if question.difficulty == '简单' %}
+                <span class="question-difficulty difficulty-easy">简单</span>
+                {% elif question.difficulty == '中等' %}
+                <span class="question-difficulty difficulty-medium">中等</span>
+                {% else %}
+                <span class="question-difficulty difficulty-hard">困难</span>
+                {% endif %}
+            </div>
+            <div class="question-stem">{{ question.stem }}</div>
+            <div class="options-list">
+                {% for opt_key, opt_val in question.options.items() %}
+                <div class="option-item">
                     <label class="option-label">
                         {% if question.type == '单选题' %}
-                            <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" required> {{ opt_key }}. {{ opt_val }}
+                            <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox" required>
                         {% else %}
-                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}"> {{ opt_key }}. {{ opt_val }}
+                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox">
                         {% endif %}
-                    </label><br>
-                    {% endfor %}
+                        <span class="option-text">{{ opt_key }}. {{ opt_val }}</span>
+                    </label>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-            <button type="submit" class="btn btn-submit">提交答案</button>
-        </form>
-    </div>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">提交答案</button>
+    </form>
 </div>
 {% endblock %}
 
