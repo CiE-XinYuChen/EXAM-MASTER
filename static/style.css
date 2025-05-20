@@ -1026,6 +1026,7 @@ input[type="radio"] {
     width: 100%;
     flex-direction: column;
     margin-top: 1rem;
+    flex-wrap: nowrap;
   }
   
   .nav-links.active {
@@ -1037,6 +1038,10 @@ input[type="radio"] {
     width: 100%;
     border-radius: 0;
     border-left: 3px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
   }
   
   .nav-link:hover,
@@ -1058,8 +1063,13 @@ input[type="radio"] {
   }
   
   .nav-right .logout-link {
-    width: 100%;
+    width: auto;
+    padding: 0.6rem 1rem;
     text-align: center;
+    font-size: 0.9rem;
+    margin-left: auto;
+    margin-right: auto;
+    display: inline-block;
   }
   
   .question-actions {
