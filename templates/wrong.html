@@ -10,7 +10,7 @@
     </div>
     
     {% if questions %}
-    <ul class="mb-0">
+    <ul class="mb-3">
         {% for q in questions %}
             <li class="mb-2">
                 <a href="{{ url_for('show_question', qid=q.id) }}" class="text-primary">
@@ -22,10 +22,16 @@
         {% endfor %}
     </ul>
     {% else %}
-    <div class="alert alert-info">
+    <div class="alert alert-info mb-3">
         <i class="fas fa-info-circle"></i> 当前没有错题。
     </div>
     {% endif %}
+    
+    <div class="text-center">
+        <a href="{{ url_for('index') }}" class="btn btn-danger">
+            <i class="fas fa-sign-out-alt"></i> 退出
+        </a>
+    </div>
 </div>
 {% endblock %}
 

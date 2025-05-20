@@ -5,8 +5,13 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-title">
-        <i class="fas fa-stopwatch"></i> 定时模式
+    <div class="card-title d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-stopwatch"></i> 定时模式
+        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-danger">
+            <i class="fas fa-sign-out-alt"></i> 退出
+        </a>
     </div>
     
     <div class="countdown-container mb-4">
