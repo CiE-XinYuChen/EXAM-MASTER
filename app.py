@@ -811,11 +811,24 @@ def sequential_start():
         row = c.fetchone()
         
         if row is None:
-            conn.close()
-            flash("恭喜，题库已经全部做完！", "success")
-            return redirect(url_for('index'))
+            # If all questions are answered, find the first question
+            c.execute('''
+                SELECT id
+                FROM questions
+                ORDER BY CAST(id AS INTEGER) ASC
+                LIMIT 1
+            ''')
+            row = c.fetchone()
             
-        current_qid = row['id']
+            if row is None:
+                conn.close()
+                flash("题库中没有题目！", "error")
+                return redirect(url_for('index'))
+            
+            current_qid = row['id']
+            flash("所有题目已完成，从第一题重新开始。", "info")
+        else:
+            current_qid = row['id']
         
         # Save the position
         c.execute(
@@ -845,6 +858,10 @@ def show_sequential_question(qid):
     conn = get_db()
     c = conn.cursor()
     
+    # Update current_seq_qid to the current question when viewing it
+    c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?', (qid, user_id))
+    conn.commit()
+    
     # Handle POST request (user submitted an answer)
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
@@ -873,8 +890,37 @@ def show_sequential_question(qid):
             c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
                       (next_qid, user_id))
         else:
-            c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?',
-                      (user_id,))
+            # Check if there are any questions left to answer
+            c.execute('''
+                SELECT id FROM questions
+                WHERE id NOT IN (
+                    SELECT question_id FROM history WHERE user_id = ?
+                )
+                ORDER BY CAST(id AS INTEGER) ASC
+                LIMIT 1
+            ''', (user_id,))
+            
+            row = c.fetchone()
+            if row:
+                next_qid = row['id']
+                c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
+                          (next_qid, user_id))
+            else:
+                # All questions answered, reset to first question
+                c.execute('''
+                    SELECT id FROM questions
+                    ORDER BY CAST(id AS INTEGER) ASC
+                    LIMIT 1
+                ''')
+                row = c.fetchone()
+                if row:
+                    next_qid = row['id']
+                    c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
+                              (next_qid, user_id))
+                    flash("所有题目已完成，从第一题重新开始。", "info")
+                else:
+                    c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?',
+                              (user_id,))
             
         result_msg = "回答正确！" if correct else f"回答错误，正确答案：{q['answer']}"
         flash(result_msg, "success" if correct else "error")
