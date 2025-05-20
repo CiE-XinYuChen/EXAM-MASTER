@@ -15,10 +15,15 @@
                 <span class="badge badge-primary">
                     <i class="fas fa-bookmark"></i> 当前题库: 毛概2023级(2025-05)
                 </span>
+                {% if current_seq_qid %}
+                <span class="badge badge-success mt-2 d-block">
+                    <i class="fas fa-sync"></i> 顺序答题模式将从第 {{ current_seq_qid }} 题继续
+                </span>
+                {% endif %}
             </p>
             <div class="feature-buttons d-flex gap-2 justify-content-center flex-wrap">
                 <a href="{{ url_for('sequential_start') }}" class="btn btn-primary">
-                    <i class="fas fa-list-ol"></i> 顺序答题
+                    <i class="fas fa-list-ol"></i> 顺序答题{% if current_seq_qid %} (继续第 {{ current_seq_qid }} 题){% endif %}
                 </a>
                 <a href="{{ url_for('random_question') }}" class="btn btn-success">
                     <i class="fas fa-random"></i> 随机练习

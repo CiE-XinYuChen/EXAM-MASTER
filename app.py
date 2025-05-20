@@ -399,7 +399,18 @@ def logout():
 @login_required
 def index():
     """Home page route."""
-    return render_template('index.html', current_year=datetime.now().year)
+    # Fetch current sequential question ID if exists
+    user_id = get_user_id()
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT current_seq_qid FROM users WHERE id = ?', (user_id,))
+    user_data = c.fetchone()
+    current_seq_qid = user_data['current_seq_qid'] if user_data and user_data['current_seq_qid'] else None
+    conn.close()
+    
+    return render_template('index.html', 
+                          current_year=datetime.now().year,
+                          current_seq_qid=current_seq_qid)
 
 @app.route('/reset_history', methods=['POST'])
 @login_required
@@ -411,6 +422,8 @@ def reset_history():
         conn = get_db()
         c = conn.cursor()
         c.execute('DELETE FROM history WHERE user_id=?', (user_id,))
+        # Also clear the current sequential question ID
+        c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?', (user_id,))
         conn.commit()
         conn.close()
         flash("答题历史已重置。现在您可以重新开始答题。", "success")
@@ -1307,4 +1320,4 @@ def server_error(e):
 ##############################
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True, port=32217)
+    app.run(host="0.0.0.0", debug=True, port=32220)

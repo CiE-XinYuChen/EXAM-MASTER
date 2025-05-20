@@ -21,6 +21,9 @@
     <div class="question-header">
         <div class="question-info">
             <span class="question-number">题 {{ question.id }}</span>
+            {% if sequential_mode %}
+                <span class="badge badge-secondary">顺序答题模式</span>
+            {% endif %}
             {% if question.type %}
                 <span class="badge badge-info">{{ question.type }}</span>
             {% endif %}
@@ -118,14 +121,14 @@
                     {% endif %}
                 {% else %}
                     <div class="btn-group">
+                        <a href="{{ url_for('show_sequential_question', qid=question.id|int + 1) }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-right"></i> 顺序下一题
+                        </a>
                         <a href="{{ url_for('random_question') }}" class="btn btn-primary">
                             <i class="fas fa-random"></i> 随机下一题
                         </a>
                         <a href="{{ url_for('sequential_start') }}" class="btn btn-outline-primary">
                             <i class="fas fa-list-ol"></i> 顺序答题模式
-                        </a>
-                        <a href="{{ url_for('show_sequential_question', qid=question.id|int + 1) }}" class="btn btn-outline-primary">
-                            <i class="fas fa-arrow-right"></i> 顺序下一题
                         </a>
                         <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
                             <i class="fas fa-home"></i> 返回首页
