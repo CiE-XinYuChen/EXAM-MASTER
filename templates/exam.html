@@ -4,8 +4,13 @@
 
 {% block content %}
 <div class="card">
-    <div class="card-title">
-        <i class="fas fa-clipboard-list"></i> 模拟考试
+    <div class="card-title d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-clipboard-list"></i> 模拟考试
+        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fas fa-home"></i> 返回主页
+        </a>
     </div>
     
     <form id="examForm" method="post" action="{{ url_for('submit_exam') }}" class="mb-4">

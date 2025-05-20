@@ -102,22 +102,28 @@
         <!-- 底部操作按钮 -->
         <div class="question-actions">
             {% if not result_msg %}
-                <button type="submit" class="btn btn-success">
-                    <i class="fas fa-paper-plane"></i> 提交答案
-                </button>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-paper-plane"></i> 提交答案
+                    </button>
+                </div>
             {% else %}
                 {% if sequential_mode %}
                     {% if next_qid %}
-                        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-primary">
-                            <i class="fas fa-arrow-right"></i> 下一题
-                        </a>
+                        <div class="btn-group">
+                            <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-primary">
+                                <i class="fas fa-arrow-right"></i> 下一题
+                            </a>
+                        </div>
                     {% else %}
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> 恭喜！您已完成所有题目。
                         </div>
-                        <a href="{{ url_for('index') }}" class="btn btn-primary">
-                            <i class="fas fa-home"></i> 返回首页
-                        </a>
+                        <div class="btn-group">
+                            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                                <i class="fas fa-home"></i> 返回首页
+                            </a>
+                        </div>
                     {% endif %}
                 {% else %}
                     <div class="btn-group">
