@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Error {{ error_code }} - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-box">
+        <h1>{{ error_code }}</h1>
+        <h2>{{ error_message }}</h2>
+        <p>很抱歉，发生了错误。</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">返回首页</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .error-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: calc(100vh - 60px);
+    }
+    
+    .error-box {
+        text-align: center;
+        background: #fff;
+        padding: 2rem 3rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .error-box h1 {
+        font-size: 5rem;
+        color: #dc3545;
+        margin: 0;
+    }
+    
+    .error-box h2 {
+        margin-top: 0.5rem;
+        color: #343a40;
+    }
+    
+    .error-box p {
+        margin: 1rem 0 1.5rem;
+        color: #6c757d;
+    }
+    
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 0.5rem 1.5rem;
+        border-radius: 4px;
+        text-decoration: none;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background-color: #0069d9;
+    }
+</style>
+{% endblock %}

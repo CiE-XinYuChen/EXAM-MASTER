@@ -1,77 +1,307 @@
-<!-- templates/statistics.html -->
 {% extends 'base.html' %}
 
 {% block title %}统计与反馈 - ExamMaster{% endblock %}
 
 {% block content %}
-<div class="standard-container">
-    <!-- 侧边栏 -->
-    <div class="sidebar">
-        <h3>统计导航</h3>
-        <ul>
-            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
-            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
-            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
-            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
-            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
-            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
-        </ul>
-    </div>
-    <div class="content-section">
-        <h1>统计与反馈</h1>
-        
-        <!-- 总体正确率 -->
-        <div class="overall-accuracy">
-            <h2>总体正确率</h2>
-            <p>{{ overall_accuracy|round(2) }}%</p>
-            <div class="progress-bar-container">
-                <div class="progress-bar" style="width: {{ overall_accuracy }}%;"></div>
+<div class="statistics-header mb-4">
+    <h1 class="card-title mb-2"><i class="fas fa-chart-pie"></i> 学习统计分析</h1>
+    <p class="text-muted">查看个人学习表现，发现优势与提升空间</p>
+</div>
+
+<!-- 总体概览统计卡片 -->
+<div class="card-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-percentage"></i>
+        </div>
+        <div class="stat-label">总体正确率</div>
+        <div class="stat-value">{{ overall_accuracy|round(1) }}%</div>
+        <div class="progress-bar-container mt-2">
+            <div class="progress-bar 
+                {% if overall_accuracy < 60 %}bg-danger
+                {% elif overall_accuracy < 80 %}bg-warning
+                {% else %}bg-success{% endif %}" 
+                style="width: {{ overall_accuracy }}%;">
             </div>
         </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: rgba(255, 183, 3, 0.1); color: var(--warning-color);">
+            <i class="fas fa-tasks"></i>
+        </div>
+        <div class="stat-label">已答题目</div>
+        <div class="stat-value">
+            {% if difficulty_stats|length > 0 %}
+                {% set total_answered = 0 %}
+                {% for stat in difficulty_stats %}
+                    {% set total_answered = total_answered + stat.total %}
+                {% endfor %}
+                {{ total_answered }}
+            {% else %}
+                0
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: rgba(230, 57, 70, 0.1); color: var(--danger-color);">
+            <i class="fas fa-times-circle"></i>
+        </div>
+        <div class="stat-label">错题数量</div>
+        <div class="stat-value">
+            {% if worst_questions|length > 0 %}
+                {{ worst_questions|length }}
+            {% else %}
+                0
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background-color: rgba(46, 196, 182, 0.1); color: var(--success-color);">
+            <i class="fas fa-fire"></i>
+        </div>
+        <div class="stat-label">学习热度</div>
+        <div class="stat-value">
+            {% if difficulty_stats|length > 0 %}
+                {% if recent_exams and recent_exams|length > 0 %}
+                    优秀
+                {% else %}
+                    良好
+                {% endif %}
+            {% else %}
+                待提升
+            {% endif %}
+        </div>
+    </div>
+</div>
 
-        <!-- 按难度统计 -->
-        <div class="difficulty-stats">
-            <h2>按难度统计</h2>
-            <table class="styled-table">
+<!-- 按难度/分类统计 -->
+<div class="statistics-section mb-4">
+    <div class="card">
+        <h2 class="card-title mb-3"><i class="fas fa-chart-bar"></i> 难度分布分析</h2>
+        
+        <div class="table-container">
+            <table class="table">
                 <thead>
                     <tr>
-                        <th>难度</th>
-                        <th>总题数</th>
-                        <th>正确数</th>
+                        <th>难度级别</th>
+                        <th>已答题数</th>
+                        <th>答对题数</th>
                         <th>正确率</th>
+                        <th>进度</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for stat in difficulty_stats %}
                     <tr>
-                        <td>{{ stat.difficulty }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if stat.difficulty == '简单' or stat.difficulty == '无' %}badge-success
+                                {% elif stat.difficulty == '中等' %}badge-warning
+                                {% else %}badge-danger{% endif %}">
+                                {{ stat.difficulty }}
+                            </span>
+                        </td>
                         <td>{{ stat.total }}</td>
                         <td>{{ stat.correct_count }}</td>
-                        <td>{{ stat.accuracy|round(2) }}%</td>
+                        <td class="font-weight-bold
+                            {% if stat.accuracy < 60 %}text-danger
+                            {% elif stat.accuracy < 80 %}text-warning
+                            {% else %}text-success{% endif %}">
+                            {{ stat.accuracy|round(1) }}%
+                        </td>
+                        <td>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar 
+                                    {% if stat.accuracy < 60 %}bg-danger
+                                    {% elif stat.accuracy < 80 %}bg-warning
+                                    {% else %}bg-success{% endif %}" 
+                                    style="width: {{ stat.accuracy }}%;">
+                                </div>
+                            </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
 
-        <!-- 最常错题目 -->
-        <div class="worst-questions">
-            <h2>最常错题目（Top 10）</h2>
-            {% if worst_questions %}
-            <ul class="styled-list">
-                {% for wq in worst_questions %}
-                <li>
-                    <a href="{{ url_for('show_question', qid=wq.question_id) }}">
-                        [{{ wq.question_id }}] {{ wq.stem }}
-                    </a>
-                    （错次数：{{ wq.wrong_times }}）
-                </li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p>暂无错题数据。</p>
-            {% endif %}
+{% if category_stats and category_stats|length > 0 %}
+<div class="statistics-section mb-4">
+    <div class="card">
+        <h2 class="card-title mb-3"><i class="fas fa-tags"></i> 分类表现分析</h2>
+        
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>知识点分类</th>
+                        <th>已答题数</th>
+                        <th>答对题数</th>
+                        <th>正确率</th>
+                        <th>进度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in category_stats %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-primary">{{ stat.category }}</span>
+                        </td>
+                        <td>{{ stat.total }}</td>
+                        <td>{{ stat.correct_count }}</td>
+                        <td class="font-weight-bold
+                            {% if stat.accuracy < 60 %}text-danger
+                            {% elif stat.accuracy < 80 %}text-warning
+                            {% else %}text-success{% endif %}">
+                            {{ stat.accuracy|round(1) }}%
+                        </td>
+                        <td>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar 
+                                    {% if stat.accuracy < 60 %}bg-danger
+                                    {% elif stat.accuracy < 80 %}bg-warning
+                                    {% else %}bg-success{% endif %}" 
+                                    style="width: {{ stat.accuracy }}%;">
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
+{% endif %}
+
+<!-- 最近考试记录 -->
+{% if recent_exams and recent_exams|length > 0 %}
+<div class="statistics-section mb-4">
+    <div class="card">
+        <h2 class="card-title mb-3"><i class="fas fa-history"></i> 最近考试记录</h2>
+        
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>考试模式</th>
+                        <th>题目数量</th>
+                        <th>得分</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in recent_exams %}
+                    <tr>
+                        <td>
+                            {% if exam.mode == 'timed' %}
+                                <span class="badge badge-info">
+                                    <i class="fas fa-hourglass-half"></i> 定时模式
+                                </span>
+                            {% else %}
+                                <span class="badge badge-primary">
+                                    <i class="fas fa-file-alt"></i> 模拟考试
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ exam.question_count }}</td>
+                        <td class="font-weight-bold
+                            {% if exam.score < 60 %}text-danger
+                            {% elif exam.score < 80 %}text-warning
+                            {% else %}text-success{% endif %}">
+                            {{ exam.score|round(1) }}%
+                        </td>
+                        <td>{{ exam.start_time }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 最常错题目 -->
+<div class="statistics-section mb-4">
+    <div class="card">
+        <h2 class="card-title mb-3"><i class="fas fa-exclamation-triangle"></i> 错题分析 (Top {{ worst_questions|length }})</h2>
+        
+        {% if worst_questions|length > 0 %}
+            <div class="wrong-questions-list">
+                {% for q in worst_questions %}
+                <div class="wrong-question-item">
+                    <div class="wrong-question-header">
+                        <div class="wrong-question-id">
+                            <span class="badge badge-danger">题 {{ q.question_id }}</span>
+                            <span class="wrong-count">错误次数: {{ q.wrong_times }}</span>
+                        </div>
+                        <a href="{{ url_for('show_question', qid=q.question_id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-external-link-alt"></i> 查看题目
+                        </a>
+                    </div>
+                    <p class="wrong-question-stem">{{ q.stem }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state text-center py-5">
+                <i class="fas fa-check-circle" style="font-size: 3rem; color: var(--success-color); margin-bottom: 1rem;"></i>
+                <h3>暂无错题记录</h3>
+                <p class="text-muted">继续保持良好状态！</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .statistics-header {
+        text-align: center;
+    }
+    
+    .wrong-questions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .wrong-question-item {
+        background-color: var(--gray-100);
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        transition: var(--transition);
+    }
+    
+    .wrong-question-item:hover {
+        background-color: white;
+        box-shadow: var(--box-shadow);
+    }
+    
+    .wrong-question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .wrong-question-id {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .wrong-count {
+        color: var(--danger-color);
+        font-weight: 500;
+    }
+    
+    .wrong-question-stem {
+        margin: 0;
+        color: var(--gray-800);
+    }
+</style>
 {% endblock %}

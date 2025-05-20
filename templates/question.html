@@ -3,117 +3,211 @@
 {% block title %}题目 - ExamMaster{% endblock %}
 
 {% block content %}
-<div class="standard-container">
-    <!-- 侧边栏 -->
-    <div class="sidebar">
-        <h3>答题导航</h3>
-        <ul>
-            <li><a href="{{ url_for('sequential_start') }}">顺序答题</a></li>
-            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
-            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
-            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
-            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
-            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
-        </ul>
+<!-- 进度条 -->
+{% if answered is not none and total is not none %}
+<div class="progress-container">
+    <div class="progress-header">
+        <span class="progress-title">答题进度</span>
+        <span class="progress-value">{{ answered }} / {{ total }} 题 ({{ (answered / total * 100)|round(1) if total else 0 }}%)</span>
     </div>
-
-    <div class="content-section">
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for msg in messages %}
-                        <p class="flash-message">{{ msg }}</p>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-
-        <!-- 进度条 -->
-        {% if answered is not none and total is not none %}
-        <div class="progress-container">
-            <p>答题进度: 您已答 {{ answered }} / {{ total }} 题 ({{ (answered / total * 100)|round(2) if total else 0 }}%)</p>
-            <div class="progress-bar-container">
-                <div class="progress-bar" style="width: {{ (answered / total * 100) if total else 0 }}%;"></div>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if question %}
-        <div class="question-section">
-            <h1>题目 {{ question.id }}</h1>
-            <p class="question-stem">{{ question.stem }}</p>
-
-            {% if result_msg %}
-                <div class="result-message">{{ result_msg }}</div>
-            {% endif %}
-
-            <!-- 选项：始终显示；提交后保持勾选并禁用 -->
-            <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="answer-form">
-                <div class="options">
-                    {% for opt_key, opt_val in question.options.items() %}
-                        {% set checked = user_answer is defined and (opt_key in user_answer) %}
-                        <label class="option-label {% if checked %}chosen{% endif %}">
-                            {% if question.type == '单选题' %}
-                                <input type="radio"
-                                       name="answer"
-                                       value="{{ opt_key }}"
-                                       {% if checked %}checked{% endif %}
-                                       {% if result_msg %}disabled{% endif %}
-                                       required>
-                            {% else %}
-                                <input type="checkbox"
-                                       name="answer"
-                                       value="{{ opt_key }}"
-                                       {% if checked %}checked{% endif %}
-                                       {% if result_msg %}disabled{% endif %}>
-                            {% endif %}
-                            {{ opt_key }}. {{ opt_val }}
-                        </label>
-                    {% endfor %}
-                </div>
-
-                {% if not result_msg %}
-                    <button type="submit" class="btn btn-submit">提交答案</button>
-                {% endif %}
-            </form>
-
-            {# 结果区的“下一题 / 返回”按钮 #}
-            {% if result_msg %}
-                {% if next_qid is defined %}
-                    {# -------- 已在顺序模式 -------- #}
-                    {% if next_qid %}
-                        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-next">
-                            下一题
-                        </a>
-                    {% else %}
-                        <p>没有更多题目了！</p>
-                        <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
-                    {% endif %}
-                {% else %}
-                    {# -------- 当前不在顺序模式，提供两种跳转 -------- #}
-                    
-                    <a href="{{ url_for('sequential_start') }}" class="btn btn-home">
-                        下一题(顺序)
-                    </a>
-                    <a href="{{ url_for('random_question') }}" class="btn btn-home">
-                        下一题(随机)
-                    </a>
-
-                {% endif %}
-            {% endif %}
-
-            <!-- 收藏按钮 -->
-            <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" class="favorite-form">
-                <button type="submit" class="btn btn-favorite">收藏本题</button>
-            </form>
-        </div>
-        {% else %}
-        <!-- 题库做完 -->
-        <div class="no-more-questions">
-            <p>恭喜！您已经答完所有题目。</p>
-            <a href="{{ url_for('index') }}" class="btn btn-home">返回首页</a>
-        </div>
-        {% endif %}
+    <div class="progress-bar-container">
+        <div class="progress-bar" style="width: {{ (answered / total * 100) if total else 0 }}%;"></div>
     </div>
 </div>
+{% endif %}
+
+{% if question %}
+<div class="question-container">
+    <div class="question-header">
+        <div class="question-info">
+            <span class="question-number">题 {{ question.id }}</span>
+            {% if question.type %}
+                <span class="badge badge-info">{{ question.type }}</span>
+            {% endif %}
+            {% if question.difficulty %}
+                <span class="question-difficulty badge {% if question.difficulty == '简单' %}badge-success{% elif question.difficulty == '中等' %}badge-warning{% else %}badge-danger{% endif %}">
+                    {{ question.difficulty }}
+                </span>
+            {% endif %}
+            {% if question.category %}
+                <span class="badge badge-primary">{{ question.category }}</span>
+            {% endif %}
+        </div>
+        
+        <div class="question-actions-top">
+            <!-- 收藏按钮 -->
+            {% if is_favorite %}
+                <form method="post" action="{{ url_for('unfavorite_question', qid=question.id) }}">
+                    <button type="submit" class="favorite-btn active">
+                        <i class="fas fa-star"></i> 已收藏
+                    </button>
+                </form>
+            {% else %}
+                <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}">
+                    <button type="submit" class="favorite-btn">
+                        <i class="far fa-star"></i> 收藏本题
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 题干内容 -->
+    <div class="question-stem">{{ question.stem }}</div>
+    
+    <!-- 答题结果消息 -->
+    {% if result_msg %}
+        <div class="result-message {% if '正确' in result_msg %}result-correct{% else %}result-incorrect{% endif %}">
+            {% if '正确' in result_msg %}
+                <i class="fas fa-check-circle"></i>
+            {% else %}
+                <i class="fas fa-times-circle"></i>
+            {% endif %}
+            {{ result_msg }}
+        </div>
+    {% endif %}
+    
+    <!-- 选项表单 -->
+    <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="question-form">
+        <ul class="options-list">
+            {% for opt_key, opt_val in question.options.items() %}
+                {% set checked = user_answer is defined and (opt_key in user_answer) %}
+                <li class="option-item">
+                    <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
+                        {% if question.type == '单选题' %}
+                            <input type="radio" 
+                                   class="option-checkbox" 
+                                   name="answer"
+                                   value="{{ opt_key }}"
+                                   {% if checked %}checked{% endif %}
+                                   {% if result_msg %}disabled{% endif %}
+                                   required>
+                        {% else %}
+                            <input type="checkbox" 
+                                   class="option-checkbox" 
+                                   name="answer"
+                                   value="{{ opt_key }}"
+                                   {% if checked %}checked{% endif %}
+                                   {% if result_msg %}disabled{% endif %}>
+                        {% endif %}
+                        <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
+                    </label>
+                </li>
+            {% endfor %}
+        </ul>
+        
+        <!-- 底部操作按钮 -->
+        <div class="question-actions">
+            {% if not result_msg %}
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-paper-plane"></i> 提交答案
+                </button>
+            {% else %}
+                {% if sequential_mode %}
+                    {% if next_qid %}
+                        <a href="{{ url_for('show_sequential_question', qid=next_qid) }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-right"></i> 下一题
+                        </a>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> 恭喜！您已完成所有题目。
+                        </div>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-home"></i> 返回首页
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <div class="btn-group">
+                        <a href="{{ url_for('random_question') }}" class="btn btn-primary">
+                            <i class="fas fa-random"></i> 随机下一题
+                        </a>
+                        <a href="{{ url_for('sequential_start') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-list-ol"></i> 顺序答题
+                        </a>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-home"></i> 返回首页
+                        </a>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% else %}
+<!-- 题库做完 -->
+<div class="card text-center py-5">
+    <div class="empty-state">
+        <i class="fas fa-check-circle" style="font-size: 4rem; color: var(--success-color); margin-bottom: 1.5rem;"></i>
+        <h2 class="mb-3">恭喜！您已经回答了所有题目</h2>
+        <p class="mb-4">您可以重置答题历史，或者尝试其他学习模式</p>
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+            <form method="post" action="{{ url_for('reset_history') }}">
+                <button type="submit" class="btn btn-warning" onclick="return confirm('确定要重置答题历史吗？此操作不可恢复。')">
+                    <i class="fas fa-redo"></i> 重置答题历史
+                </button>
+            </form>
+            <a href="{{ url_for('wrong_questions') }}" class="btn btn-danger">
+                <i class="fas fa-times-circle"></i> 练习错题
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> 返回首页
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    .option-label.option-correct {
+        background-color: rgba(46, 196, 182, 0.1);
+        border-color: var(--success-color);
+    }
+    
+    .option-label.option-incorrect {
+        background-color: rgba(230, 57, 70, 0.1);
+        border-color: var(--danger-color);
+    }
+    
+    .question-info {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .question-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .question-actions-top {
+            margin-top: 1rem;
+            align-self: flex-end;
+        }
+        
+        .btn-group {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .btn-group .btn {
+            width: 100%;
+        }
+    }
+</style>
 {% endblock %}

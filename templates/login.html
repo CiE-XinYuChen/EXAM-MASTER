@@ -1,31 +1,126 @@
-<!-- templates/login.html -->
 {% extends 'base_auth.html' %}
 
 {% block title %}登录 - ExamMaster{% endblock %}
 
 {% block content %}
-
-<style>
-    .auth-form .form-group input {
-        width: calc(100% - 27px); /* 调整宽度 */
-        margin-right: 10px; /* 添加右侧外边距 */
-    }
-</style>
 <div class="auth-container">
-    <h1>登录</h1>
+    <div class="auth-logo">
+        <i class="fas fa-book-open" style="font-size: 3rem; color: var(--primary-color);"></i>
+    </div>
+    <h1 class="auth-title">登录 ExamMaster</h1>
+    
     <form method="post" class="auth-form">
         <div class="form-group">
-            <label for="username">用户名：</label>
-            <input type="text" id="username" name="username" required>
+            <label for="username" class="form-label">用户名</label>
+            <div class="input-group">
+                <span class="input-icon"><i class="fas fa-user"></i></span>
+                <input type="text" id="username" name="username" class="form-control" required autocomplete="username" placeholder="请输入用户名">
+            </div>
         </div>
+        
         <div class="form-group">
-            <label for="password">密码：</label>
-            <input type="password" id="password" name="password" required>
+            <label for="password" class="form-label">密码</label>
+            <div class="input-group">
+                <span class="input-icon"><i class="fas fa-lock"></i></span>
+                <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password" placeholder="请输入密码">
+            </div>
         </div>
-        <button type="submit" class="btn btn-submit">登录</button>
+        
+        <button type="submit" class="btn btn-primary btn-block">
+            <i class="fas fa-sign-in-alt"></i> 登录
+        </button>
     </form>
-    <p class="auth-link">
-        没有账号？<a href="{{ url_for('register') }}">去注册</a>
-    </p>
+    
+    <div class="auth-footer">
+        <p>还没有账号？ <a href="{{ url_for('register') }}">立即注册</a></p>
+    </div>
 </div>
+
+<style>
+    .input-group {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--gray-500);
+    }
+    
+    .form-control {
+        padding-left: 2.5rem;
+    }
+    
+    .auth-container {
+        animation: fadeIn 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 简单的表单验证
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.querySelector('.auth-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        
+        loginForm.addEventListener('submit', function(event) {
+            let isValid = true;
+            
+            if (!usernameInput.value.trim()) {
+                isValid = false;
+                showError(usernameInput, '请输入用户名');
+            } else {
+                removeError(usernameInput);
+            }
+            
+            if (!passwordInput.value.trim()) {
+                isValid = false;
+                showError(passwordInput, '请输入密码');
+            } else {
+                removeError(passwordInput);
+            }
+            
+            if (!isValid) {
+                event.preventDefault();
+            }
+        });
+        
+        function showError(input, message) {
+            const formGroup = input.closest('.form-group');
+            const error = formGroup.querySelector('.error-message') || document.createElement('div');
+            
+            error.className = 'error-message';
+            error.textContent = message;
+            error.style.color = 'var(--danger-color)';
+            error.style.fontSize = '0.875rem';
+            error.style.marginTop = '0.25rem';
+            
+            if (!formGroup.querySelector('.error-message')) {
+                formGroup.appendChild(error);
+            }
+            
+            input.style.borderColor = 'var(--danger-color)';
+        }
+        
+        function removeError(input) {
+            const formGroup = input.closest('.form-group');
+            const error = formGroup.querySelector('.error-message');
+            
+            if (error) {
+                formGroup.removeChild(error);
+            }
+            
+            input.style.borderColor = '';
+        }
+    });
+</script>
 {% endblock %}

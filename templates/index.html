@@ -1,114 +1,249 @@
-<!-- templates/index.html -->
-
 {% extends 'base.html' %}
 
 {% block title %}ExamMaster - 首页{% endblock %}
 
-{% block styles %}
-<style>
-    /* ===== 全局背景 & 布局 ===== */
-    body{
-        background:linear-gradient(135deg,#e8f0ff 0%,#f9fcff 100%);
-        min-height:100vh;
-        display:flex;
-        flex-direction:column;
-    }
-
-    .main-container{
-        flex:1;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        padding:2rem;
-    }
-
-    /* ===== 卡片样式 ===== */
-    .welcome-card{
-        background:#ffffff;
-        padding:3rem 4rem;
-        border-radius:1.5rem;
-        box-shadow:0 8px 24px rgba(0,0,0,.08);
-        text-align:center;
-        width:100%;
-        max-width:720px;
-    }
-    .welcome-card h1{
-        font-size:2.25rem;
-        font-weight:700;
-        margin-bottom:1rem;
-    }
-    .welcome-card p{
-        margin-bottom:.75rem;
-        color:#6b7280;
-    }
-
-    /* ===== 模式选择 ===== */
-    .mode-selection{
-        margin-top:2.5rem;
-    }
-    .mode-selection h2{
-        font-size:1.5rem;
-        font-weight:600;
-        margin-bottom:1.25rem;
-        color:#111827;
-    }
-    .mode-buttons{
-        display:flex;
-        justify-content:center;
-        gap:1rem;
-        margin-bottom:1rem;
-    }
-    .mode-btn{
-        padding:.75rem 2rem;
-        font-size:1rem;
-        border:none;
-        border-radius:9999px;
-        background:#22c55e;
-        color:#ffffff;
-        cursor:not-allowed; /* 暂不可用 */
-        opacity:.65;
-        transition:transform .15s ease,box-shadow .15s ease;
-    }
-    .mode-btn:hover{
-        transform:translateY(-2px);
-        box-shadow:0 4px 12px rgba(34,197,94,.35);
-    }
-    .mode-btn:active{
-        transform:translateY(0);
-        box-shadow:none;
-    }
-
-    /* ===== 页脚 ===== */
-    footer{
-        text-align:center;
-        padding:1rem 0;
-        font-size:.875rem;
-        color:#6b7280;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<main class="main-container">
-    <section class="welcome-card">
-        <h1>欢迎来到 <span style="color:#2563EB;">ExamMaster</span></h1>
-        <p>请选择上方功能开始答题，当前题录为：<span style="color:#0000CD;">毛概2023级(2025-05)</span></p>
-        <p>技术支持：<a href="mailto:xinyu-c@outlook.com">ShayneChen（xinyu-c@outlook.com）</a></p>
-        <p>本项目为<a href="https://github.com/CiE-XinYuChen/EXAM-MASTER">开源项目</a>，公益维护</p>
-
-        <div class="mode-selection">
-            <h2>特殊练习模式</h2>
-            <div class="mode-buttons">
-                <form method="post" action="{{ url_for('start_exam') }}">
-                    <button type="submit" class="btn mode-btn" disabled>开启模拟考试模式（暂不支持）</button>
-                </form>
+<div class="hero-section mb-4">
+    <div class="card">
+        <div class="hero-content text-center py-4">
+            <div class="app-logo mb-3">
+                <i class="fas fa-book-open" style="font-size: 3.5rem; color: var(--primary-color);"></i>
+            </div>
+            <h1 class="display-title mb-3">欢迎使用 <span class="text-primary">ExamMaster</span></h1>
+            <p class="lead mb-3">高效的在线刷题系统，助力学习提升</p>
+            <p class="current-exam-info mb-4">
+                <span class="badge badge-primary">
+                    <i class="fas fa-bookmark"></i> 当前题库: 毛概2023级(2025-05)
+                </span>
+            </p>
+            <div class="feature-buttons d-flex gap-2 justify-content-center flex-wrap">
+                <a href="{{ url_for('sequential_start') }}" class="btn btn-primary">
+                    <i class="fas fa-list-ol"></i> 顺序答题
+                </a>
+                <a href="{{ url_for('random_question') }}" class="btn btn-success">
+                    <i class="fas fa-random"></i> 随机练习
+                </a>
+                <a href="{{ url_for('wrong_questions') }}" class="btn btn-warning">
+                    <i class="fas fa-times-circle"></i> 错题练习
+                </a>
             </div>
         </div>
-        <a href="https://beian.miit.gov.cn/" target="_blank">吉ICP备2023007431h号-2</a>
-        <footer>
-            &copy; {{ current_year | default(2025) }} ExamMaster，MIT License
-        </footer>
+    </div>
+</div>
 
-    </section>
-</main>
+<div class="features-section mb-4">
+    <div class="card-grid">
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-search"></i>
+            </div>
+            <h3 class="card-title">搜索与筛选</h3>
+            <p class="card-text">通过关键词搜索或按类别、难度筛选，轻松找到所需题目。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('search') }}" class="btn btn-sm btn-outline-primary">搜索题目</a>
+                <a href="{{ url_for('filter_questions') }}" class="btn btn-sm btn-outline-primary">筛选题目</a>
+            </div>
+        </div>
+        
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <h3 class="card-title">数据分析</h3>
+            <p class="card-text">查看学习进度、正确率统计、难度分布等，有针对性地提升薄弱环节。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('statistics') }}" class="btn btn-sm btn-outline-primary">查看统计</a>
+            </div>
+        </div>
+        
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-star"></i>
+            </div>
+            <h3 class="card-title">个性化学习</h3>
+            <p class="card-text">收藏重要题目，添加个性化标记，制定专属学习计划。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('show_favorites') }}" class="btn btn-sm btn-outline-primary">我的收藏</a>
+            </div>
+        </div>
+        
+        <div class="card feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3 class="card-title">学习历史</h3>
+            <p class="card-text">查看完整答题记录，复习已做题目，跟踪学习进度。</p>
+            <div class="mt-auto">
+                <a href="{{ url_for('show_history') }}" class="btn btn-sm btn-outline-primary">答题历史</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="advanced-modes mb-4">
+    <div class="card">
+        <h2 class="card-title"><i class="fas fa-graduation-cap"></i> 高级学习模式</h2>
+        <div class="mode-options d-flex gap-3 flex-wrap mt-3">
+            <form method="post" action="{{ url_for('start_timed_mode') }}" class="mode-form">
+                <div class="mode-card">
+                    <div class="mode-header">
+                        <i class="fas fa-hourglass-half mode-icon"></i>
+                        <h3>定时模式</h3>
+                    </div>
+                    <p>在指定时间内完成一定数量的题目，提高答题速度和准确率。</p>
+                    <div class="mode-settings">
+                        <div class="form-group">
+                            <label for="question_count" class="form-label">题目数量</label>
+                            <select name="question_count" id="question_count" class="form-control">
+                                <option value="5">5题</option>
+                                <option value="10" selected>10题</option>
+                                <option value="15">15题</option>
+                                <option value="20">20题</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="duration" class="form-label">时间限制</label>
+                            <select name="duration" id="duration" class="form-control">
+                                <option value="5">5分钟</option>
+                                <option value="10" selected>10分钟</option>
+                                <option value="15">15分钟</option>
+                                <option value="20">20分钟</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block mt-3">
+                        <i class="fas fa-play-circle"></i> 开始练习
+                    </button>
+                </div>
+            </form>
+            
+            <form method="post" action="{{ url_for('start_exam') }}" class="mode-form">
+                <div class="mode-card">
+                    <div class="mode-header">
+                        <i class="fas fa-file-alt mode-icon"></i>
+                        <h3>模拟考试</h3>
+                    </div>
+                    <p>模拟真实考试环境，一次性回答所有题目并提交，查看考试成绩。</p>
+                    <div class="mode-settings">
+                        <div class="form-group">
+                            <label for="exam_question_count" class="form-label">试卷题数</label>
+                            <select name="question_count" id="exam_question_count" class="form-control">
+                                <option value="10">10题</option>
+                                <option value="20" selected>20题</option>
+                                <option value="30">30题</option>
+                                <option value="50">50题</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block mt-3">
+                        <i class="fas fa-play-circle"></i> 开始考试
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-section {
+        text-align: center;
+    }
+    
+    .display-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    .lead {
+        font-size: 1.2rem;
+        color: var(--gray-600);
+    }
+    
+    .feature-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .feature-icon {
+        width: 3rem;
+        height: 3rem;
+        background-color: rgba(67, 97, 238, 0.1);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+    
+    .card-text {
+        color: var(--gray-600);
+        margin-bottom: 1.5rem;
+    }
+    
+    .mode-options {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+    }
+    
+    .mode-form {
+        flex: 1;
+        max-width: 350px;
+    }
+    
+    .mode-card {
+        background-color: var(--gray-100);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        height: 100%;
+        transition: var(--transition);
+    }
+    
+    .mode-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--box-shadow);
+        background-color: white;
+    }
+    
+    .mode-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .mode-icon {
+        font-size: 1.5rem;
+        color: var(--primary-color);
+    }
+    
+    .mode-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .current-exam-info {
+        font-size: 1.1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .mode-options {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .mode-form {
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        .display-title {
+            font-size: 2rem;
+        }
+    }
+</style>
 {% endblock %}

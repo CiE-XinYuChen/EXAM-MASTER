@@ -1,14 +1,54 @@
-<!-- templates/base_auth.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ExamMaster{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Google Fonts 引入 -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+    {% block styles %}{% endblock %}
 </head>
 <body>
-    {% block content %}{% endblock %}
+    <div class="auth-page-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(135deg, #f0f7ff 0%, #eaf5ff 100%);">
+        <!-- Flash消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="container" style="max-width: 400px; margin: 0 auto;">
+                    {% for category, message in messages %}
+                        <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                            {% if category == 'error' %}
+                                <i class="fas fa-exclamation-circle"></i>
+                            {% elif category == 'success' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle"></i>
+                            {% endif %}
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <!-- 主内容 -->
+        {% block content %}{% endblock %}
+        
+        <!-- 页脚 -->
+        <footer style="text-align: center; margin-top: 2rem; color: var(--gray-600);">
+            <p class="footer-text">
+                &copy; {{ current_year|default(2023) }} ExamMaster | 
+                <a href="https://github.com/CiE-XinYuChen/EXAM-MASTER" class="footer-link" target="_blank">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+            </p>
+        </footer>
+    </div>
+    
+    {% block scripts %}{% endblock %}
 </body>
 </html>
