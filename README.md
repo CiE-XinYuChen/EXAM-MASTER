@@ -98,8 +98,12 @@
 - **完善循环逻辑**: 当所有题目做完后，系统会自动从第一题重新开始，而不是显示完成信息
 
 ## 📊 项目截图
+![86e83be8fcebbb8110a59f5929e77f96](https://github.com/user-attachments/assets/0b41c79d-5a42-4136-ae2e-a4c5c37b5520)
+![8d8919fb3dba32585d0e2e01d4378df0](https://github.com/user-attachments/assets/a2a7c83b-ab16-430a-92ed-2c71877d86a3)
+![9c083e6f3509c0741c710f0140f08ae7](https://github.com/user-attachments/assets/91be6aaf-b1c0-4f06-a19b-ef713526a132)
+![01b260ee29663d9f5e0236636785404e](https://github.com/user-attachments/assets/5cb79c3b-beaa-4fe6-af98-a2dc593ed79c)
+![032c2c61fd1e51511bf03a83aae71e10](https://github.com/user-attachments/assets/e00a6d37-e086-42a0-92ac-028ad7e6298c)
 
-![应用截图](https://github.com/user-attachments/assets/c9ed07e8-0c4c-47b6-a916-e7a32ee6082f)
 
 ## 🛠 开发者信息
 
