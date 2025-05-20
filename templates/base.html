@@ -1,32 +1,145 @@
-<!-- templates/base.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ExamMaster{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Google Fonts 引入（如果需要） -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+    <!-- 额外样式 -->
+    {% block styles %}{% endblock %}
 </head>
 <body>
-    <nav aria-label="主导航">
-        <div class="nav-left">
-            <a href="{{ url_for('index') }}" class="nav-logo">ExamMaster</a>
-            <a href="{{ url_for('sequential_start') }}" class="nav-link">顺序答题</a>
-            <a href="{{ url_for('random_question') }}" class="nav-link">随机答题</a>
-            <a href="{{ url_for('search') }}" class="nav-link">搜索题目</a>
-            <a href="{{ url_for('show_history') }}" class="nav-link">答题历史</a>
-            <a href="{{ url_for('wrong_questions') }}" class="nav-link">错题本</a>
-            <a href="{{ url_for('show_favorites') }}" class="nav-link">我的收藏</a>
-            <a href="{{ url_for('statistics') }}" class="nav-link">统计与反馈</a>
+    <!-- 导航栏 -->
+    <nav>
+        <a href="{{ url_for('index') }}" class="nav-logo">
+            <i class="fas fa-book-open"></i> ExamMaster
+        </a>
+        
+        <!-- 移动端菜单按钮 -->
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <!-- 导航链接 -->
+        <div class="nav-links" id="navLinks">
+            <a href="{{ url_for('sequential_start') }}" class="nav-link{% if request.path == url_for('sequential_start') %} active{% endif %}">
+                <i class="fas fa-list-ol"></i> 顺序答题
+            </a>
+            <a href="{{ url_for('random_question') }}" class="nav-link{% if request.path == url_for('random_question') %} active{% endif %}">
+                <i class="fas fa-random"></i> 随机答题
+            </a>
+            <a href="{{ url_for('search') }}" class="nav-link{% if request.path == url_for('search') %} active{% endif %}">
+                <i class="fas fa-search"></i> 搜索题目
+            </a>
+            <a href="{{ url_for('filter_questions') }}" class="nav-link{% if request.path == url_for('filter_questions') %} active{% endif %}">
+                <i class="fas fa-filter"></i> 筛选题目
+            </a>
+            <a href="{{ url_for('wrong_questions') }}" class="nav-link{% if request.path == url_for('wrong_questions') %} active{% endif %}">
+                <i class="fas fa-times-circle"></i> 错题本
+            </a>
+            <a href="{{ url_for('show_favorites') }}" class="nav-link{% if request.path == url_for('show_favorites') %} active{% endif %}">
+                <i class="fas fa-star"></i> 我的收藏
+            </a>
+            <a href="{{ url_for('show_history') }}" class="nav-link{% if request.path == url_for('show_history') %} active{% endif %}">
+                <i class="fas fa-history"></i> 答题历史
+            </a>
+            <a href="{{ url_for('statistics') }}" class="nav-link{% if request.path == url_for('statistics') %} active{% endif %}">
+                <i class="fas fa-chart-bar"></i> 统计分析
+            </a>
         </div>
+        
+        <!-- 用户操作 -->
         <div class="nav-right">
-            <a href="{{ url_for('logout') }}" class="nav-link logout-link">退出登录</a>
+            <a href="{{ url_for('logout') }}" class="logout-link">
+                <i class="fas fa-sign-out-alt"></i> 退出
+            </a>
         </div>
     </nav>
     
-    {% block content %}{% endblock %}
+    <!-- Flash消息 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container">
+                {% for category, message in messages %}
+                    <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %}">
+                        {% if category == 'error' %}
+                            <i class="fas fa-exclamation-circle"></i>
+                        {% elif category == 'success' %}
+                            <i class="fas fa-check-circle"></i>
+                        {% else %}
+                            <i class="fas fa-info-circle"></i>
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
     
+    <!-- 主要内容 -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">
+                &copy; {{ current_year|default(2023) }} ExamMaster | 
+                <a href="https://github.com/CiE-XinYuChen/EXAM-MASTER" class="footer-link" target="_blank">
+                    <i class="fab fa-github"></i> GitHub
+                </a> | 
+                <a href="mailto:xinyu-c@outlook.com" class="footer-link">
+                    <i class="fas fa-envelope"></i> 联系我们
+                </a>
+            </p>
+            <p class="footer-text mt-1">
+                <a href="https://beian.miit.gov.cn/" target="_blank" class="footer-link">吉ICP备2023007431h号-2</a>
+            </p>
+        </div>
+    </footer>
+    
+    <!-- JavaScript -->
+    <script>
+        // 移动端菜单切换
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuToggle = document.getElementById('menuToggle');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (menuToggle && navLinks) {
+                menuToggle.addEventListener('click', function() {
+                    navLinks.classList.toggle('active');
+                    const icon = menuToggle.querySelector('i');
+                    if (navLinks.classList.contains('active')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+            }
+            
+            // Flash消息自动消失
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 500);
+                }, 5000);
+            });
+        });
+    </script>
+    
+    <!-- 额外脚本 -->
     {% block scripts %}{% endblock %}
 </body>
 </html>

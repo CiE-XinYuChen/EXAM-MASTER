@@ -4,39 +4,28 @@
 {% block title %}错题本 - ExamMaster{% endblock %}
 
 {% block content %}
-<div class="standard-container">
-    <!-- 如果 base.html 包含侧边栏，以下部分可以省略或调整 -->
-    <!--
-    <div class="sidebar">
-        <h3>导航</h3>
-        <ul>
-            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
-            <li><a href="{{ url_for('search') }}">搜索题目</a></li>
-            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
-            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
-            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
-            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
-            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
-        </ul>
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-times-circle"></i> 错题本
     </div>
-    -->
     
-    <div class="content-section">
-        <h1>错题本</h1>
-        {% if questions %}
-        <ul class="styled-list">
-            {% for q in questions %}
-                <li>
-                    <a href="{{ url_for('show_question', qid=q.id) }}">[{{ q.id }}] {{ q.stem }}</a>
-                    <!-- 可选：添加删除按钮 -->
-                    <!-- <button class="btn btn-delete" data-id="{{ q.id }}">删除</button> -->
-                </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p>当前没有错题。</p>
-        {% endif %}
+    {% if questions %}
+    <ul class="mb-0">
+        {% for q in questions %}
+            <li class="mb-2">
+                <a href="{{ url_for('show_question', qid=q.id) }}" class="text-primary">
+                    <span class="badge badge-primary">{{ q.id }}</span> {{ q.stem }}
+                </a>
+                <!-- 可选：添加删除按钮 -->
+                <!-- <button class="btn btn-danger btn-sm ml-2" data-id="{{ q.id }}">删除</button> -->
+            </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> 当前没有错题。
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

@@ -3,48 +3,51 @@
 {% block title %}模拟考试 - ExamMaster{% endblock %}
 
 {% block content %}
-<div class="standard-container">
-    <!-- 可选：侧边栏 -->
-    <div class="sidebar">
-        <!-- 侧边栏内容，如导航或其他信息 -->
-        <h3>考试导航</h3>
-        <ul>
-            <li><a href="{{ url_for('random_question') }}">随机答题</a></li>
-            <li><a href="{{ url_for('show_history') }}">答题历史</a></li>
-            <li><a href="{{ url_for('wrong_questions') }}">错题本</a></li>
-            <li><a href="{{ url_for('filter_questions') }}">分类/难度筛选</a></li>
-            <li><a href="{{ url_for('show_favorites') }}">我的收藏</a></li>
-            <li><a href="{{ url_for('statistics') }}">统计与反馈</a></li>
-        </ul>
+<div class="card">
+    <div class="card-title">
+        <i class="fas fa-clipboard-list"></i> 模拟考试
     </div>
-    <div class="content-section">
-        <h1>模拟考试</h1>
-        <form id="examForm" method="post" action="{{ url_for('submit_exam') }}">
-            {% for question in questions %}
-            <div class="question-card">
-                <h2>题目 {{ question.id }}</h2>
-                <p class="question-stem">{{ question.stem }}</p>
-                <div class="options">
-                    {% for opt_key, opt_val in question.options.items() %}
+    
+    <form id="examForm" method="post" action="{{ url_for('submit_exam') }}" class="mb-4">
+        {% for question in questions %}
+        <div class="question-container mb-4">
+            <div class="question-header">
+                <span class="question-number">题目 {{ question.id }}</span>
+                {% if question.difficulty == '简单' %}
+                <span class="question-difficulty difficulty-easy">简单</span>
+                {% elif question.difficulty == '中等' %}
+                <span class="question-difficulty difficulty-medium">中等</span>
+                {% else %}
+                <span class="question-difficulty difficulty-hard">困难</span>
+                {% endif %}
+            </div>
+            <div class="question-stem">{{ question.stem }}</div>
+            <div class="options-list">
+                {% for opt_key, opt_val in question.options.items() %}
+                <div class="option-item">
                     <label class="option-label">
                         {% if question.type == '单选题' %}
-                            <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" required> {{ opt_key }}. {{ opt_val }}
+                            <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox" required>
                         {% else %}
-                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}"> {{ opt_key }}. {{ opt_val }}
+                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox">
                         {% endif %}
-                    </label><br>
-                    {% endfor %}
+                        <span class="option-text">{{ opt_key }}. {{ opt_val }}</span>
+                    </label>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-            <button type="submit" class="btn btn-submit">提交试卷</button>
-        </form>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">提交试卷</button>
+    </form>
 
-        <!-- 用于显示考试结果的区域 -->
-        <div id="examResult" class="exam-result"></div>
-    </div>
+    <!-- 用于显示考试结果的区域 -->
+    <div id="examResult" class="mt-4"></div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const examForm = document.getElementById('examForm');
@@ -67,15 +70,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 const correctCount = data.correct_count;
                 const total = data.total;
                 const score = data.score.toFixed(2);
-                resultDiv.innerText = `考试结束！ 正确率： ${correctCount}/${total} = ${score}%`;
-                resultDiv.classList.add('success');
+                
+                // 使用标准样式显示结果
+                resultDiv.innerHTML = `
+                <div class="alert ${score >= 60 ? 'alert-success' : 'alert-danger'}">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h3 class="mb-0">考试结束</h3>
+                        <span class="badge ${score >= 60 ? 'badge-success' : 'badge-danger'}">${score}%</span>
+                    </div>
+                    <div class="progress-container mb-2">
+                        <div class="progress-header">
+                            <span class="progress-title">得分情况</span>
+                            <span class="progress-value">${correctCount}/${total}</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${score}%"></div>
+                        </div>
+                    </div>
+                    <p class="mb-0">你已完成本次模拟考试，可以查看<a href="${data.result_url || '#'}">详细结果</a>。</p>
+                </div>`;
             } else {
-                alert("提交失败，请重试");
+                // 显示标准错误消息
+                const resultDiv = document.getElementById('examResult');
+                resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> 提交失败，请重试。
+                </div>`;
             }
         })
         .catch(err => {
             console.error("提交考试请求失败:", err);
-            alert("提交考试请求失败，请稍后再试");
+            // 显示标准错误消息
+            const resultDiv = document.getElementById('examResult');
+            resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i> 提交考试请求失败，请稍后再试。
+            </div>`;
         });
     });
 });

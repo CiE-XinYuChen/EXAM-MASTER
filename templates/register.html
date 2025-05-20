@@ -1,33 +1,208 @@
-<!-- templates/register.html -->
 {% extends 'base_auth.html' %}
 
 {% block title %}注册 - ExamMaster{% endblock %}
 
 {% block content %}
-<style>
-    .auth-form .form-group input {
-        width: calc(100% - 27px);
-        /* 调整宽度 */
-        margin-right: 10px;
-        /* 添加右侧外边距 */
-    }
-</style>
-
 <div class="auth-container">
-    <h1>注册</h1>
-    <form method="post" class="auth-form">
+    <div class="auth-logo">
+        <i class="fas fa-user-plus" style="font-size: 3rem; color: var(--primary-color);"></i>
+    </div>
+    <h1 class="auth-title">注册账号</h1>
+    
+    <form method="post" class="auth-form" id="registerForm">
         <div class="form-group">
-            <label for="username">用户名：</label>
-            <input type="text" id="username" name="username" required>
+            <label for="username" class="form-label">用户名</label>
+            <div class="input-group">
+                <span class="input-icon"><i class="fas fa-user"></i></span>
+                <input type="text" id="username" name="username" class="form-control" required autocomplete="username" placeholder="请设置用户名">
+            </div>
         </div>
+        
         <div class="form-group">
-            <label for="password">密码：</label>
-            <input type="password" id="password" name="password" required>
+            <label for="password" class="form-label">密码</label>
+            <div class="input-group">
+                <span class="input-icon"><i class="fas fa-lock"></i></span>
+                <input type="password" id="password" name="password" class="form-control" required autocomplete="new-password" placeholder="请设置密码">
+            </div>
         </div>
-        <button type="submit" class="btn btn-submit">注册</button>
+        
+        <div class="form-group">
+            <label for="confirm_password" class="form-label">确认密码</label>
+            <div class="input-group">
+                <span class="input-icon"><i class="fas fa-lock"></i></span>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control" required autocomplete="new-password" placeholder="请再次输入密码">
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary btn-block">
+            <i class="fas fa-user-plus"></i> 创建账号
+        </button>
     </form>
-    <p class="auth-link">
-        已有账号？<a href="{{ url_for('login') }}">去登录</a>
-    </p>
+    
+    <div class="auth-footer">
+        <p>已有账号？ <a href="{{ url_for('login') }}">立即登录</a></p>
+    </div>
 </div>
+
+<style>
+    .input-group {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--gray-500);
+    }
+    
+    .form-control {
+        padding-left: 2.5rem;
+    }
+    
+    .auth-container {
+        animation: fadeIn 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .password-strength {
+        height: 5px;
+        margin-top: 0.5rem;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+    
+    .strength-weak { background-color: var(--danger-color); width: 30%; }
+    .strength-medium { background-color: var(--warning-color); width: 60%; }
+    .strength-strong { background-color: var(--success-color); width: 100%; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const registerForm = document.getElementById('registerForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+        
+        // 密码强度检测
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strengthIndicator = this.parentElement.querySelector('.password-strength');
+            
+            if (!strengthIndicator) {
+                strengthIndicator = document.createElement('div');
+                strengthIndicator.className = 'password-strength';
+                this.parentElement.appendChild(strengthIndicator);
+            }
+            
+            const strength = checkPasswordStrength(password);
+            
+            strengthIndicator.className = 'password-strength';
+            if (password.length === 0) {
+                strengthIndicator.style.display = 'none';
+            } else {
+                strengthIndicator.style.display = 'block';
+                
+                if (strength === 'weak') {
+                    strengthIndicator.classList.add('strength-weak');
+                } else if (strength === 'medium') {
+                    strengthIndicator.classList.add('strength-medium');
+                } else {
+                    strengthIndicator.classList.add('strength-strong');
+                }
+            }
+        });
+        
+        // 表单提交验证
+        registerForm.addEventListener('submit', function(event) {
+            let isValid = true;
+            
+            // 用户名验证
+            if (!usernameInput.value.trim() || usernameInput.value.length < 3) {
+                isValid = false;
+                showError(usernameInput, '用户名至少需要3个字符');
+            } else {
+                removeError(usernameInput);
+            }
+            
+            // 密码验证
+            if (!passwordInput.value.trim() || passwordInput.value.length < 6) {
+                isValid = false;
+                showError(passwordInput, '密码至少需要6个字符');
+            } else {
+                removeError(passwordInput);
+            }
+            
+            // 确认密码验证
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                isValid = false;
+                showError(confirmPasswordInput, '两次输入的密码不一致');
+            } else if (confirmPasswordInput.value.trim()) {
+                removeError(confirmPasswordInput);
+            }
+            
+            if (!isValid) {
+                event.preventDefault();
+            }
+        });
+        
+        function checkPasswordStrength(password) {
+            if (password.length < 6) {
+                return 'weak';
+            }
+            
+            let strength = 0;
+            
+            // 包含数字
+            if (/\d/.test(password)) strength++;
+            // 包含小写字母
+            if (/[a-z]/.test(password)) strength++;
+            // 包含大写字母
+            if (/[A-Z]/.test(password)) strength++;
+            // 包含特殊字符
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            // 长度超过8
+            if (password.length >= 8) strength++;
+            
+            if (strength <= 2) return 'weak';
+            if (strength <= 4) return 'medium';
+            return 'strong';
+        }
+        
+        function showError(input, message) {
+            const formGroup = input.closest('.form-group');
+            const error = formGroup.querySelector('.error-message') || document.createElement('div');
+            
+            error.className = 'error-message';
+            error.textContent = message;
+            error.style.color = 'var(--danger-color)';
+            error.style.fontSize = '0.875rem';
+            error.style.marginTop = '0.25rem';
+            
+            if (!formGroup.querySelector('.error-message')) {
+                formGroup.appendChild(error);
+            }
+            
+            input.style.borderColor = 'var(--danger-color)';
+        }
+        
+        function removeError(input) {
+            const formGroup = input.closest('.form-group');
+            const error = formGroup.querySelector('.error-message');
+            
+            if (error) {
+                formGroup.removeChild(error);
+            }
+            
+            input.style.borderColor = '';
+        }
+    });
+</script>
 {% endblock %}
