@@ -17,9 +17,11 @@
 <body>
     <!-- 导航栏 -->
     <nav>
-        <a href="{{ url_for('index') }}" class="nav-logo">
-            <i class="fas fa-book-open"></i> ExamMaster
-        </a>
+        <div class="nav-left">
+            <a href="{{ url_for('index') }}" class="nav-logo">
+                <i class="fas fa-book-open"></i> ExamMaster
+            </a>
+        </div>
         
         <!-- 移动端菜单按钮 -->
         <button class="menu-toggle" id="menuToggle">

@@ -87,6 +87,8 @@ nav {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  justify-content: center; /* 电脑模式下剧中 */
+  width: 100%;
 }
 
 .nav-link {
@@ -1082,6 +1084,12 @@ input[type="radio"] {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     max-height: 70vh;
     overflow-y: auto;
+    position: absolute;
+    right: 1rem;
+    width: auto;
+    min-width: 200px;
+    max-width: 80%;
+    top: 3.5rem;
     /* 添加平滑滚动 */
     scroll-behavior: smooth;
     /* 美化滚动条 */
@@ -1405,12 +1413,14 @@ input[type="radio"] {
     margin-top: 1.25rem;
     padding: 0.65rem;
     max-height: 65vh;
+    right: 0.85rem;
   }
   
   .nav-link {
     padding: 0.85rem;
     font-size: 0.95rem;
     margin-bottom: 0.4rem;
+    text-align: left;
   }
   
   .nav-link i {
