@@ -11,6 +11,7 @@
     
     {% if history %}
     <div class="table-container">
+        <div class="table-scroll-hint mobile-only">← 左右滑动查看更多 →</div>
         <table class="table">
             <thead>
                 <tr>
@@ -27,7 +28,7 @@
                 <tr>
                     <td>{{ record.id }}</td>
                     <td>{{ record.question_id }}</td>
-                    <td><a href="{{ url_for('show_question', qid=record.question_id) }}">{{ record.stem }}</a></td>
+                    <td><a href="{{ url_for('show_question', qid=record.question_id) }}" class="question-text-truncate" title="{{ record.stem }}">{{ record.stem }}</a></td>
                     <td>{{ record.user_answer }}</td>
                     <td>
                         {% if record.correct == 1 %}
