@@ -122,7 +122,10 @@
                             <i class="fas fa-random"></i> 随机下一题
                         </a>
                         <a href="{{ url_for('sequential_start') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-list-ol"></i> 顺序答题
+                            <i class="fas fa-list-ol"></i> 顺序答题模式
+                        </a>
+                        <a href="{{ url_for('show_sequential_question', qid=question.id|int + 1) }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-right"></i> 顺序下一题
                         </a>
                         <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
                             <i class="fas fa-home"></i> 返回首页
