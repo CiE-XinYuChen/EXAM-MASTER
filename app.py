@@ -635,23 +635,42 @@ def browse_questions():
     """Route to browse all questions."""
     user_id = get_user_id()
     page = request.args.get('page', 1, type=int)
+    question_type = request.args.get('type', '')
+    search_query = request.args.get('search', '')
     per_page = 20  # Questions per page
     
     conn = get_db()
     c = conn.cursor()
     
-    # Get total count
-    c.execute('SELECT COUNT(*) as total FROM questions')
+    # Build SQL query with filters
+    where_conditions = []
+    params = []
+    
+    if question_type and question_type != 'all':
+        where_conditions.append('qtype = ?')
+        params.append(question_type)
+    
+    if search_query:
+        where_conditions.append('(stem LIKE ? OR id LIKE ?)')
+        params.extend(['%' + search_query + '%', '%' + search_query + '%'])
+    
+    where_clause = ' WHERE ' + ' AND '.join(where_conditions) if where_conditions else ''
+    
+    # Get total count with filters
+    count_sql = f'SELECT COUNT(*) as total FROM questions{where_clause}'
+    c.execute(count_sql, params)
     total = c.fetchone()['total']
     
-    # Get questions with pagination
+    # Get questions with pagination and filters
     offset = (page - 1) * per_page
-    c.execute('''
+    query_params = params + [per_page, offset]
+    c.execute(f'''
         SELECT id, stem, answer, difficulty, qtype, category, options 
         FROM questions 
+        {where_clause}
         ORDER BY CAST(id AS INTEGER) ASC 
         LIMIT ? OFFSET ?
-    ''', (per_page, offset))
+    ''', query_params)
     
     rows = c.fetchall()
     questions = []
@@ -681,6 +700,10 @@ def browse_questions():
     has_prev = page > 1
     has_next = page < total_pages
     
+    # Get available question types for filter chips
+    c.execute('SELECT DISTINCT qtype FROM questions WHERE qtype IS NOT NULL AND qtype != ""')
+    available_types = [r['qtype'] for r in c.fetchall()]
+    
     return render_template('browse.html',
                           questions=questions,
                           total=total,
@@ -688,7 +711,10 @@ def browse_questions():
                           per_page=per_page,
                           total_pages=total_pages,
                           has_prev=has_prev,
-                          has_next=has_next)
+                          has_next=has_next,
+                          current_type=question_type,
+                          current_search=search_query,
+                          available_types=available_types)
 
 ##############################
 # Filter Routes #

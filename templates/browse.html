@@ -60,11 +60,11 @@
             <div class="mobile-search-container mb-3">
                 <div class="position-relative">
                     <input type="text" id="mobileSearchInput" class="form-control mobile-search-input" 
-                           placeholder="搜索题目内容或题号...">
+                           placeholder="搜索题目内容或题号..." value="{{ current_search or '' }}">
                     <div class="mobile-search-icon">
                         <i class="fas fa-search"></i>
                     </div>
-                    <button class="mobile-search-clear" id="mobileSearchClear" style="display: none;">
+                    <button class="mobile-search-clear" id="mobileSearchClear" style="display: {% if current_search %}block{% else %}none{% endif %};">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -72,10 +72,14 @@
             
             <!-- Filter Chips -->
             <div class="mobile-filter-chips" id="mobileFilterChips">
-                <div class="filter-chip active" data-filter="all">
+                <div class="filter-chip {% if not current_type or current_type == 'all' %}active{% endif %}" data-filter="all">
                     <span>全部</span>
                 </div>
-                <!-- Dynamic filter chips will be added here by JavaScript -->
+                {% for type in available_types %}
+                <div class="filter-chip {% if current_type == type %}active{% endif %}" data-filter="{{ type }}">
+                    <span>{{ type }}</span>
+                </div>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -316,7 +320,7 @@
         <ul class="pagination pagination-desktop justify-content-center d-none d-md-flex">
             {% if has_prev %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=page-1) }}" title="上一页">
+                <a class="page-link" href="{{ url_for('browse_questions', page=page-1, type=current_type, search=current_search) }}" title="上一页">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             </li>
@@ -329,7 +333,7 @@
             <!-- Show first page if not in range -->
             {% if page > 3 %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=1) }}">1</a>
+                <a class="page-link" href="{{ url_for('browse_questions', page=1, type=current_type, search=current_search) }}">1</a>
             </li>
             {% if page > 4 %}
             <li class="page-item disabled">
@@ -347,7 +351,7 @@
                 {% if p == page %}
                 <span class="page-link">{{ p }}</span>
                 {% else %}
-                <a class="page-link" href="{{ url_for('browse_questions', page=p) }}">{{ p }}</a>
+                <a class="page-link" href="{{ url_for('browse_questions', page=p, type=current_type, search=current_search) }}">{{ p }}</a>
                 {% endif %}
             </li>
             {% endfor %}
@@ -360,13 +364,13 @@
             </li>
             {% endif %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=total_pages) }}">{{ total_pages }}</a>
+                <a class="page-link" href="{{ url_for('browse_questions', page=total_pages, type=current_type, search=current_search) }}">{{ total_pages }}</a>
             </li>
             {% endif %}
             
             {% if has_next %}
             <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=page+1) }}" title="下一页">
+                <a class="page-link" href="{{ url_for('browse_questions', page=page+1, type=current_type, search=current_search) }}" title="下一页">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             </li>
@@ -384,7 +388,7 @@
                 <div class="row g-2">
                     <div class="col-4">
                         {% if has_prev %}
-                        <a href="{{ url_for('browse_questions', page=page-1) }}" class="btn btn-outline-primary btn-sm w-100">
+                        <a href="{{ url_for('browse_questions', page=page-1, type=current_type, search=current_search) }}" class="btn btn-outline-primary btn-sm w-100">
                             <i class="fas fa-chevron-left"></i><br><small>上一页</small>
                         </a>
                         {% else %}
@@ -403,7 +407,7 @@
                     
                     <div class="col-4">
                         {% if has_next %}
-                        <a href="{{ url_for('browse_questions', page=page+1) }}" class="btn btn-outline-primary btn-sm w-100">
+                        <a href="{{ url_for('browse_questions', page=page+1, type=current_type, search=current_search) }}" class="btn btn-outline-primary btn-sm w-100">
                             <i class="fas fa-chevron-right"></i><br><small>下一页</small>
                         </a>
                         {% else %}
@@ -418,6 +422,8 @@
             <!-- Page Jump -->
             <div class="page-jump-mobile text-center">
                 <form method="get" class="d-flex align-items-center justify-content-center gap-2">
+                    {% if current_type %}<input type="hidden" name="type" value="{{ current_type }}">{% endif %}
+                    {% if current_search %}<input type="hidden" name="search" value="{{ current_search }}">{% endif %}
                     <span class="jump-label">跳转到第</span>
                     <input type="number" name="page" class="form-control form-control-sm text-center" 
                            style="width: 60px;" min="1" max="{{ total_pages }}" placeholder="{{ page }}">
@@ -1326,7 +1332,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get unique question types
             const types = new Set();
             allQuestions.forEach(card => {
-                const type = card.dataset.questionType;
+                const type = card.getAttribute('data-question-type');
                 if (type && type.trim()) {
                     types.add(type);
                 }
@@ -1344,14 +1350,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         function setFilter(filter) {
-            currentFilter = filter;
-            
-            // Update active chip
-            document.querySelectorAll('.filter-chip').forEach(chip => {
-                chip.classList.toggle('active', chip.dataset.filter === filter);
-            });
-            
-            filterQuestions();
+            // Redirect with filter parameter
+            const currentUrl = new URL(window.location);
+            if (filter === 'all') {
+                currentUrl.searchParams.delete('type');
+            } else {
+                currentUrl.searchParams.set('type', filter);
+            }
+            currentUrl.searchParams.delete('page'); // Reset to first page
+            window.location.href = currentUrl.toString();
         }
         
         function filterQuestions() {
@@ -1359,9 +1366,9 @@ document.addEventListener('DOMContentLoaded', function() {
             let visibleCount = 0;
             
             allQuestions.forEach(card => {
-                const questionStem = card.dataset.questionStem || '';
-                const questionId = card.dataset.questionId || '';
-                const questionType = card.dataset.questionType || '';
+                const questionStem = card.getAttribute('data-question-stem') || '';
+                const questionId = card.getAttribute('data-question-id') || '';
+                const questionType = card.getAttribute('data-question-type') || '';
                 
                 // Check search match
                 const searchMatch = !searchTerm || 
@@ -1391,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Search input events
+        // Search input events with URL navigation
         searchInput.addEventListener('input', function() {
             const hasValue = this.value.trim().length > 0;
             searchClear.style.display = hasValue ? 'block' : 'none';
@@ -1399,17 +1406,25 @@ document.addEventListener('DOMContentLoaded', function() {
             // Debounce search
             clearTimeout(this.searchTimeout);
             this.searchTimeout = setTimeout(() => {
-                filterQuestions();
-            }, 300);
+                const searchTerm = this.value.trim();
+                const currentUrl = new URL(window.location);
+                if (searchTerm) {
+                    currentUrl.searchParams.set('search', searchTerm);
+                } else {
+                    currentUrl.searchParams.delete('search');
+                }
+                currentUrl.searchParams.delete('page'); // Reset to first page
+                window.location.href = currentUrl.toString();
+            }, 500);
         });
         
         // Clear search
         if (searchClear) {
             searchClear.addEventListener('click', function() {
-                searchInput.value = '';
-                this.style.display = 'none';
-                filterQuestions();
-                searchInput.focus();
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.delete('search');
+                currentUrl.searchParams.delete('page');
+                window.location.href = currentUrl.toString();
             });
         }
         
