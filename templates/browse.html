@@ -3,7 +3,8 @@
 {% block title %}ExamMaster - 浏览题目{% endblock %}
 
 {% block content %}
-<div class="browse-header mb-4">
+<!-- Desktop Header -->
+<div class="browse-header mb-4 d-none d-md-block">
     <div class="card">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="d-flex align-items-center">
@@ -33,8 +34,56 @@
     </div>
 </div>
 
+<!-- Mobile Header with Modern Design -->
+<div class="mobile-browse-header d-md-none">
+    <div class="mobile-header-gradient">
+        <div class="container-fluid p-3">
+            <!-- Navigation Row -->
+            <div class="row align-items-center mb-3">
+                <div class="col-auto">
+                    <a href="{{ url_for('index') }}" class="btn btn-mobile-back">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                </div>
+                <div class="col">
+                    <h1 class="mobile-title mb-0">浏览题目</h1>
+                    <div class="mobile-subtitle">共<span id="filtered-count">{{ total }}</span>/{{ total }}题</div>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-mobile-stats" data-bs-toggle="modal" data-bs-target="#statsModal">
+                        <i class="fas fa-chart-bar"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Search Bar -->
+            <div class="mobile-search-container mb-3">
+                <div class="position-relative">
+                    <input type="text" id="mobileSearchInput" class="form-control mobile-search-input" 
+                           placeholder="搜索题目内容或题号...">
+                    <div class="mobile-search-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <button class="mobile-search-clear" id="mobileSearchClear" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filter Chips -->
+            <div class="mobile-filter-chips" id="mobileFilterChips">
+                <div class="filter-chip active" data-filter="all">
+                    <span>全部</span>
+                </div>
+                <!-- Dynamic filter chips will be added here by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
 {% if questions %}
-<div class="questions-list">
+<!-- Questions List - Desktop View -->
+<div class="questions-list d-none d-md-block">
     {% for question in questions %}
     <div class="card question-item mb-3" data-question-id="{{ question.id }}">
         <div class="card-body">
@@ -126,6 +175,138 @@
         </div>
     </div>
     {% endfor %}
+</div>
+
+<!-- Questions List - Mobile View with Modern Cards -->
+<div class="mobile-questions-container d-md-none">
+    <div class="mobile-questions-list" id="mobileQuestionsList">
+        {% for question in questions %}
+        <div class="mobile-question-card" 
+             data-question-id="{{ question.id }}"
+             data-question-type="{{ question.type or '' }}"
+             data-question-difficulty="{{ question.difficulty or '' }}"
+             data-question-stem="{{ question.stem|lower }}"
+             onclick="toggleMobileExpand(this)">
+            
+            <!-- Card Header -->
+            <div class="mobile-card-header">
+                <div class="mobile-question-badge">
+                    题目 {{ question.id }}
+                </div>
+                
+                {% if question.type %}
+                <div class="mobile-type-chip">
+                    <i class="mobile-type-icon 
+                        {% if question.type == '单选题' %}fas fa-check-circle
+                        {% elif question.type == '多选题' %}fas fa-check-square
+                        {% elif question.type == '判断题' %}fas fa-toggle-on
+                        {% elif question.type == '填空题' %}fas fa-edit
+                        {% else %}fas fa-question-circle{% endif %}"></i>
+                    <span>{{ question.type }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="mobile-actions">
+                    <button class="mobile-action-btn mobile-play-btn" 
+                            onclick="event.stopPropagation(); location.href='{{ url_for('show_question', qid=question.id) }}'">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="mobile-action-btn mobile-expand-btn">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Question Stem -->
+            <div class="mobile-question-stem">
+                <p class="mobile-stem-preview">{{ question.stem[:120] }}{% if question.stem|length > 120 %}...{% endif %}</p>
+                <div class="mobile-stem-full" style="display: none;">
+                    <p>{{ question.stem }}</p>
+                </div>
+            </div>
+            
+            <!-- Difficulty Indicator -->
+            {% if question.difficulty and question.difficulty != '无' %}
+            <div class="mobile-difficulty">
+                <i class="mobile-difficulty-icon 
+                    {% if question.difficulty == '简单' %}fas fa-chevron-down
+                    {% elif question.difficulty == '中等' %}fas fa-minus
+                    {% elif question.difficulty == '困难' %}fas fa-chevron-up
+                    {% else %}fas fa-minus{% endif %}"></i>
+                <span class="mobile-difficulty-text" style="color: 
+                    {% if question.difficulty == '简单' %}#28a745
+                    {% elif question.difficulty == '中等' %}#ffc107
+                    {% elif question.difficulty == '困难' %}#dc3545
+                    {% else %}#6c757d{% endif %}">
+                    难度: {{ question.difficulty }}
+                </span>
+            </div>
+            {% endif %}
+            
+            <!-- Expanded Content -->
+            <div class="mobile-expanded-content" style="display: none;">
+                <div class="mobile-divider"></div>
+                
+                <!-- Options -->
+                {% if question.options %}
+                <div class="mobile-options">
+                    <div class="mobile-section-title">选项</div>
+                    {% for key, value in question.options.items() %}
+                    <div class="mobile-option-item">
+                        <div class="mobile-option-label">{{ key }}</div>
+                        <div class="mobile-option-text">{{ value }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Answer -->
+                <div class="mobile-answer">
+                    <div class="mobile-answer-container">
+                        <div class="mobile-answer-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="mobile-answer-content">
+                            <div class="mobile-answer-label">正确答案</div>
+                            <div class="mobile-answer-value">{{ question.answer }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="mobile-card-actions">
+                    {% if question.is_favorite %}
+                    <form method="post" action="{{ url_for('unfavorite_question', qid=question.id) }}" class="mobile-action-form">
+                        <button type="submit" class="mobile-secondary-btn favorited" onclick="event.stopPropagation()">
+                            <i class="fas fa-star"></i> 已收藏
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" class="mobile-action-form">
+                        <button type="submit" class="mobile-secondary-btn" onclick="event.stopPropagation()">
+                            <i class="far fa-star"></i> 收藏
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('show_question', qid=question.id) }}" 
+                       class="mobile-primary-btn" onclick="event.stopPropagation()">
+                        <i class="fas fa-play"></i> 开始答题
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Mobile Empty Search Result -->
+    <div class="mobile-empty-search" id="mobileEmptySearch" style="display: none;">
+        <div class="mobile-empty-icon">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="mobile-empty-title">未找到相关题目</div>
+        <div class="mobile-empty-subtitle">请尝试其他搜索关键词</div>
+    </div>
 </div>
 
 <!-- Pagination -->
@@ -262,7 +443,477 @@
 {% endif %}
 
 <style>
-/* Browse Page Styles */
+/* Mobile Header Styles */
+.mobile-browse-header {
+    margin-bottom: 0;
+}
+
+.mobile-header-gradient {
+    background: linear-gradient(135deg, #4361ee 0%, #7209b7 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(67, 97, 238, 0.3);
+}
+
+.btn-mobile-back {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-mobile-back:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.mobile-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.mobile-subtitle {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 2px;
+}
+
+.btn-mobile-stats {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-mobile-stats:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+/* Mobile Search Styles */
+.mobile-search-container {
+    position: relative;
+}
+
+.mobile-search-input {
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 25px;
+    padding: 12px 45px 12px 45px;
+    font-size: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-search-input:focus {
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: none;
+    outline: none;
+}
+
+.mobile-search-input::placeholder {
+    color: #6c757d;
+}
+
+.mobile-search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+.mobile-search-clear {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 1.1rem;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-search-clear:hover {
+    background: rgba(108, 117, 125, 0.1);
+}
+
+/* Mobile Filter Chips */
+.mobile-filter-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.mobile-filter-chips::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-chip {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: fit-content;
+}
+
+.filter-chip.active {
+    background: white;
+    color: #4361ee;
+    border-color: white;
+}
+
+.filter-chip:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile Question Cards */
+.mobile-questions-container {
+    padding: 15px;
+    background: #f8f9fa;
+    min-height: 50vh;
+}
+
+.mobile-questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.mobile-question-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.mobile-question-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.mobile-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.mobile-question-badge {
+    background: #4361ee;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.mobile-type-chip {
+    background: rgba(67, 97, 238, 0.1);
+    color: #4361ee;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mobile-type-icon {
+    font-size: 0.7rem;
+}
+
+.mobile-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.mobile-action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.mobile-play-btn {
+    background: rgba(67, 97, 238, 0.1);
+    color: #4361ee;
+}
+
+.mobile-play-btn:hover {
+    background: #4361ee;
+    color: white;
+}
+
+.mobile-expand-btn {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.mobile-expand-btn:hover {
+    background: #6c757d;
+    color: white;
+}
+
+.mobile-expand-btn.expanded {
+    transform: rotate(180deg);
+}
+
+.mobile-question-stem {
+    margin-bottom: 12px;
+}
+
+.mobile-stem-preview {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+}
+
+.mobile-stem-full p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #333;
+    margin: 0;
+}
+
+.mobile-difficulty {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.mobile-difficulty-icon {
+    font-size: 0.9rem;
+}
+
+.mobile-difficulty-text {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.mobile-expanded-content {
+    margin-top: 16px;
+}
+
+.mobile-divider {
+    height: 1px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 16px 0;
+}
+
+.mobile-section-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.mobile-options {
+    margin-bottom: 16px;
+}
+
+.mobile-option-item {
+    background: rgba(67, 97, 238, 0.05);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.mobile-option-label {
+    background: #4361ee;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.mobile-option-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    flex: 1;
+}
+
+.mobile-answer {
+    margin-bottom: 16px;
+}
+
+.mobile-answer-container {
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobile-answer-icon {
+    background: #28a745;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mobile-answer-content {
+    flex: 1;
+}
+
+.mobile-answer-label {
+    font-size: 0.8rem;
+    color: #28a745;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.mobile-answer-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #28a745;
+}
+
+.mobile-card-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.mobile-action-form {
+    flex: 1;
+}
+
+.mobile-secondary-btn {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #6c757d;
+    background: white;
+    color: #6c757d;
+    border-radius: 12px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.mobile-secondary-btn:hover {
+    background: #6c757d;
+    color: white;
+}
+
+.mobile-secondary-btn.favorited {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+
+.mobile-secondary-btn.favorited:hover {
+    background: #ffc107;
+    color: white;
+}
+
+.mobile-primary-btn {
+    flex: 2;
+    padding: 12px;
+    background: #4361ee;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.mobile-primary-btn:hover {
+    background: #3248cc;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* Mobile Empty State */
+.mobile-empty-search {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.mobile-empty-icon {
+    font-size: 3rem;
+    color: #6c757d;
+    margin-bottom: 16px;
+    opacity: 0.6;
+}
+
+.mobile-empty-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.mobile-empty-subtitle {
+    font-size: 0.9rem;
+    color: #6c757d;
+    opacity: 0.8;
+}
+
+/* Browse Page Styles - Desktop */
 .browse-header .card {
     border: none;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -571,8 +1222,69 @@
 </style>
 
 <script>
+// Mobile question card expand/collapse
+function toggleMobileExpand(card) {
+    const expandedContent = card.querySelector('.mobile-expanded-content');
+    const expandBtn = card.querySelector('.mobile-expand-btn');
+    const icon = expandBtn.querySelector('i');
+    const stemPreview = card.querySelector('.mobile-stem-preview');
+    const stemFull = card.querySelector('.mobile-stem-full');
+    
+    if (expandedContent.style.display === 'none' || !expandedContent.style.display) {
+        // Expand
+        expandedContent.style.display = 'block';
+        if (stemFull) {
+            stemPreview.style.display = 'none';
+            stemFull.style.display = 'block';
+        }
+        icon.className = 'fas fa-chevron-up';
+        expandBtn.classList.add('expanded');
+    } else {
+        // Collapse
+        expandedContent.style.display = 'none';
+        if (stemFull) {
+            stemPreview.style.display = 'block';
+            stemFull.style.display = 'none';
+        }
+        icon.className = 'fas fa-chevron-down';
+        expandBtn.classList.remove('expanded');
+    }
+}
+
+// Helper functions for template rendering (these would be Python functions)
+function get_type_icon(type) {
+    if (!type) return 'fas fa-question-circle';
+    switch(type.toLowerCase()) {
+        case '单选题': return 'fas fa-check-circle';
+        case '多选题': return 'fas fa-check-square';
+        case '判断题': return 'fas fa-toggle-on';
+        case '填空题': return 'fas fa-edit';
+        default: return 'fas fa-question-circle';
+    }
+}
+
+function get_difficulty_icon(difficulty) {
+    if (!difficulty) return 'fas fa-minus';
+    switch(difficulty.toLowerCase()) {
+        case '简单': return 'fas fa-chevron-down';
+        case '中等': return 'fas fa-minus';
+        case '困难': return 'fas fa-chevron-up';
+        default: return 'fas fa-minus';
+    }
+}
+
+function get_difficulty_color(difficulty) {
+    if (!difficulty) return '#6c757d';
+    switch(difficulty.toLowerCase()) {
+        case '简单': return '#28a745';
+        case '中等': return '#ffc107';
+        case '困难': return '#dc3545';
+        default: return '#6c757d';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Toggle expand/collapse functionality
+    // Desktop toggle expand/collapse functionality
     document.querySelectorAll('.toggle-expand').forEach(button => {
         button.addEventListener('click', function() {
             const questionItem = this.closest('.question-item');
@@ -593,10 +1305,127 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Mobile search functionality
+    const searchInput = document.getElementById('mobileSearchInput');
+    const searchClear = document.getElementById('mobileSearchClear');
+    const questionsList = document.getElementById('mobileQuestionsList');
+    const emptySearch = document.getElementById('mobileEmptySearch');
+    const filteredCount = document.getElementById('filtered-count');
+    
+    if (searchInput && questionsList) {
+        let allQuestions = Array.from(questionsList.querySelectorAll('.mobile-question-card'));
+        let currentFilter = 'all';
+        
+        // Initialize filter chips
+        initializeFilterChips();
+        
+        function initializeFilterChips() {
+            const filterChips = document.getElementById('mobileFilterChips');
+            if (!filterChips) return;
+            
+            // Get unique question types
+            const types = new Set();
+            allQuestions.forEach(card => {
+                const type = card.dataset.questionType;
+                if (type && type.trim()) {
+                    types.add(type);
+                }
+            });
+            
+            // Create filter chips
+            types.forEach(type => {
+                const chip = document.createElement('div');
+                chip.className = 'filter-chip';
+                chip.dataset.filter = type;
+                chip.innerHTML = `<span>${type}</span>`;
+                chip.addEventListener('click', () => setFilter(type));
+                filterChips.appendChild(chip);
+            });
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update active chip
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.dataset.filter === filter);
+            });
+            
+            filterQuestions();
+        }
+        
+        function filterQuestions() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+            
+            allQuestions.forEach(card => {
+                const questionStem = card.dataset.questionStem || '';
+                const questionId = card.dataset.questionId || '';
+                const questionType = card.dataset.questionType || '';
+                
+                // Check search match
+                const searchMatch = !searchTerm || 
+                    questionStem.includes(searchTerm) || 
+                    questionId.includes(searchTerm);
+                
+                // Check filter match
+                const filterMatch = currentFilter === 'all' || questionType === currentFilter;
+                
+                const shouldShow = searchMatch && filterMatch;
+                card.style.display = shouldShow ? 'block' : 'none';
+                
+                if (shouldShow) visibleCount++;
+            });
+            
+            // Update count
+            if (filteredCount) {
+                filteredCount.textContent = visibleCount;
+            }
+            
+            // Show/hide empty state
+            if (emptySearch) {
+                emptySearch.style.display = visibleCount === 0 && searchTerm ? 'flex' : 'none';
+            }
+            if (questionsList) {
+                questionsList.style.display = visibleCount === 0 && searchTerm ? 'none' : 'flex';
+            }
+        }
+        
+        // Search input events
+        searchInput.addEventListener('input', function() {
+            const hasValue = this.value.trim().length > 0;
+            searchClear.style.display = hasValue ? 'block' : 'none';
+            
+            // Debounce search
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                filterQuestions();
+            }, 300);
+        });
+        
+        // Clear search
+        if (searchClear) {
+            searchClear.addEventListener('click', function() {
+                searchInput.value = '';
+                this.style.display = 'none';
+                filterQuestions();
+                searchInput.focus();
+            });
+        }
+        
+        // Filter chip clicks
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                setFilter(chip.dataset.filter);
+            });
+        });
+    }
+    
     // Auto-expand if coming from a specific question link
     const urlParams = new URLSearchParams(window.location.search);
     const expandQuestionId = urlParams.get('expand');
     if (expandQuestionId) {
+        // Desktop
         const questionItem = document.querySelector(`[data-question-id="${expandQuestionId}"]`);
         if (questionItem) {
             const toggleButton = questionItem.querySelector('.toggle-expand');
@@ -604,6 +1433,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleButton.click();
                 questionItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+        }
+        
+        // Mobile
+        const mobileCard = document.querySelector(`.mobile-question-card[data-question-id="${expandQuestionId}"]`);
+        if (mobileCard) {
+            toggleMobileExpand(mobileCard);
+            mobileCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 });
