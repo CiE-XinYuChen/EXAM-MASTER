@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+
+{% block title %}ExamMaster - 浏览题目{% endblock %}
+
+{% block content %}
+<div class="browse-header mb-4">
+    <div class="card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex align-items-center">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm me-3">
+                    <i class="fas fa-arrow-left"></i> 返回首页
+                </a>
+                <h2 class="mb-0">
+                    <i class="fas fa-book-open text-primary"></i> 浏览题目
+                </h2>
+            </div>
+            <div class="browse-stats">
+                <span class="badge badge-info">
+                    <i class="fas fa-list"></i> 共 {{ total }} 题
+                </span>
+                <span class="badge badge-secondary">
+                    第 {{ page }} / {{ total_pages }} 页
+                </span>
+            </div>
+        </div>
+        
+        <div class="browse-info">
+            <p class="text-muted mb-0">
+                <i class="fas fa-info-circle"></i> 
+                点击题目标题可直接进入答题模式，点击展开按钮查看完整题目内容
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if questions %}
+<div class="questions-list">
+    {% for question in questions %}
+    <div class="card question-item mb-3" data-question-id="{{ question.id }}">
+        <div class="card-body">
+            <!-- Question Header -->
+            <div class="question-header d-flex justify-content-between align-items-start mb-3">
+                <div class="question-meta d-flex align-items-center flex-wrap">
+                    <h5 class="question-title mb-0 me-3">
+                        <a href="{{ url_for('show_question', qid=question.id) }}" class="text-decoration-none">
+                            <i class="fas fa-hashtag text-primary"></i> 题目 {{ question.id }}
+                        </a>
+                    </h5>
+                    
+                    {% if question.type %}
+                    <span class="badge badge-primary me-2">{{ question.type }}</span>
+                    {% endif %}
+                    
+                    {% if question.difficulty and question.difficulty != '无' %}
+                    <span class="badge badge-warning me-2">{{ question.difficulty }}</span>
+                    {% endif %}
+                    
+                    {% if question.category and question.category != '未分类' %}
+                    <span class="badge badge-info me-2">{{ question.category }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="question-actions d-flex align-items-center">
+                    {% if question.is_favorite %}
+                    <form method="post" action="{{ url_for('unfavorite_question', qid=question.id) }}" class="d-inline me-2">
+                        <button type="submit" class="btn btn-sm btn-outline-warning" title="取消收藏">
+                            <i class="fas fa-star"></i>
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{{ url_for('favorite_question', qid=question.id) }}" class="d-inline me-2">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="收藏">
+                            <i class="far fa-star"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('show_question', qid=question.id) }}" class="btn btn-sm btn-primary me-2" title="答题">
+                        <i class="fas fa-play"></i>
+                    </a>
+                    
+                    <button class="btn btn-sm btn-outline-secondary toggle-expand" title="展开/收起">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Question Stem Preview -->
+            <div class="question-stem-preview">
+                <p class="question-stem-text mb-2">{{ question.stem[:150] }}{% if question.stem|length > 150 %}...{% endif %}</p>
+            </div>
+            
+            <!-- Expanded Content (Initially Hidden) -->
+            <div class="question-expanded-content" style="display: none;">
+                <hr class="my-3">
+                
+                <!-- Full Question Stem -->
+                <div class="question-full-content mb-3">
+                    <h6 class="text-primary">题目内容：</h6>
+                    <p class="question-full-text">{{ question.stem }}</p>
+                </div>
+                
+                <!-- Options -->
+                {% if question.options %}
+                <div class="question-options mb-3">
+                    <h6 class="text-primary">选项：</h6>
+                    <div class="options-grid">
+                        {% for key, value in question.options.items() %}
+                        <div class="option-item">
+                            <span class="option-label text-primary fw-bold">{{ key }}.</span>
+                            <span class="option-text">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Answer -->
+                <div class="question-answer">
+                    <div class="alert alert-success d-flex align-items-center">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>正确答案：{{ question.answer }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+<nav aria-label="题目分页" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('browse_questions', page=page-1) }}">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </a>
+        </li>
+        {% endif %}
+        
+        <!-- Page numbers -->
+        {% set start_page = [1, page - 2]|max %}
+        {% set end_page = [total_pages, page + 2]|min %}
+        
+        {% if start_page > 1 %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('browse_questions', page=1) }}">1</a>
+        </li>
+        {% if start_page > 2 %}
+        <li class="page-item disabled">
+            <span class="page-link">...</span>
+        </li>
+        {% endif %}
+        {% endif %}
+        
+        {% for p in range(start_page, end_page + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="{{ url_for('browse_questions', page=p) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        
+        {% if end_page < total_pages %}
+        {% if end_page < total_pages - 1 %}
+        <li class="page-item disabled">
+            <span class="page-link">...</span>
+        </li>
+        {% endif %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('browse_questions', page=total_pages) }}">{{ total_pages }}</a>
+        </li>
+        {% endif %}
+        
+        {% if has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('browse_questions', page=page+1) }}">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+
+{% else %}
+<div class="text-center py-5">
+    <div class="empty-state">
+        <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">题库为空</h4>
+        <p class="text-muted">暂无题目可浏览</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fas fa-home"></i> 返回首页
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* Browse Page Styles */
+.browse-header .card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.browse-stats .badge {
+    margin-left: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.question-item {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.question-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+}
+
+.question-title a {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.question-title a:hover {
+    color: var(--primary-color);
+    text-decoration: underline !important;
+}
+
+.question-meta .badge {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.question-actions .btn {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.question-stem-text {
+    line-height: 1.6;
+    color: var(--gray-700);
+}
+
+.question-full-text {
+    line-height: 1.7;
+    font-size: 1rem;
+    color: var(--gray-800);
+}
+
+.options-grid {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.option-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.5rem;
+    background-color: var(--gray-100);
+    border-radius: var(--border-radius);
+}
+
+.option-label {
+    min-width: 24px;
+    margin-right: 0.5rem;
+}
+
+.option-text {
+    flex: 1;
+    line-height: 1.5;
+}
+
+.toggle-expand {
+    transition: transform 0.3s ease;
+}
+
+.toggle-expand.expanded {
+    transform: rotate(180deg);
+}
+
+.pagination .page-link {
+    color: var(--primary-color);
+    border-color: #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.pagination .page-link:hover {
+    color: var(--primary-color);
+    background-color: rgba(67, 97, 238, 0.1);
+}
+
+.empty-state {
+    padding: 3rem 1rem;
+}
+
+.browse-info {
+    padding: 0.75rem 1rem;
+    background-color: rgba(67, 97, 238, 0.05);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .browse-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .browse-stats {
+        margin-top: 1rem;
+    }
+    
+    .question-meta {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .question-actions {
+        margin-top: 0.5rem;
+    }
+    
+    .question-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+    }
+    
+    .pagination .page-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .question-actions .btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+    
+    .browse-stats .badge {
+        font-size: 0.8rem;
+        margin: 0.25rem 0.25rem 0.25rem 0;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle expand/collapse functionality
+    document.querySelectorAll('.toggle-expand').forEach(button => {
+        button.addEventListener('click', function() {
+            const questionItem = this.closest('.question-item');
+            const expandedContent = questionItem.querySelector('.question-expanded-content');
+            const icon = this.querySelector('i');
+            
+            if (expandedContent.style.display === 'none' || !expandedContent.style.display) {
+                expandedContent.style.display = 'block';
+                icon.className = 'fas fa-chevron-up';
+                this.classList.add('expanded');
+                this.title = '收起';
+            } else {
+                expandedContent.style.display = 'none';
+                icon.className = 'fas fa-chevron-down';
+                this.classList.remove('expanded');
+                this.title = '展开';
+            }
+        });
+    });
+    
+    // Auto-expand if coming from a specific question link
+    const urlParams = new URLSearchParams(window.location.search);
+    const expandQuestionId = urlParams.get('expand');
+    if (expandQuestionId) {
+        const questionItem = document.querySelector(`[data-question-id="${expandQuestionId}"]`);
+        if (questionItem) {
+            const toggleButton = questionItem.querySelector('.toggle-expand');
+            if (toggleButton) {
+                toggleButton.click();
+                questionItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

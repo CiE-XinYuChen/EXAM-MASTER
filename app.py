@@ -626,6 +626,71 @@ def only_wrong_mode():
                           is_favorite=is_fav)
 
 ##############################
+# Browse Routes #
+##############################
+
+@app.route('/browse')
+@login_required
+def browse_questions():
+    """Route to browse all questions."""
+    user_id = get_user_id()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # Questions per page
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Get total count
+    c.execute('SELECT COUNT(*) as total FROM questions')
+    total = c.fetchone()['total']
+    
+    # Get questions with pagination
+    offset = (page - 1) * per_page
+    c.execute('''
+        SELECT id, stem, answer, difficulty, qtype, category, options 
+        FROM questions 
+        ORDER BY CAST(id AS INTEGER) ASC 
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset))
+    
+    rows = c.fetchall()
+    questions = []
+    
+    for row in rows:
+        question_data = {
+            'id': row['id'],
+            'stem': row['stem'],
+            'answer': row['answer'],
+            'difficulty': row['difficulty'],
+            'type': row['qtype'],
+            'category': row['category'],
+            'options': json.loads(row['options']) if row['options'] else {}
+        }
+        
+        # Check if favorited by current user
+        c.execute('SELECT 1 FROM favorites WHERE user_id=? AND question_id=?', 
+                  (user_id, row['id']))
+        question_data['is_favorite'] = bool(c.fetchone())
+        
+        questions.append(question_data)
+    
+    conn.close()
+    
+    # Calculate pagination info
+    total_pages = (total + per_page - 1) // per_page
+    has_prev = page > 1
+    has_next = page < total_pages
+    
+    return render_template('browse.html',
+                          questions=questions,
+                          total=total,
+                          page=page,
+                          per_page=per_page,
+                          total_pages=total_pages,
+                          has_prev=has_prev,
+                          has_next=has_next)
+
+##############################
 # Filter Routes #
 ##############################
 
