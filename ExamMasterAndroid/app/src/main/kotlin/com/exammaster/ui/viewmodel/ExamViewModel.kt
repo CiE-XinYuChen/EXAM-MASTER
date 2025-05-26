@@ -30,6 +30,9 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
     
+    private val _lastBrowsedQuestionId = MutableStateFlow<String?>(null)
+    val lastBrowsedQuestionId: StateFlow<String?> = _lastBrowsedQuestionId.asStateFlow()
+    
     val allQuestions = repository.getAllQuestions().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -77,6 +80,19 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
         }
     }
     
+    fun startSequentialFromLastBrowsed() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val startFromId = _lastBrowsedQuestionId.value
+            val question = repository.getSequentialQuestionStartingFrom(startFromId)
+            _currentQuestion.value = question
+            _selectedAnswers.value = emptySet()
+            _showResult.value = false
+            _currentMode.value = QuizMode.SEQUENTIAL
+            _isLoading.value = false
+        }
+    }
+    
     fun loadQuestionById(id: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -84,6 +100,8 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
             _currentQuestion.value = question
             _selectedAnswers.value = emptySet()
             _showResult.value = false
+            // Update last browsed question ID
+            _lastBrowsedQuestionId.value = id
             _isLoading.value = false
         }
     }

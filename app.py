@@ -477,15 +477,18 @@ def show_question(qid):
         flash("题目不存在", "error")
         return redirect(url_for('index'))
 
+    # Update last browsed question when viewing any question
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?', (qid, user_id))
+    conn.commit()
+
     # Handle form submission (answer)
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
         user_answer_str = "".join(sorted(user_answer))
         correct = int(user_answer_str == "".join(sorted(q['answer'])))
 
-        conn = get_db()
-        c = conn.cursor()
-        
         # Save answer to history
         c.execute(
             'INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
@@ -513,8 +516,6 @@ def show_question(qid):
                               is_favorite=is_fav)
 
     # Handle GET request
-    conn = get_db()
-    c = conn.cursor()
     c.execute('SELECT COUNT(*) AS total FROM questions')
     total = c.fetchone()['total']
     c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?', (user_id,))
@@ -795,7 +796,7 @@ def sequential_start():
     user_data = c.fetchone()
     
     if user_data and user_data['current_seq_qid']:
-        # Continue from saved position
+        # Continue from last browsed position (start from where user left off)
         current_qid = user_data['current_seq_qid']
     else:
         # Find the first unanswered question

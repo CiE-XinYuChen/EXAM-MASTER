@@ -124,6 +124,22 @@ class ExamRepository(
         }
     }
     
+    suspend fun getSequentialQuestionStartingFrom(questionId: String?): Question? {
+        val allQuestions = getQuestionsInSequence()
+        if (allQuestions.isEmpty()) return null
+        
+        return if (questionId == null) {
+            allQuestions.first()
+        } else {
+            val currentIndex = allQuestions.indexOfFirst { it.id == questionId }
+            if (currentIndex >= 0) {
+                allQuestions[currentIndex] // Start from the specified question
+            } else {
+                allQuestions.first() // If not found, start from first
+            }
+        }
+    }
+    
     suspend fun getRandomQuestions(count: Int): List<Question> {
         val allQuestions = getQuestionsInSequence()
         return allQuestions.shuffled().take(count)

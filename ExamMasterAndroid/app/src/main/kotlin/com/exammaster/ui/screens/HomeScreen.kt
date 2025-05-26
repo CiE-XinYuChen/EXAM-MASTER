@@ -87,10 +87,10 @@ fun HomeScreen(
             item {
                 ModeButton(
                     title = "顺序答题",
-                    subtitle = "按顺序依次完成所有题目",
+                    subtitle = "从上次浏览位置开始顺序答题",
                     icon = Icons.Default.List,
                     onClick = {
-                        viewModel.loadSequentialQuestion()
+                        viewModel.startSequentialFromLastBrowsed()
                         navController.navigate(Screen.Question.route)
                     }
                 )
