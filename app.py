@@ -33,7 +33,8 @@ from flask import (
     url_for, 
     flash, 
     jsonify, 
-    abort
+    abort,
+    send_file
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -1434,6 +1435,22 @@ def statistics():
                           category_stats=category_stats,
                           worst_questions=worst_questions,
                           recent_exams=recent_exams)
+
+##############################
+# APK Download Routes #
+##############################
+
+@app.route('/ExamMasterAndroid/<filename>')
+def download_apk(filename):
+    """Handle APK file downloads."""
+    try:
+        apk_path = os.path.join(os.path.dirname(__file__), 'ExamMasterAndroid', filename)
+        if os.path.exists(apk_path) and filename.endswith('.apk'):
+            return send_file(apk_path, as_attachment=True, download_name=filename)
+        else:
+            abort(404)
+    except Exception as e:
+        abort(404)
 
 ##############################
 # Error Handlers #
