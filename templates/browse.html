@@ -6,30 +6,101 @@
 <!-- Desktop Header -->
 <div class="browse-header mb-4 d-none d-md-block">
     <div class="card">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center">
-                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm me-3">
-                    <i class="fas fa-arrow-left"></i> 返回首页
-                </a>
-                <h2 class="mb-0">
-                    <i class="fas fa-book-open text-primary"></i> 浏览题目
-                </h2>
+        <div class="card-body">
+            <!-- Title and Navigation -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center">
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm me-3">
+                        <i class="fas fa-arrow-left"></i> 返回首页
+                    </a>
+                    <h2 class="mb-0">
+                        <i class="fas fa-book-open text-primary"></i> 浏览题目
+                    </h2>
+                </div>
+                <div class="browse-stats">
+                    <span class="badge badge-info">
+                        <i class="fas fa-list"></i> 共<span id="desktop-filtered-count">{{ total }}</span>/{{ total }}题
+                    </span>
+                    <span class="badge badge-secondary">
+                        第 {{ page }} / {{ total_pages }} 页
+                    </span>
+                </div>
             </div>
-            <div class="browse-stats">
-                <span class="badge badge-info">
-                    <i class="fas fa-list"></i> 共 {{ total }} 题
-                </span>
-                <span class="badge badge-secondary">
-                    第 {{ page }} / {{ total_pages }} 页
-                </span>
+
+            <!-- Search and Filter Section -->
+            <div class="desktop-search-filter-section mb-3">
+                <div class="row g-3 align-items-center">
+                    <!-- Search Bar -->
+                    <div class="col-md-6">
+                        <div class="desktop-search-container">
+                            <div class="position-relative">
+                                <input type="text" id="desktopSearchInput" class="form-control desktop-search-input" 
+                                       placeholder="搜索题目内容或题号..." value="{{ current_search or '' }}">
+                                <div class="desktop-search-icon">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <button class="desktop-search-clear" id="desktopSearchClear" style="display: {% if current_search %}block{% else %}none{% endif %};">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filter Dropdown -->
+                    <div class="col-md-4">
+                        <div class="desktop-filter-container">
+                            <select class="form-select desktop-filter-select" id="desktopTypeFilter">
+                                <option value="all" {% if not current_type or current_type == 'all' %}selected{% endif %}>
+                                    <i class="fas fa-filter"></i> 全部题型
+                                </option>
+                                {% for type in available_types %}
+                                <option value="{{ type }}" {% if current_type == type %}selected{% endif %}>
+                                    {{ type }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Filter Button -->
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#advancedFilterModal">
+                            <i class="fas fa-sliders-h"></i> 高级筛选
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>
-        
-        <div class="browse-info">
-            <p class="text-muted mb-0">
-                <i class="fas fa-info-circle"></i> 
-                点击题目标题可直接进入答题模式，点击展开按钮查看完整题目内容
-            </p>
+            
+            <!-- Filter Tags Display -->
+            <div class="desktop-active-filters" id="desktopActiveFilters" style="display: {% if current_type or current_search %}block{% else %}none{% endif %};">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <small class="text-muted">当前筛选:</small>
+                    {% if current_search %}
+                    <span class="badge bg-primary">
+                        <i class="fas fa-search me-1"></i>
+                        搜索: {{ current_search }}
+                        <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 0.7em;" onclick="clearSearchFilter()"></button>
+                    </span>
+                    {% endif %}
+                    {% if current_type and current_type != 'all' %}
+                    <span class="badge bg-info">
+                        <i class="fas fa-tag me-1"></i>
+                        类型: {{ current_type }}
+                        <button type="button" class="btn-close btn-close-white ms-1" style="font-size: 0.7em;" onclick="clearTypeFilter()"></button>
+                    </span>
+                    {% endif %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearAllFilters()">
+                        <i class="fas fa-times"></i> 清除所有筛选
+                    </button>
+                </div>
+            </div>
+            
+            <div class="browse-info">
+                <p class="text-muted mb-0">
+                    <i class="fas fa-info-circle"></i> 
+                    点击题目标题可直接进入答题模式，点击展开按钮查看完整题目内容。使用搜索和筛选功能快速找到你需要的题目。
+                </p>
+            </div>
         </div>
     </div>
 </div>
@@ -448,7 +519,328 @@
 </div>
 {% endif %}
 
+<!-- Advanced Filter Modal -->
+<div class="modal fade" id="advancedFilterModal" tabindex="-1" aria-labelledby="advancedFilterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="advancedFilterModalLabel">
+                    <i class="fas fa-sliders-h text-primary"></i> 高级筛选设置
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="advancedFilterForm">
+                    <div class="row g-4">
+                        <!-- Question Type Filter -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-tag text-primary"></i> 题目类型
+                            </label>
+                            <div class="advanced-filter-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="advancedType" value="all" id="advancedTypeAll" checked>
+                                    <label class="form-check-label" for="advancedTypeAll">全部类型</label>
+                                </div>
+                                {% for type in available_types %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="advancedType" value="{{ type }}" id="advancedType{{ loop.index }}">
+                                    <label class="form-check-label" for="advancedType{{ loop.index }}">{{ type }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Difficulty Filter -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-chart-line text-warning"></i> 难度等级
+                            </label>
+                            <div class="advanced-filter-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="difficulty" value="简单" id="difficultyEasy">
+                                    <label class="form-check-label text-success" for="difficultyEasy">
+                                        <i class="fas fa-chevron-down me-1"></i>简单
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="difficulty" value="中等" id="difficultyMedium">
+                                    <label class="form-check-label text-warning" for="difficultyMedium">
+                                        <i class="fas fa-minus me-1"></i>中等
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="difficulty" value="困难" id="difficultyHard">
+                                    <label class="form-check-label text-danger" for="difficultyHard">
+                                        <i class="fas fa-chevron-up me-1"></i>困难
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Category Filter -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-folder text-info"></i> 题目分类
+                            </label>
+                            <div class="advanced-filter-group">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="category" value="all" id="categoryAll" checked>
+                                            <label class="form-check-label" for="categoryAll">全部分类</label>
+                                        </div>
+                                    </div>
+                                    <!-- Categories will be populated dynamically if needed -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Within Results -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-search text-secondary"></i> 精确搜索
+                            </label>
+                            <input type="text" class="form-control" id="advancedSearchInput" 
+                                   placeholder="在筛选结果中进一步搜索..." value="{{ current_search or '' }}">
+                            <div class="form-text">支持题目内容、题号等关键词搜索</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="resetAdvancedFilter()">
+                    <i class="fas fa-undo"></i> 重置
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="clearAllAdvancedFilters()">
+                    <i class="fas fa-times"></i> 清除筛选
+                </button>
+                <button type="button" class="btn btn-primary" onclick="applyAdvancedFilter()">
+                    <i class="fas fa-check"></i> 应用筛选
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+/* Desktop Search and Filter Styles */
+.desktop-search-filter-section {
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1.5rem;
+    background: rgba(67, 97, 238, 0.02);
+}
+
+.desktop-search-container {
+    position: relative;
+}
+
+.desktop-search-input {
+    border-radius: 25px;
+    padding: 12px 45px 12px 45px;
+    border: 2px solid #e9ecef;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.desktop-search-input:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+}
+
+.desktop-search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+.desktop-search-clear {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 1.1rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.desktop-search-clear:hover {
+    background: rgba(108, 117, 125, 0.1);
+    color: #495057;
+}
+
+.desktop-filter-select {
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.desktop-filter-select:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+}
+
+.desktop-active-filters {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(67, 97, 238, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid #4361ee;
+}
+
+.desktop-active-filters .badge {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+/* Advanced Filter Modal Styles */
+.advanced-filter-group {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #e9ecef;
+}
+
+.advanced-filter-group .form-check {
+    margin-bottom: 0.75rem;
+    padding-left: 2rem;
+}
+
+.advanced-filter-group .form-check:last-child {
+    margin-bottom: 0;
+}
+
+.advanced-filter-group .form-check-input {
+    margin-top: 0.125rem;
+}
+
+.advanced-filter-group .form-check-label {
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.advanced-filter-group .form-check-input:checked + .form-check-label {
+    color: #4361ee;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #4361ee 0%, #7209b7 100%);
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1rem 2rem;
+}
+
+/* Enhanced Desktop Question Cards */
+.questions-list .question-item {
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.questions-list .question-item:hover {
+    border-color: rgba(67, 97, 238, 0.3);
+    box-shadow: 0 8px 25px rgba(67, 97, 238, 0.15);
+}
+
+.questions-list .question-header {
+    border-bottom: 1px solid #f1f3f4;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.questions-list .question-meta .badge {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.questions-list .question-actions .btn {
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.questions-list .question-actions .btn:hover {
+    transform: translateY(-2px);
+}
+
+.questions-list .question-stem-preview {
+    background: rgba(248, 249, 250, 0.8);
+    border-radius: 8px;
+    padding: 1rem;
+    border-left: 4px solid #4361ee;
+}
+
+.questions-list .question-expanded-content {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px dashed #e9ecef;
+}
+
+.questions-list .question-full-content {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1.25rem;
+    border: 1px solid #e9ecef;
+}
+
+.questions-list .question-options {
+    background: rgba(67, 97, 238, 0.02);
+    border-radius: 8px;
+    padding: 1.25rem;
+    border: 1px solid rgba(67, 97, 238, 0.1);
+}
+
+.questions-list .options-grid .option-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.questions-list .options-grid .option-item:hover {
+    border-color: #4361ee;
+    background: rgba(67, 97, 238, 0.05);
+}
+
+.questions-list .question-answer .alert {
+    border-radius: 10px;
+    border: 2px solid #28a745;
+    background: rgba(40, 167, 69, 0.1);
+    font-weight: 600;
+}
+
 /* Mobile Header Styles */
 .mobile-browse-header {
     margin-bottom: 0;
@@ -1289,7 +1681,137 @@ function get_difficulty_color(difficulty) {
     }
 }
 
+// Desktop filter and search functions
+function clearSearchFilter() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('search');
+    currentUrl.searchParams.delete('page');
+    window.location.href = currentUrl.toString();
+}
+
+function clearTypeFilter() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('type');
+    currentUrl.searchParams.delete('page');
+    window.location.href = currentUrl.toString();
+}
+
+function clearAllFilters() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('search');
+    currentUrl.searchParams.delete('type');
+    currentUrl.searchParams.delete('page');
+    window.location.href = currentUrl.toString();
+}
+
+function resetAdvancedFilter() {
+    // Reset all form inputs in the modal
+    const form = document.getElementById('advancedFilterForm');
+    if (form) {
+        form.reset();
+        // Set default values
+        document.getElementById('advancedTypeAll').checked = true;
+        document.getElementById('categoryAll').checked = true;
+        document.getElementById('advancedSearchInput').value = '';
+    }
+}
+
+function clearAllAdvancedFilters() {
+    resetAdvancedFilter();
+    clearAllFilters();
+}
+
+function applyAdvancedFilter() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('page'); // Reset to first page
+    
+    // Get selected type
+    const selectedType = document.querySelector('input[name="advancedType"]:checked');
+    if (selectedType && selectedType.value !== 'all') {
+        currentUrl.searchParams.set('type', selectedType.value);
+    } else {
+        currentUrl.searchParams.delete('type');
+    }
+    
+    // Get search term
+    const searchTerm = document.getElementById('advancedSearchInput').value.trim();
+    if (searchTerm) {
+        currentUrl.searchParams.set('search', searchTerm);
+    } else {
+        currentUrl.searchParams.delete('search');
+    }
+    
+    // Close modal and navigate
+    const modal = bootstrap.Modal.getInstance(document.getElementById('advancedFilterModal'));
+    if (modal) modal.hide();
+    
+    window.location.href = currentUrl.toString();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Desktop search functionality
+    const desktopSearchInput = document.getElementById('desktopSearchInput');
+    const desktopSearchClear = document.getElementById('desktopSearchClear');
+    const desktopTypeFilter = document.getElementById('desktopTypeFilter');
+    
+    if (desktopSearchInput) {
+        desktopSearchInput.addEventListener('input', function() {
+            const hasValue = this.value.trim().length > 0;
+            desktopSearchClear.style.display = hasValue ? 'block' : 'none';
+            
+            // Debounce search
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(() => {
+                const searchTerm = this.value.trim();
+                const currentUrl = new URL(window.location);
+                if (searchTerm) {
+                    currentUrl.searchParams.set('search', searchTerm);
+                } else {
+                    currentUrl.searchParams.delete('search');
+                }
+                currentUrl.searchParams.delete('page'); // Reset to first page
+                window.location.href = currentUrl.toString();
+            }, 800);
+        });
+    }
+    
+    if (desktopSearchClear) {
+        desktopSearchClear.addEventListener('click', function() {
+            desktopSearchInput.value = '';
+            this.style.display = 'none';
+            clearSearchFilter();
+        });
+    }
+    
+    if (desktopTypeFilter) {
+        desktopTypeFilter.addEventListener('change', function() {
+            const currentUrl = new URL(window.location);
+            if (this.value === 'all') {
+                currentUrl.searchParams.delete('type');
+            } else {
+                currentUrl.searchParams.set('type', this.value);
+            }
+            currentUrl.searchParams.delete('page'); // Reset to first page
+            window.location.href = currentUrl.toString();
+        });
+    }
+    
+    // Initialize advanced filter modal with current values
+    const advancedModal = document.getElementById('advancedFilterModal');
+    if (advancedModal) {
+        advancedModal.addEventListener('show.bs.modal', function() {
+            // Set current type selection
+            const currentType = new URLSearchParams(window.location.search).get('type') || 'all';
+            const typeRadio = document.querySelector(`input[name="advancedType"][value="${currentType}"]`);
+            if (typeRadio) typeRadio.checked = true;
+            
+            // Set current search term
+            const currentSearch = new URLSearchParams(window.location.search).get('search') || '';
+            const searchInput = document.getElementById('advancedSearchInput');
+            if (searchInput) searchInput.value = currentSearch;
+        });
+    }
+
     // Desktop toggle expand/collapse functionality
     document.querySelectorAll('.toggle-expand').forEach(button => {
         button.addEventListener('click', function() {
