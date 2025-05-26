@@ -18,6 +18,9 @@
                     </h2>
                 </div>
                 <div class="browse-stats">
+                    <button class="btn btn-primary me-3" data-bs-toggle="modal" data-bs-target="#advancedFilterModal">
+                        <i class="fas fa-sliders-h"></i> 高级筛选
+                    </button>
                     <span class="badge badge-info">
                         <i class="fas fa-list"></i> 共<span id="desktop-filtered-count">{{ total }}</span>/{{ total }}题
                     </span>
@@ -47,7 +50,7 @@
                     </div>
                     
                     <!-- Filter Dropdown -->
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="desktop-filter-container">
                             <select class="form-select desktop-filter-select" id="desktopTypeFilter">
                                 <option value="all" {% if not current_type or current_type == 'all' %}selected{% endif %}>
@@ -60,13 +63,6 @@
                                 {% endfor %}
                             </select>
                         </div>
-                    </div>
-                    
-                    <!-- Advanced Filter Button -->
-                    <div class="col-md-2">
-                        <button class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#advancedFilterModal">
-                            <i class="fas fa-sliders-h"></i> 高级筛选
-                        </button>
                     </div>
                 </div>
             </div>
@@ -388,69 +384,100 @@
 <nav aria-label="题目分页" class="mt-4">
     <div class="pagination-container">
         <!-- Desktop Pagination -->
-        <ul class="pagination pagination-desktop justify-content-center d-none d-md-flex">
-            {% if has_prev %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=page-1, type=current_type, search=current_search) }}" title="上一页">
-                    <i class="fas fa-chevron-left"></i>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link"><i class="fas fa-chevron-left"></i></span>
-            </li>
-            {% endif %}
-            
-            <!-- Show first page if not in range -->
-            {% if page > 3 %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=1, type=current_type, search=current_search) }}">1</a>
-            </li>
-            {% if page > 4 %}
-            <li class="page-item disabled">
-                <span class="page-link">...</span>
-            </li>
-            {% endif %}
-            {% endif %}
-            
-            <!-- Show pages around current page -->
-            {% set start_page = [1, page - 1]|max %}
-            {% set end_page = [total_pages, page + 1]|min %}
-            
-            {% for p in range(start_page, end_page + 1) %}
-            <li class="page-item {% if p == page %}active{% endif %}">
-                {% if p == page %}
-                <span class="page-link">{{ p }}</span>
+        <div class="desktop-pagination d-none d-md-block">
+            <!-- Main Pagination -->
+            <ul class="pagination pagination-desktop justify-content-center mb-3">
+                {% if has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('browse_questions', page=page-1, type=current_type, search=current_search) }}" title="上一页">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
                 {% else %}
-                <a class="page-link" href="{{ url_for('browse_questions', page=p, type=current_type, search=current_search) }}">{{ p }}</a>
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                </li>
                 {% endif %}
-            </li>
-            {% endfor %}
+                
+                <!-- Show first page if not in range -->
+                {% if page > 3 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('browse_questions', page=1, type=current_type, search=current_search) }}">1</a>
+                </li>
+                {% if page > 4 %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+                {% endif %}
+                
+                <!-- Show pages around current page -->
+                {% set start_page = [1, page - 1]|max %}
+                {% set end_page = [total_pages, page + 1]|min %}
+                
+                {% for p in range(start_page, end_page + 1) %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                    {% if p == page %}
+                    <span class="page-link">{{ p }}</span>
+                    {% else %}
+                    <a class="page-link" href="{{ url_for('browse_questions', page=p, type=current_type, search=current_search) }}">{{ p }}</a>
+                    {% endif %}
+                </li>
+                {% endfor %}
+                
+                <!-- Show last page if not in range -->
+                {% if page < total_pages - 2 %}
+                {% if page < total_pages - 3 %}
+                <li class="page-item disabled">
+                    <span class="page-link">...</span>
+                </li>
+                {% endif %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('browse_questions', page=total_pages, type=current_type, search=current_search) }}">{{ total_pages }}</a>
+                </li>
+                {% endif %}
+                
+                {% if has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('browse_questions', page=page+1, type=current_type, search=current_search) }}" title="下一页">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                </li>
+                {% endif %}
+            </ul>
             
-            <!-- Show last page if not in range -->
-            {% if page < total_pages - 2 %}
-            {% if page < total_pages - 3 %}
-            <li class="page-item disabled">
-                <span class="page-link">...</span>
-            </li>
-            {% endif %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=total_pages, type=current_type, search=current_search) }}">{{ total_pages }}</a>
-            </li>
-            {% endif %}
-            
-            {% if has_next %}
-            <li class="page-item">
-                <a class="page-link" href="{{ url_for('browse_questions', page=page+1, type=current_type, search=current_search) }}" title="下一页">
-                    <i class="fas fa-chevron-right"></i>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link"><i class="fas fa-chevron-right"></i></span>
-            </li>
-            {% endif %}
-        </ul>
+            <!-- Desktop Page Jump -->
+            <div class="desktop-page-jump text-center">
+                <div class="card border-0 bg-light">
+                    <div class="card-body py-3">
+                        <form method="get" class="d-flex align-items-center justify-content-center gap-3" id="desktopPageJumpForm">
+                            {% if current_type %}<input type="hidden" name="type" value="{{ current_type }}">{% endif %}
+                            {% if current_search %}<input type="hidden" name="search" value="{{ current_search }}">{% endif %}
+                            
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-share-square text-primary"></i>
+                                <span class="text-muted fw-medium">快速跳转到第</span>
+                                <input type="number" name="page" class="form-control text-center desktop-jump-input" 
+                                       min="1" max="{{ total_pages }}" placeholder="{{ page }}" title="输入页码">
+                                <span class="text-muted fw-medium">页</span>
+                                <button type="submit" class="btn btn-primary btn-sm px-3">
+                                    <i class="fas fa-arrow-right me-1"></i>跳转
+                                </button>
+                            </div>
+                            
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                共 {{ total_pages }} 页
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Mobile Pagination -->
         <div class="pagination-mobile d-md-none">
@@ -1398,6 +1425,50 @@
     transform: rotate(180deg);
 }
 
+/* Desktop Page Jump Styles */
+.desktop-page-jump {
+    margin-top: 1.5rem;
+}
+
+.desktop-page-jump .card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+}
+
+.desktop-jump-input {
+    width: 80px !important;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.desktop-jump-input:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+    transform: scale(1.05);
+}
+
+.desktop-page-jump .btn {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.desktop-page-jump .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+}
+
+.desktop-page-jump .text-muted {
+    color: #6c757d !important;
+}
+
+.desktop-page-jump .fw-medium {
+    font-weight: 500 !important;
+}
+
 /* Pagination Styles */
 .pagination-container {
     padding: 1rem 0;
@@ -1810,6 +1881,53 @@ document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('advancedSearchInput');
             if (searchInput) searchInput.value = currentSearch;
         });
+    }
+
+    // Desktop page jump validation
+    const desktopPageJumpForm = document.getElementById('desktopPageJumpForm');
+    if (desktopPageJumpForm) {
+        desktopPageJumpForm.addEventListener('submit', function(e) {
+            const pageInput = this.querySelector('input[name="page"]');
+            const pageValue = parseInt(pageInput.value);
+            const maxPages = parseInt(pageInput.getAttribute('max'));
+            const minPages = parseInt(pageInput.getAttribute('min'));
+            
+            if (!pageValue || pageValue < minPages || pageValue > maxPages) {
+                e.preventDefault();
+                pageInput.focus();
+                pageInput.style.borderColor = '#dc3545';
+                pageInput.style.boxShadow = '0 0 0 0.2rem rgba(220, 53, 69, 0.25)';
+                
+                // Show error message
+                let errorMsg = pageInput.parentNode.querySelector('.error-message');
+                if (!errorMsg) {
+                    errorMsg = document.createElement('div');
+                    errorMsg.className = 'error-message small text-danger mt-1';
+                    pageInput.parentNode.appendChild(errorMsg);
+                }
+                errorMsg.textContent = `请输入 ${minPages} 到 ${maxPages} 之间的页码`;
+                
+                // Clear error after 3 seconds
+                setTimeout(() => {
+                    if (errorMsg) errorMsg.remove();
+                    pageInput.style.borderColor = '';
+                    pageInput.style.boxShadow = '';
+                }, 3000);
+                
+                return false;
+            }
+        });
+        
+        // Clear error on input
+        const pageInput = desktopPageJumpForm.querySelector('input[name="page"]');
+        if (pageInput) {
+            pageInput.addEventListener('input', function() {
+                this.style.borderColor = '';
+                this.style.boxShadow = '';
+                const errorMsg = this.parentNode.querySelector('.error-message');
+                if (errorMsg) errorMsg.remove();
+            });
+        }
     }
 
     // Desktop toggle expand/collapse functionality
