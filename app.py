@@ -1444,12 +1444,22 @@ def statistics():
 def download_apk(filename):
     """Handle APK file downloads."""
     try:
-        apk_path = os.path.join(os.path.dirname(__file__), 'ExamMasterAndroid', filename)
+        # Use absolute path based on current working directory
+        base_dir = os.getcwd() if os.path.basename(os.getcwd()) == 'EXAM-MASTER' else os.path.dirname(os.path.abspath(__file__))
+        apk_path = os.path.join(base_dir, 'ExamMasterAndroid', filename)
+        
+        print(f"Debug: Requested filename: {filename}")
+        print(f"Debug: Base directory: {base_dir}")
+        print(f"Debug: APK path: {apk_path}")
+        print(f"Debug: File exists: {os.path.exists(apk_path)}")
+        
         if os.path.exists(apk_path) and filename.endswith('.apk'):
             return send_file(apk_path, as_attachment=True, download_name=filename)
         else:
+            print(f"Debug: File not found or not APK: {apk_path}")
             abort(404)
     except Exception as e:
+        print(f"Debug: Exception in download_apk: {e}")
         abort(404)
 
 ##############################
