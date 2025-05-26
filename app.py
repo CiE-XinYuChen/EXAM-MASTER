@@ -1444,22 +1444,28 @@ def statistics():
 def download_apk(filename):
     """Handle APK file downloads."""
     try:
-        # Use absolute path based on current working directory
-        base_dir = os.getcwd() if os.path.basename(os.getcwd()) == 'EXAM-MASTER' else os.path.dirname(os.path.abspath(__file__))
-        apk_path = os.path.join(base_dir, 'ExamMasterAndroid', filename)
-        
-        print(f"Debug: Requested filename: {filename}")
-        print(f"Debug: Base directory: {base_dir}")
-        print(f"Debug: APK path: {apk_path}")
-        print(f"Debug: File exists: {os.path.exists(apk_path)}")
-        
-        if os.path.exists(apk_path) and filename.endswith('.apk'):
-            return send_file(apk_path, as_attachment=True, download_name=filename)
-        else:
-            print(f"Debug: File not found or not APK: {apk_path}")
+        # Security check: only allow .apk files
+        if not filename.endswith('.apk'):
             abort(404)
+        
+        # Use absolute path based on script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        apk_path = os.path.join(script_dir, 'ExamMasterAndroid', filename)
+        
+        # Check if file exists
+        if not os.path.exists(apk_path):
+            abort(404)
+        
+        # Send file with proper headers
+        return send_file(
+            apk_path, 
+            as_attachment=True, 
+            download_name=filename,
+            mimetype='application/vnd.android.package-archive'
+        )
+        
     except Exception as e:
-        print(f"Debug: Exception in download_apk: {e}")
+        print(f"Error in download_apk: {e}")
         abort(404)
 
 ##############################
