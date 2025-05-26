@@ -693,16 +693,16 @@ def browse_questions():
         
         questions.append(question_data)
     
+    # Get available question types for filter chips
+    c.execute('SELECT DISTINCT qtype FROM questions WHERE qtype IS NOT NULL AND qtype != ""')
+    available_types = [r['qtype'] for r in c.fetchall()]
+    
     conn.close()
     
     # Calculate pagination info
     total_pages = (total + per_page - 1) // per_page
     has_prev = page > 1
     has_next = page < total_pages
-    
-    # Get available question types for filter chips
-    c.execute('SELECT DISTINCT qtype FROM questions WHERE qtype IS NOT NULL AND qtype != ""')
-    available_types = [r['qtype'] for r in c.fetchall()]
     
     return render_template('browse.html',
                           questions=questions,
