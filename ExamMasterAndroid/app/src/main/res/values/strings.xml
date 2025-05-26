@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Exam-Master</string>
+    
+    <!-- Main navigation -->
+    <string name="nav_home">首页</string>
+    <string name="nav_practice">练习</string>
+    <string name="nav_exam">考试</string>
+    <string name="nav_favorites">收藏</string>
+    <string name="nav_statistics">统计</string>
+    <string name="nav_settings">设置</string>
+    
+    <!-- Home screen -->
+    <string name="welcome_title">欢迎使用Exam-Master</string>
+    <string name="welcome_subtitle">智能练习，高效学习</string>
+    <string name="random_practice">随机练习</string>
+    <string name="sequential_practice">顺序练习</string>
+    <string name="wrong_questions">错题练习</string>
+    <string name="timed_mode">限时模式</string>
+    <string name="mock_exam">模拟考试</string>
+    <string name="search_questions">搜索题目</string>
+    
+    <!-- Practice modes -->
+    <string name="practice_mode_title">练习模式</string>
+    <string name="random_mode_desc">从题库中随机选择题目练习</string>
+    <string name="sequential_mode_desc">按顺序练习所有题目</string>
+    <string name="wrong_mode_desc">专门练习做错的题目</string>
+    
+    <!-- Question display -->
+    <string name="question_number">第 %d 题</string>
+    <string name="question_progress">%1$d / %2$d</string>
+    <string name="submit_answer">提交答案</string>
+    <string name="next_question">下一题</string>
+    <string name="correct_answer">回答正确！</string>
+    <string name="incorrect_answer">回答错误</string>
+    <string name="correct_answer_is">正确答案是：%s</string>
+    <string name="add_to_favorites">添加收藏</string>
+    <string name="remove_from_favorites">取消收藏</string>
+    <string name="favorited">已收藏</string>
+    
+    <!-- Exam modes -->
+    <string name="exam_title">考试模式</string>
+    <string name="timed_exam_title">限时考试</string>
+    <string name="mock_exam_title">模拟考试</string>
+    <string name="question_count">题目数量</string>
+    <string name="time_duration">考试时长（分钟）</string>
+    <string name="start_exam">开始考试</string>
+    <string name="submit_exam">提交试卷</string>
+    <string name="time_remaining">剩余时间：%s</string>
+    <string name="time_up">时间到！</string>
+    <string name="exam_submitted">试卷已提交</string>
+    <string name="exam_score">考试成绩：%d%%</string>
+    <string name="correct_rate">正确率：%1$d/%2$d</string>
+    
+    <!-- Search and filter -->
+    <string name="search_title">搜索题目</string>
+    <string name="search_hint">输入关键词搜索</string>
+    <string name="filter_title">筛选题目</string>
+    <string name="filter_by_category">按类别筛选</string>
+    <string name="filter_by_difficulty">按难度筛选</string>
+    <string name="all_categories">所有类别</string>
+    <string name="all_difficulties">所有难度</string>
+    <string name="apply_filter">应用筛选</string>
+    <string name="clear_filter">清除筛选</string>
+    <string name="search_results">搜索结果</string>
+    <string name="no_results_found">未找到相关题目</string>
+    
+    <!-- Favorites -->
+    <string name="favorites_title">我的收藏</string>
+    <string name="favorite_tag_hint">标签（可选）</string>
+    <string name="update_tag">更新标签</string>
+    <string name="no_favorites">暂无收藏题目</string>
+    
+    <!-- Statistics -->
+    <string name="statistics_title">学习统计</string>
+    <string name="overall_stats">总体统计</string>
+    <string name="total_questions">题库总数</string>
+    <string name="answered_questions">已答题数</string>
+    <string name="overall_accuracy">总体正确率</string>
+    <string name="category_stats">分类统计</string>
+    <string name="difficulty_stats">难度统计</string>
+    <string name="recent_exams">最近考试</string>
+    <string name="accuracy_percentage">%.1f%%</string>
+    
+    <!-- History -->
+    <string name="history_title">答题历史</string>
+    <string name="clear_history">清除历史</string>
+    <string name="confirm_clear_history">确定要清除所有答题历史吗？</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="general_settings">常规设置</string>
+    <string name="appearance_settings">外观设置</string>
+    <string name="notification_settings">通知设置</string>
+    <string name="data_settings">数据设置</string>
+    <string name="theme_mode">主题模式</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="notifications_enabled">启用通知</string>
+    <string name="sound_enabled">启用声音</string>
+    <string name="vibration_enabled">启用震动</string>
+    <string name="auto_submit_timed">限时模式自动提交</string>
+    <string name="default_question_count">默认题目数量</string>
+    <string name="default_time_duration">默认考试时长</string>
+    <string name="import_questions">导入题库</string>
+    <string name="export_data">导出数据</string>
+    <string name="clear_all_data">清除所有数据</string>
+    <string name="confirm_clear_data">确定要清除所有数据吗？此操作不可恢复。</string>
+    
+    <!-- Common -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="save">保存</string>
+    <string name="loading">加载中...</string>
+    <string name="error">错误</string>
+    <string name="success">成功</string>
+    <string name="retry">重试</string>
+    
+    <!-- Error messages -->
+    <string name="error_load_questions">加载题目失败</string>
+    <string name="error_submit_answer">提交答案失败</string>
+    <string name="error_save_settings">保存设置失败</string>
+    <string name="error_import_questions">导入题库失败</string>
+    <string name="error_no_questions">题库中暂无题目</string>
+    <string name="error_no_wrong_questions">暂无错题</string>
+    
+    <!-- Success messages -->
+    <string name="success_import_questions">成功导入 %d 道题目</string>
+    <string name="success_clear_history">已清除答题历史</string>
+    <string name="success_clear_data">已清除所有数据</string>
+    <string name="success_add_favorite">已添加到收藏</string>
+    <string name="success_remove_favorite">已取消收藏</string>
+</resources>

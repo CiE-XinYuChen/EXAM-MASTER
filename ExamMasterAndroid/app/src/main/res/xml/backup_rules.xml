@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Exclude files that contain sensitive information -->
+    <exclude domain="sharedpref" path="exam_master_preferences.preferences_pb" />
+</full-backup-content>

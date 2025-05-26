@@ -1,2 +1,31 @@
 LICENSE
 database.db
+
+# Android build artifacts
+ExamMasterAndroid/app/build/
+ExamMasterAndroid/build/
+ExamMasterAndroid/.gradle/
+ExamMasterAndroid/local.properties
+ExamMasterAndroid/.idea/
+ExamMasterAndroid/*.iml
+ExamMasterAndroid/.DS_Store
+
+# APK files (keep signed releases)
+ExamMasterAndroid/*.apk
+ExamMasterAndroid/*.aab
+ExamMasterAndroid/*.idsig
+!ExamMasterAndroid/exammaster-release-signed.apk
+
+# Keystore files
+ExamMasterAndroid/*.keystore
+ExamMasterAndroid/*.jks
+
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# Gradle
+gradle-8.4/
+gradle-8.4-bin.zip
+.gradle/
