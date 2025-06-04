@@ -512,14 +512,56 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
                 accuracy = accuracy
             )
         }
-    }
-      data class Statistics(
+    }    data class Statistics(
         val totalQuestions: Int = 0,
         val answeredQuestions: Int = 0,
         val totalAnswers: Int = 0,
         val correctAnswers: Int = 0,
         val accuracy: Float = 0f
     )
+    
+    data class AdvancedStatistics(
+        val dailyStats: List<com.exammaster.data.database.dao.DailyStatistic> = emptyList(),
+        val categoryStats: List<com.exammaster.data.database.dao.CategoryStatistic> = emptyList(),
+        val difficultyStats: List<com.exammaster.data.database.dao.DifficultyStatistic> = emptyList(),
+        val weeklyCount: Int = 0,
+        val monthlyCount: Int = 0,
+        val mostAttempted: List<com.exammaster.data.database.dao.QuestionAttemptStatistic> = emptyList(),
+        val recentHistory: List<com.exammaster.data.database.dao.HistoryWithQuestion> = emptyList()
+    )
+    
+    private val _advancedStatistics = MutableStateFlow(AdvancedStatistics())
+    val advancedStatistics: StateFlow<AdvancedStatistics> = _advancedStatistics.asStateFlow()
+    
+    fun loadAdvancedStatistics() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val dailyStats = repository.getDailyStatistics()
+                val categoryStats = repository.getCategoryStatistics()
+                val difficultyStats = repository.getDifficultyStatistics()
+                val weeklyCount = repository.getWeeklyAnswerCount()
+                val monthlyCount = repository.getMonthlyAnswerCount()
+                val mostAttempted = repository.getMostAttemptedQuestions()
+                val recentHistory = repository.getRecentHistory(20)
+                
+                _advancedStatistics.value = AdvancedStatistics(
+                    dailyStats = dailyStats,
+                    categoryStats = categoryStats,
+                    difficultyStats = difficultyStats,
+                    weeklyCount = weeklyCount,
+                    monthlyCount = monthlyCount,
+                    mostAttempted = mostAttempted,
+                    recentHistory = recentHistory
+                )
+            } catch (e: Exception) {
+                // Handle error gracefully
+                _advancedStatistics.value = AdvancedStatistics()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
     
     data class ExamProgress(
         val currentIndex: Int = 0,

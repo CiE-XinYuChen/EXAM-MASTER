@@ -81,9 +81,13 @@ dependencies {
     
     // JSON Parsing
     implementation("com.google.code.gson:gson:2.10.1")
-    
-    // Icons
+      // Icons
     implementation("androidx.compose.material:material-icons-extended")
+    
+    // Charts
+    implementation("com.patrykandpatrick.vico:compose:1.13.1")
+    implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")
+    implementation("com.patrykandpatrick.vico:core:1.13.1")
     
     // Testing
     testImplementation("junit:junit:4.13.2")
