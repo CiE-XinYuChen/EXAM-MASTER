@@ -61,9 +61,11 @@ fun StatisticsScreen(
         TopAppBar(
             title = {
                 Text(
-                    text = "统计分析 🔄",
+                    text = "统计分析",
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
                 )
             },
             navigationIcon = {

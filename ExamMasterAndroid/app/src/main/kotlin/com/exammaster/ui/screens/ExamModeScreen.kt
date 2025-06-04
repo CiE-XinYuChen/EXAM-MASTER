@@ -28,6 +28,23 @@ fun ExamModeScreen(
     var showQuestionDialog by remember { mutableStateOf(false) }
     var selectedExamType by remember { mutableStateOf<ExamType?>(null) }
     
+    // 检查是否有未完成的考试
+    val currentExamSession by viewModel.currentExamSession.collectAsState()
+    val unfinishedExamSession by viewModel.unfinishedExamSession.collectAsState(initial = null)
+    var showResumeExamDialog by remember { mutableStateOf(false) }
+    
+    // 检查未完成的考试
+    LaunchedEffect(Unit) {
+        viewModel.checkUnfinishedExam()
+    }
+    
+    // 如果有未完成的考试，显示对话框
+    LaunchedEffect(unfinishedExamSession) {
+        if (unfinishedExamSession != null) {
+            showResumeExamDialog = true
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,6 +68,20 @@ fun ExamModeScreen(
             )
             
             Spacer(modifier = Modifier.width(48.dp))
+        }
+        
+        // 如果有未完成的考试，显示继续考试按钮
+        if (unfinishedExamSession != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = { showResumeExamDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Restore, contentDescription = "继续考试")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("继续未完成的考试")
+            }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -165,6 +196,71 @@ fun ExamModeScreen(
                 navController.navigate("exam_question")
             }
         )
+    }
+    
+    // 继续考试对话框
+    if (showResumeExamDialog) {
+        unfinishedExamSession?.let { session ->
+            val questionIds = try {
+                val type = object : com.google.gson.reflect.TypeToken<List<String>>() {}.type
+                com.google.gson.Gson().fromJson<List<String>>(session.questionIds, type) ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            
+            val totalQuestions = questionIds.size
+            val startTime = session.startTime.toLongOrNull() ?: 0L
+            val currentTime = System.currentTimeMillis()
+            val elapsedSeconds = (currentTime - startTime) / 1000
+            val remainingSeconds = session.duration - elapsedSeconds
+            
+            AlertDialog(
+                onDismissRequest = { showResumeExamDialog = false },
+                title = { Text("继续考试") },
+                text = {
+                    Column {
+                        Text("您有一个未完成的考试")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "考试类型: ${session.mode}",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "题目数量: $totalQuestions",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "剩余时间: ${formatDuration(remainingSeconds.toInt())}",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showResumeExamDialog = false
+                            viewModel.resumeExam(session.id)
+                            navController.navigate("exam_question")
+                        }
+                    ) {
+                        Text("继续考试")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { 
+                            showResumeExamDialog = false
+                            viewModel.abandonExam(session.id)
+                        }
+                    ) {
+                        Text("放弃考试")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -305,6 +401,63 @@ private fun QuestionCountDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ResumeExamDialog(
+    examSession: com.exammaster.data.database.entities.ExamSession,
+    onDismiss: () -> Unit,
+    onResume: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("继续未完成的考试") },
+        text = {
+            Column {
+                Text("您有一个未完成的考试，是否继续？")
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "考试模式: ${examSession.mode}",
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "开始时间: ${examSession.startTime}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 计算剩余时间
+                val startTimeMs = examSession.startTime.toLongOrNull() ?: System.currentTimeMillis()
+                val durationMs = examSession.duration * 1000L
+                val endTimeMs = startTimeMs + durationMs
+                val remainingTime = endTimeMs - System.currentTimeMillis()
+                val minutes = (remainingTime / 1000) / 60
+                val seconds = (remainingTime / 1000) % 60
+                
+                Text(
+                    text = "剩余时间: ${String.format("%02d:%02d", minutes, seconds)}",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onResume
+            ) {
+                Text("继续考试")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
 @Composable
 private fun RecentExamSessions(
     navController: NavController,
@@ -384,8 +537,34 @@ private fun ExamSessionCard(
                     text = examSession.mode,
                     fontWeight = FontWeight.Medium
                 )
+                
+                // 显示考试日期时间
                 Text(
-                    text = examSession.startTime,
+                    text = "时间: ${formatStartTime(examSession.startTime)}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // 显示考试时长
+                Text(
+                    text = "时长: ${formatDuration(examSession.duration)}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // 显示题目数量
+                val questionCount = remember(examSession.questionIds) {
+                    try {
+                        val type = object : com.google.gson.reflect.TypeToken<List<String>>() {}.type
+                        val questionIds = com.google.gson.Gson().fromJson<List<String>>(examSession.questionIds, type) ?: emptyList()
+                        questionIds.size
+                    } catch (e: Exception) {
+                        -1
+                    }
+                }
+                
+                Text(
+                    text = "题目: ${if (questionCount >= 0) "${questionCount}题" else "未知"}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -404,4 +583,28 @@ private fun ExamSessionCard(
 
 enum class ExamType {
     TIMED, SIMULATION
+}
+
+@Composable
+private fun formatDuration(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val remainingSeconds = seconds % 60
+    
+    return if (hours > 0) {
+        String.format("%d小时%02d分%02d秒", hours, minutes, remainingSeconds)
+    } else {
+        String.format("%02d分%02d秒", minutes, remainingSeconds)
+    }
+}
+
+private fun formatStartTime(timestamp: String): String {
+    val time = timestamp.toLongOrNull() ?: return "未知时间"
+    return try {
+        val date = java.util.Date(time)
+        val format = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+        format.format(date)
+    } catch (e: Exception) {
+        "未知时间"
+    }
 }

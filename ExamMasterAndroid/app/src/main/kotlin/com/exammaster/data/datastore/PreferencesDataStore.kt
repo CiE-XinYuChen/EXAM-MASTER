@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.exammaster.data.models.Settings
+import com.exammaster.data.models.ThemeColor
 import com.exammaster.data.models.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -20,6 +21,7 @@ class PreferencesDataStore @Inject constructor(
 ) {
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val THEME_COLOR = stringPreferencesKey("theme_color")
         private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         private val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         private val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
@@ -42,6 +44,7 @@ class PreferencesDataStore @Inject constructor(
                 themeMode = ThemeMode.valueOf(
                     preferences[THEME_MODE] ?: ThemeMode.SYSTEM.name
                 ),
+                themeColor = preferences[THEME_COLOR]?.let { ThemeColor.valueOf(it) } ?: ThemeColor.DEFAULT,
                 notificationsEnabled = preferences[NOTIFICATIONS_ENABLED] ?: true,
                 soundEnabled = preferences[SOUND_ENABLED] ?: true,
                 vibrationEnabled = preferences[VIBRATION_ENABLED] ?: true,
@@ -58,6 +61,12 @@ class PreferencesDataStore @Inject constructor(
     suspend fun updateThemeMode(themeMode: ThemeMode) {
         context.dataStore.edit { preferences ->
             preferences[THEME_MODE] = themeMode.name
+        }
+    }
+    
+    suspend fun updateThemeColor(themeColor: ThemeColor) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_COLOR] = themeColor.name
         }
     }
 

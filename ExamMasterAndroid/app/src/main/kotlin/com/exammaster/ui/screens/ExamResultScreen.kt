@@ -63,118 +63,236 @@ fun ExamResultScreen(
                 }
                 
                 Text(
-                    text = "考试结果",
+                    text = if (result.completed) "考试结果" else "未完成的考试",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 
-                IconButton(
-                    onClick = { viewModel.shareExamResult(result) }
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = "分享")
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Score Card
-            ScoreCard(result = result)
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Statistics Cards
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "用时",
-                    value = formatDuration(result.duration),
-                    icon = Icons.Default.Timer
-                )
-                
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "正确率",
-                    value = "${(result.accuracy * 100).roundToInt()}%",
-                    icon = Icons.Default.CheckCircle
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "正确题数",
-                    value = "${result.correctAnswers}",
-                    icon = Icons.Default.Done
-                )
-                
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    title = "错误题数",
-                    value = "${result.totalQuestions - result.correctAnswers}",
-                    icon = Icons.Default.Close
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Action Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { 
-                        viewModel.reviewWrongAnswers(result.examSessionId)
-                        navController.navigate("question_practice")
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = result.correctAnswers < result.totalQuestions
-                ) {
-                    Icon(Icons.Default.ErrorOutline, contentDescription = "错题回顾")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("错题回顾")
-                }
-                
-                Button(
-                    onClick = { 
-                        navController.navigate("exam_mode") {
-                            popUpTo("exam_mode") { inclusive = true }
+                if (result.completed) {
+                    IconButton(
+                        onClick = { viewModel.shareExamResult(result) }
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "分享")
+                    }
+                } else {
+                    // 显示继续考试按钮
+                    IconButton(
+                        onClick = { 
+                            viewModel.resumeExam(result.examSessionId)
+                            navController.navigate("exam_question")
                         }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "再次考试")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("再次考试")
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "继续考试")
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Detailed Results
-            Text(
-                text = "答题详情",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            DetailedResultsList(
-                answers = result.answers,
-                onQuestionClick = { questionId ->
-                    viewModel.loadQuestionById(questionId)
-                    navController.navigate("question")
+            if (!result.completed) {
+                // 显示未完成考试的信息卡片
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "未完成考试",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "考试尚未完成",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "您可以选择继续完成这次考试或放弃考试",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { 
+                                    viewModel.abandonExam(result.examSessionId) 
+                                    navController.popBackStack()
+                                }
+                            ) {
+                                Text("放弃考试")
+                            }
+                            
+                            Button(
+                                onClick = { 
+                                    viewModel.resumeExam(result.examSessionId)
+                                    navController.navigate("exam_question")
+                                }
+                            ) {
+                                Text("继续考试")
+                            }
+                        }
+                    }
                 }
-            )
+            } else {
+                // 已完成考试才显示分数和统计信息
+                // Score Card
+                ScoreCard(result = result)
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Statistics Cards
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "用时",
+                        value = formatDuration(result.duration),
+                        icon = Icons.Default.Timer
+                    )
+                    
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "正确率",
+                        value = "${(result.accuracy * 100).roundToInt()}%",
+                        icon = Icons.Default.CheckCircle
+                    )
+                }
+            }
+            
+            if (result.completed) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "正确题数",
+                        value = "${result.correctAnswers}",
+                        icon = Icons.Default.Done
+                    )
+                    
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        title = "错误题数",
+                        value = "${result.totalQuestions - result.correctAnswers}",
+                        icon = Icons.Default.Close
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { 
+                            viewModel.reviewWrongAnswers(result.examSessionId)
+                            navController.navigate("question_practice")
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = result.correctAnswers < result.totalQuestions
+                    ) {
+                        Icon(Icons.Default.ErrorOutline, contentDescription = "错题回顾")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("错题回顾")
+                    }
+                    
+                    Button(
+                        onClick = { 
+                            navController.navigate("exam_mode") {
+                                popUpTo("exam_mode") { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = "再次考试")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("再次考试")
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Detailed Results
+                Text(
+                    text = "答题详情",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                DetailedResultsList(
+                    answers = result.answers,
+                    onQuestionClick = { questionId ->
+                        viewModel.loadQuestionById(questionId)
+                        navController.navigate("question")
+                    }
+                )
+            } else {
+                // 未完成考试不显示详情
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // 考试基本信息
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "考试信息",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Text(
+                            text = "开始时间: ${formatStartTime(result.startTime)}",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Text(
+                            text = "题目总数: ${result.totalQuestions}道",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Text(
+                            text = "已答题数: ${result.answers.size}道",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
     } ?: run {
         // Error state
@@ -408,5 +526,16 @@ private fun formatDuration(seconds: Int): String {
     return when {
         hours > 0 -> String.format("%d:%02d:%02d", hours, minutes, secs)
         else -> String.format("%02d:%02d", minutes, secs)
+    }
+}
+
+private fun formatStartTime(timestamp: String): String {
+    val time = timestamp.toLongOrNull() ?: return "未知时间"
+    return try {
+        val date = java.util.Date(time)
+        val format = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+        format.format(date)
+    } catch (e: Exception) {
+        "未知时间"
     }
 }

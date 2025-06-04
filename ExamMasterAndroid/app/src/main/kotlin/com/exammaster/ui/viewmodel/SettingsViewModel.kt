@@ -3,6 +3,7 @@ package com.exammaster.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.exammaster.data.models.Settings
+import com.exammaster.data.models.ThemeColor
 import com.exammaster.data.models.ThemeMode
 import com.exammaster.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,6 +43,21 @@ class SettingsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = "更新主题失败: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    fun updateThemeColor(themeColor: ThemeColor) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                settingsRepository.updateThemeColor(themeColor)
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "更新主题颜色失败: ${e.message}"
                 )
             }
         }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -12,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.exammaster.data.models.ThemeMode
+import com.exammaster.data.models.ThemeColor
 import com.exammaster.ui.settings.components.*
 import com.exammaster.ui.viewmodel.SettingsViewModel
 
@@ -68,7 +70,7 @@ fun SettingsScreen(
                     ThemeMode.DARK -> "深色"
                     ThemeMode.SYSTEM -> "跟随系统"
                 },
-                icon = Icons.Default.Palette,
+                icon = Icons.Outlined.DarkMode,
                 selectedValue = settings.themeMode.name,
                 options = listOf(
                     ThemeMode.LIGHT.name to "浅色",
@@ -77,6 +79,31 @@ fun SettingsScreen(
                 ),
                 onSelectionChange = { mode ->
                     viewModel.updateThemeMode(ThemeMode.valueOf(mode))
+                }
+            )
+            
+            SelectionSettingItem(
+                title = "主题颜色",
+                subtitle = when (settings.themeColor) {
+                    ThemeColor.DEFAULT -> "默认紫色"
+                    ThemeColor.BLUE -> "蓝色"
+                    ThemeColor.GREEN -> "绿色"
+                    ThemeColor.RED -> "红色"
+                    ThemeColor.ORANGE -> "橙色"
+                    ThemeColor.TEAL -> "青色"
+                },
+                icon = Icons.Default.Palette,
+                selectedValue = settings.themeColor.name,
+                options = listOf(
+                    ThemeColor.DEFAULT.name to "默认紫色",
+                    ThemeColor.BLUE.name to "蓝色",
+                    ThemeColor.GREEN.name to "绿色",
+                    ThemeColor.RED.name to "红色",
+                    ThemeColor.ORANGE.name to "橙色",
+                    ThemeColor.TEAL.name to "青色"
+                ),
+                onSelectionChange = { color ->
+                    viewModel.updateThemeColor(ThemeColor.valueOf(color))
                 }
             )
 

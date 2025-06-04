@@ -40,6 +40,9 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
     private val _currentExamSession = MutableStateFlow<ExamSession?>(null)
     val currentExamSession: StateFlow<ExamSession?> = _currentExamSession.asStateFlow()
     
+    private val _unfinishedExamSession = MutableStateFlow<ExamSession?>(null)
+    val unfinishedExamSession: StateFlow<ExamSession?> = _unfinishedExamSession.asStateFlow()
+    
     private val _examProgress = MutableStateFlow(ExamProgress())
     val examProgress: StateFlow<ExamProgress> = _examProgress.asStateFlow()
     
@@ -132,8 +135,8 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
       fun selectAnswer(option: String) {
         val question = _currentQuestion.value
         
-        // 判断题只能选一个选项
-        if (question?.qtype == "判断题") {
+        // 判断题和单选题只能选一个选项
+        if (question?.qtype == "判断题" || question?.qtype == "单选题") {
             _selectedAnswers.value = setOf(option)
             return
         }
@@ -444,10 +447,9 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
         saveCurrentExamAnswer()
         // The exam session remains in database and can be resumed later
     }
-    
-    fun getExamResult(examSessionId: Int): Flow<ExamResult?> = flow {
+      fun getExamResult(examSessionId: Int): Flow<ExamResult?> = flow {
         val session = repository.getExamSessionById(examSessionId)
-        if (session != null && session.completed) {
+        if (session != null) {
             val questionIds: List<String> = try {
                 val type = object : TypeToken<List<String>>() {}.type
                 Gson().fromJson(session.questionIds, type) ?: emptyList()
@@ -473,7 +475,11 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
             }
             
             val startTime = session.startTime.toLongOrNull() ?: 0L
-            val endTime = startTime + (session.duration * 1000L) // Approximate end time
+            val endTime = if (session.completed) {
+                startTime + (session.duration * 1000L) // 已完成考试，使用近似结束时间
+            } else {
+                System.currentTimeMillis() // 未完成考试，使用当前时间
+            }
             val actualDuration = ((endTime - startTime) / 1000L).toInt()
             
             emit(
@@ -484,7 +490,9 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
                     correctAnswers = answers.count { it.isCorrect },
                     duration = actualDuration,
                     accuracy = session.score ?: 0f,
-                    answers = answers
+                    answers = answers,
+                    completed = session.completed,
+                    startTime = session.startTime
                 )
             )
         } else {
@@ -588,15 +596,16 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
         val totalQuestions: Int = 0,
         val answeredQuestions: Int = 0
     )
-    
-    data class ExamResult(
+      data class ExamResult(
         val examSessionId: Int,
         val score: Float,
         val totalQuestions: Int,
         val correctAnswers: Int,
         val duration: Int, // in seconds
         val accuracy: Float,
-        val answers: List<ExamAnswer>
+        val answers: List<ExamAnswer>,
+        val completed: Boolean = true,
+        val startTime: String = ""
     )
     
     data class ExamAnswer(
@@ -608,5 +617,89 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
     
     enum class QuizMode {
         RANDOM, SEQUENTIAL, TIMED, EXAM, WRONG_ONLY
+    }
+    
+    fun checkUnfinishedExam() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val unfinished = repository.getCurrentExamSession()
+                _unfinishedExamSession.value = unfinished
+            } catch (e: Exception) {
+                // 处理可能的异常
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun resumeExam(examId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            
+            try {
+                val session = repository.getExamSessionById(examId)
+                if (session != null && !session.completed) {
+                    _currentExamSession.value = session
+                    
+                    // 加载试题
+                    val questionIds: List<String> = try {
+                        val type = object : TypeToken<List<String>>() {}.type
+                        Gson().fromJson(session.questionIds, type) ?: emptyList()
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                    
+                    val questions = questionIds.mapNotNull { repository.getQuestionById(it) }
+                    _examQuestions.value = questions
+                      // 加载已回答的答案
+                    val answers = mutableMapOf<String, String>()
+                    var answeredCount = 0
+                    
+                    questions.forEach { question ->
+                        val history = repository.getHistoryByQuestionId(question.id).lastOrNull()
+                        if (history != null && history.userAnswer.isNotEmpty()) {
+                            answers[question.id] = history.userAnswer
+                            answeredCount++
+                        }
+                    }
+                    
+                    _examAnswers.value = answers
+                    
+                    // 设置考试进度
+                    _examProgress.value = ExamProgress(
+                        currentIndex = 0,
+                        totalQuestions = questions.size,
+                        answeredQuestions = answeredCount
+                    )
+                    
+                    // 加载第一道题
+                    _currentQuestion.value = questions.firstOrNull()
+                    _selectedAnswers.value = emptySet()
+                    _showResult.value = false
+                    _currentMode.value = if (session.mode == "TIMED") QuizMode.TIMED else QuizMode.EXAM
+                }
+            } catch (e: Exception) {
+                // 处理可能的异常
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun abandonExam(examId: Int) {
+        viewModelScope.launch {
+            try {
+                val session = repository.getExamSessionById(examId)
+                if (session != null) {
+                    // 标记考试已完成但分数为0
+                    val updatedSession = session.copy(completed = true, score = 0f)
+                    repository.updateExamSession(updatedSession)
+                    _unfinishedExamSession.value = null
+                }
+            } catch (e: Exception) {
+                // 处理可能的异常
+            }
+        }
     }
 }

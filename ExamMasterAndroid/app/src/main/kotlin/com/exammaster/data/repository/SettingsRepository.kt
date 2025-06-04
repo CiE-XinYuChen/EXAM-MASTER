@@ -2,6 +2,7 @@ package com.exammaster.data.repository
 
 import com.exammaster.data.datastore.PreferencesDataStore
 import com.exammaster.data.models.Settings
+import com.exammaster.data.models.ThemeColor
 import com.exammaster.data.models.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -21,6 +22,13 @@ class SettingsRepository @Inject constructor(
      */
     suspend fun updateThemeMode(themeMode: ThemeMode) {
         preferencesDataStore.updateThemeMode(themeMode)
+    }
+    
+    /**
+     * 更新主题颜色
+     */
+    suspend fun updateThemeColor(themeColor: ThemeColor) {
+        preferencesDataStore.updateThemeColor(themeColor)
     }
 
     /**
