@@ -58,27 +58,27 @@ fun StatisticsScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Top Bar
-        TopAppBar(
-            title = {
-                Text(
-                    text = "统计分析",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-            },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                }
-            },
-            actions = {
-                IconButton(onClick = { viewModel.loadAdvancedStatistics() }) {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "返回")
             }
-        )
+            
+            Text(
+                text = "统计分析",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            IconButton(onClick = { viewModel.loadAdvancedStatistics() }) {
+                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            }
+        }
         
         // Tab Row
         TabRow(

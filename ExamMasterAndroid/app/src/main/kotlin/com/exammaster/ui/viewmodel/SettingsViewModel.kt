@@ -1,7 +1,10 @@
 package com.exammaster.ui.viewmodel
 
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.exammaster.ExamMasterApplication
+import com.exammaster.data.models.AppIcon
 import com.exammaster.data.models.Settings
 import com.exammaster.data.models.ThemeColor
 import com.exammaster.data.models.ThemeMode
@@ -60,6 +63,48 @@ class SettingsViewModel @Inject constructor(
                     errorMessage = "更新主题颜色失败: ${e.message}"
                 )
             }
+        }
+    }
+    
+    fun updateAppIcon(appIcon: AppIcon) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                // 首先更新储存的图标设置
+                settingsRepository.updateAppIcon(appIcon)
+                // 然后尝试更改图标
+                val success = changeAppIcon(appIcon)
+                
+                // 显示成功提示，提醒用户可能需要重启应用
+                val app = ExamMasterApplication.getInstance()
+                val toastMessage = if (success) {
+                    "图标已更改，重启应用后完全生效"
+                } else {
+                    "图标更改失败，请重启应用后重试"
+                }
+                
+                Toast.makeText(app, toastMessage, Toast.LENGTH_LONG).show()
+                
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = if (success) null else "图标更改失败，重启应用后可能生效"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "更新应用图标失败: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    private fun changeAppIcon(appIcon: AppIcon): Boolean {
+        // 调用应用程序类中的图标更换功能
+        return try {
+            ExamMasterApplication.getInstance().changeAppIcon(appIcon)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 

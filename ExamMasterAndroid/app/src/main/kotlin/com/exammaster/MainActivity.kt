@@ -1,9 +1,17 @@
 package com.exammaster
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.lifecycle.lifecycleScope
+import com.exammaster.data.models.AppIcon
+import com.exammaster.data.datastore.dataStore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,8 +40,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
+class MainActivity : ComponentActivity() {    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         // Initialize database and repository
@@ -44,7 +51,11 @@ class MainActivity : ComponentActivity() {
             database.favoriteDao(),
             database.examSessionDao()
         )
-          setContent {
+          
+        // 检查并初始化图标 - 这应该在setContent之前进行
+        initializeAppIcon()
+          
+        setContent {
             ExamMasterTheme {
                 val viewModelFactory = ViewModelFactory(repository)
                 val viewModel: ExamViewModel = viewModel(factory = viewModelFactory)
@@ -69,6 +80,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/**
+ * 初始化应用图标
+ * 从持久化存储中读取用户选择的图标并应用
+ */
+private fun MainActivity.initializeAppIcon() {
+    this.lifecycleScope.launch {
+        try {
+            // 从统一定义的datastore获取当前应用图标设置
+            val preferences = this@initializeAppIcon.dataStore.data.first()
+            val appIconStr = preferences[stringPreferencesKey("app_icon")]
+            
+            // 如果有存储的图标设置，则应用它
+            if (!appIconStr.isNullOrEmpty()) {
+                val appIcon = AppIcon.valueOf(appIconStr)
+                if (appIcon != AppIcon.DEFAULT) {
+                    // 确保应用程序已正确初始化
+                    val app = applicationContext as ExamMasterApplication
+                    app.changeAppIcon(appIcon)
+                }
+            }
+        } catch (e: Exception) {
+            // 如果出现错误，默认使用默认图标
+            e.printStackTrace()
+        }
+    }
+}
+
+// 删除这里的dataStore定义，改用统一的DataStoreInstance.kt定义
+// 避免多个DataStore实例的问题
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

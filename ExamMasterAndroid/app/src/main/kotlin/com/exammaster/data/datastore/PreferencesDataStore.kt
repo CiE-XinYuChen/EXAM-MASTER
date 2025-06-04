@@ -3,7 +3,7 @@ package com.exammaster.data.datastore
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
-import androidx.datastore.preferences.preferencesDataStore
+import com.exammaster.data.models.AppIcon
 import com.exammaster.data.models.Settings
 import com.exammaster.data.models.ThemeColor
 import com.exammaster.data.models.ThemeMode
@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "exam_master_preferences")
+// 使用统一的DataStore定义
+import com.exammaster.data.datastore.dataStore
 
 @Singleton
 class PreferencesDataStore @Inject constructor(
@@ -22,6 +23,7 @@ class PreferencesDataStore @Inject constructor(
     companion object {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val THEME_COLOR = stringPreferencesKey("theme_color")
+        private val APP_ICON = stringPreferencesKey("app_icon")
         private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         private val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         private val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
@@ -45,6 +47,7 @@ class PreferencesDataStore @Inject constructor(
                     preferences[THEME_MODE] ?: ThemeMode.SYSTEM.name
                 ),
                 themeColor = preferences[THEME_COLOR]?.let { ThemeColor.valueOf(it) } ?: ThemeColor.DEFAULT,
+                appIcon = preferences[APP_ICON]?.let { AppIcon.valueOf(it) } ?: AppIcon.DEFAULT,
                 notificationsEnabled = preferences[NOTIFICATIONS_ENABLED] ?: true,
                 soundEnabled = preferences[SOUND_ENABLED] ?: true,
                 vibrationEnabled = preferences[VIBRATION_ENABLED] ?: true,
@@ -67,6 +70,12 @@ class PreferencesDataStore @Inject constructor(
     suspend fun updateThemeColor(themeColor: ThemeColor) {
         context.dataStore.edit { preferences ->
             preferences[THEME_COLOR] = themeColor.name
+        }
+    }
+    
+    suspend fun updateAppIcon(appIcon: AppIcon) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_ICON] = appIcon.name
         }
     }
 

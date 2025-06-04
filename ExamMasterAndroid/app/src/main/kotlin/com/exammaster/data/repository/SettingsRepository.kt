@@ -1,6 +1,7 @@
 package com.exammaster.data.repository
 
 import com.exammaster.data.datastore.PreferencesDataStore
+import com.exammaster.data.models.AppIcon
 import com.exammaster.data.models.Settings
 import com.exammaster.data.models.ThemeColor
 import com.exammaster.data.models.ThemeMode
@@ -29,6 +30,13 @@ class SettingsRepository @Inject constructor(
      */
     suspend fun updateThemeColor(themeColor: ThemeColor) {
         preferencesDataStore.updateThemeColor(themeColor)
+    }
+    
+    /**
+     * 更新应用图标
+     */
+    suspend fun updateAppIcon(appIcon: AppIcon) {
+        preferencesDataStore.updateAppIcon(appIcon)
     }
 
     /**

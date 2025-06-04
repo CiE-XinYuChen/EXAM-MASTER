@@ -22,11 +22,24 @@ enum class ThemeColor {
 }
 
 /**
+ * 应用图标枚举
+ */
+enum class AppIcon {
+    DEFAULT,    // 默认紫色图标
+    BLUE,       // 蓝色图标
+    GREEN,      // 绿色图标
+    RED,        // 红色图标
+    ORANGE,     // 橙色图标
+    TEAL        // 青色图标
+}
+
+/**
  * 设置数据模型
  */
 data class Settings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val themeColor: ThemeColor = ThemeColor.DEFAULT,
+    val appIcon: AppIcon = AppIcon.DEFAULT,
     val notificationsEnabled: Boolean = true,
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,

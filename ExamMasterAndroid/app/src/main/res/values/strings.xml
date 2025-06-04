@@ -89,14 +89,16 @@
     
     <!-- Settings -->
     <string name="settings_title">设置</string>
-    <string name="general_settings">常规设置</string>
-    <string name="appearance_settings">外观设置</string>
+    <string name="general_settings">常规设置</string>    <string name="appearance_settings">外观设置</string>
     <string name="notification_settings">通知设置</string>
     <string name="data_settings">数据设置</string>
     <string name="theme_mode">主题模式</string>
     <string name="theme_light">浅色</string>
     <string name="theme_dark">深色</string>
     <string name="theme_system">跟随系统</string>
+    <string name="app_icon">应用图标</string>
+    <string name="icon_changed">应用图标已更改</string>
+    <string name="icon_change_failed">应用图标更改失败</string>
     <string name="notifications_enabled">启用通知</string>
     <string name="sound_enabled">启用声音</string>
     <string name="vibration_enabled">启用震动</string>

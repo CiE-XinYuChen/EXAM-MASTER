@@ -176,6 +176,7 @@ fun NumberInputSettingItem(
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var textValue by remember { mutableStateOf(value.toString()) }
+    var isError by remember { mutableStateOf(false) }
 
     SettingItem(
         title = title,
@@ -183,6 +184,7 @@ fun NumberInputSettingItem(
         icon = icon,
         onClick = { 
             textValue = value.toString()
+            isError = false
             showDialog = true 
         }
     )
@@ -194,10 +196,16 @@ fun NumberInputSettingItem(
             text = {
                 OutlinedTextField(
                     value = textValue,
-                    onValueChange = { textValue = it },
+                    onValueChange = { 
+                        textValue = it
+                        isError = it.toIntOrNull()?.let { num -> num !in range } ?: true
+                    },
                     label = { Text("请输入数值") },
                     singleLine = true,
-                    isError = textValue.toIntOrNull()?.let { it !in range } ?: true
+                    isError = isError,
+                    supportingText = if (isError) {
+                        { Text("请输入${range.first}到${range.last}之间的数值") }
+                    } else null
                 )
             },
             confirmButton = {
@@ -209,7 +217,8 @@ fun NumberInputSettingItem(
                                 showDialog = false
                             }
                         }
-                    }
+                    },
+                    enabled = !isError
                 ) {
                     Text("确定")
                 }

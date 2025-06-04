@@ -1,5 +1,6 @@
 package com.exammaster.ui.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,9 +10,11 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.exammaster.data.models.AppIcon
 import com.exammaster.data.models.ThemeMode
 import com.exammaster.data.models.ThemeColor
 import com.exammaster.ui.settings.components.*
@@ -28,9 +31,10 @@ fun SettingsScreen(
     var showClearDataDialog by remember { mutableStateOf(false) }
 
     // 显示错误信息
+    val context = LocalContext.current
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
-            // 这里可以显示 SnackBar 或其他错误提示
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
             viewModel.clearError()
         }
     }
@@ -104,6 +108,32 @@ fun SettingsScreen(
                 ),
                 onSelectionChange = { color ->
                     viewModel.updateThemeColor(ThemeColor.valueOf(color))
+                }
+            )
+            
+            SelectionSettingItem(
+                title = "应用图标",
+                subtitle = when (settings.appIcon) {
+                    AppIcon.DEFAULT -> "默认紫色"
+                    AppIcon.BLUE -> "蓝色"
+                    AppIcon.GREEN -> "绿色"
+                    AppIcon.RED -> "红色"
+                    AppIcon.ORANGE -> "橙色"
+                    AppIcon.TEAL -> "青色"
+                },
+                icon = Icons.Default.AppShortcut,
+                selectedValue = settings.appIcon.name,
+                options = listOf(
+                    AppIcon.DEFAULT.name to "默认紫色",
+                    AppIcon.BLUE.name to "蓝色",
+                    AppIcon.GREEN.name to "绿色",
+                    AppIcon.RED.name to "红色",
+                    AppIcon.ORANGE.name to "橙色",
+                    AppIcon.TEAL.name to "青色"
+                ),
+                onSelectionChange = { icon ->
+                    // 只更新应用图标，Toast会在ViewModel中显示
+                    viewModel.updateAppIcon(AppIcon.valueOf(icon))
                 }
             )
 
