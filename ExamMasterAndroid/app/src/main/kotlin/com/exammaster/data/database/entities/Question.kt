@@ -28,9 +28,12 @@ data class Question(
                 emptyMap()
             }
         }
-    }
-
-    fun getFormattedOptions(): List<Pair<String, String>> {
+    }    fun getFormattedOptions(): List<Pair<String, String>> {
+        // 如果是判断题，生成固定的选项
+        if (qtype == "判断题") {
+            return listOf("A" to "正确", "B" to "错误")
+        }
+        
         return getOptionsMap().entries.sortedBy { it.key }.map { it.key to it.value }
     }
 }

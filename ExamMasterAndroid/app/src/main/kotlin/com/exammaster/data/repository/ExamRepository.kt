@@ -137,8 +137,7 @@ class ExamRepository(
             } else {
                 allQuestions.first() // If not found, start from first
             }
-        }
-    }
+        }    }
     
     suspend fun getRandomQuestions(count: Int): List<Question> {
         val allQuestions = getQuestionsInSequence()

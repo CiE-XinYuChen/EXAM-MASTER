@@ -118,8 +118,7 @@ fun ExamMasterApp(viewModel: ExamViewModel) {
                 }
             }
         }
-    ) { innerPadding ->
-        NavHost(
+    ) { innerPadding ->        NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
@@ -129,6 +128,22 @@ fun ExamMasterApp(viewModel: ExamViewModel) {
             }
             composable(Screen.Question.route) {
                 QuestionScreen(navController, viewModel)
+            }
+            composable("practice") {
+                PracticeScreen(navController, viewModel)
+            }
+            composable("exam_mode") {
+                ExamModeScreen(navController, viewModel)
+            }
+            composable("question_practice") {
+                QuestionPracticeScreen(navController, viewModel)
+            }
+            composable("exam_question") {
+                ExamQuestionScreen(navController, viewModel)
+            }
+            composable("exam_result/{examSessionId}") { backStackEntry ->
+                val examSessionId = backStackEntry.arguments?.getString("examSessionId") ?: "0"
+                ExamResultScreen(navController, viewModel, examSessionId)
             }
             composable(Screen.History.route) {
                 HistoryScreen(navController, viewModel)
