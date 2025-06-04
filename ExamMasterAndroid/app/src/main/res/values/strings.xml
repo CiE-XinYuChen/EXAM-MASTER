@@ -104,9 +104,16 @@
     <string name="default_question_count">默认题目数量</string>
     <string name="default_time_duration">默认考试时长</string>
     <string name="import_questions">导入题库</string>
-    <string name="export_data">导出数据</string>
-    <string name="clear_all_data">清除所有数据</string>
+    <string name="export_data">导出数据</string>    <string name="clear_all_data">清除所有数据</string>
     <string name="confirm_clear_data">确定要清除所有数据吗？此操作不可恢复。</string>
+    <string name="show_correct_answer">显示正确答案</string>
+    <string name="enable_progress_tracking">启用进度跟踪</string>
+    <string name="auto_save_progress">自动保存进度</string>
+    <string name="enable_statistics">启用统计功能</string>
+    <string name="reminder_interval">提醒间隔</string>
+    <string name="reminder_interval_hours">%d 小时</string>
+    <string name="data_management">数据管理</string>
+    <string name="personalization">个性化配置</string>
     
     <!-- Common -->
     <string name="ok">确定</string>

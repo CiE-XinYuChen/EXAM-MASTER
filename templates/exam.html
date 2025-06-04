@@ -25,21 +25,34 @@
                 {% else %}
                 <span class="question-difficulty difficulty-hard">困难</span>
                 {% endif %}
-            </div>
-            <div class="question-stem">{{ question.stem }}</div>
+            </div>            <div class="question-stem">{{ question.stem }}</div>
             <div class="options-list">
-                {% for opt_key, opt_val in question.options.items() %}
-                <div class="option-item">
-                    <label class="option-label">
-                        {% if question.type == '单选题' %}
+                {% if question.type == '判断题' %}
+                    <!-- 判断题特殊处理 -->
+                    {% set judgment_options = [('A', '正确'), ('B', '错误')] %}
+                    {% for opt_key, opt_val in judgment_options %}
+                    <div class="option-item">
+                        <label class="option-label">
                             <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox" required>
-                        {% else %}
-                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox">
-                        {% endif %}
-                        <span class="option-text">{{ opt_key }}. {{ opt_val }}</span>
-                    </label>
-                </div>
-                {% endfor %}
+                            <span class="option-text">{{ opt_key }}. {{ opt_val }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- 其他题型的正常处理 -->
+                    {% for opt_key, opt_val in question.options.items() %}
+                    <div class="option-item">
+                        <label class="option-label">
+                            {% if question.type == '单选题' %}
+                                <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox" required>
+                            {% else %}
+                                <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox">
+                            {% endif %}
+                            <span class="option-text">{{ opt_key }}. {{ opt_val }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                {% endif %}
             </div>
         </div>
         {% endfor %}

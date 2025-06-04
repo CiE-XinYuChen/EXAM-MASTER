@@ -129,8 +129,16 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
             _isLoading.value = false
         }
     }
-    
-    fun selectAnswer(option: String) {
+      fun selectAnswer(option: String) {
+        val question = _currentQuestion.value
+        
+        // 判断题只能选一个选项
+        if (question?.qtype == "判断题") {
+            _selectedAnswers.value = setOf(option)
+            return
+        }
+        
+        // 多选题可以多选
         val currentAnswers = _selectedAnswers.value.toMutableSet()
         if (currentAnswers.contains(option)) {
             currentAnswers.remove(option)
@@ -139,13 +147,25 @@ class ExamViewModel(private val repository: ExamRepository) : ViewModel() {
         }
         _selectedAnswers.value = currentAnswers
     }
-    
-    fun submitAnswer() {
+      fun submitAnswer() {
         val question = _currentQuestion.value ?: return
         val userAnswer = _selectedAnswers.value.sorted().joinToString("")
-        val correctAnswer = question.answer.toCharArray().sorted().joinToString("")
         
-        val isCorrect = userAnswer == correctAnswer
+        // 判断题特殊处理：因为选项固定为 A-正确，B-错误
+        val isCorrect = if (question.qtype == "判断题") {
+            // 将 A/B 选项映射到 "正确"/"错误" 再与答案比较
+            val mappedAnswer = when (userAnswer) {
+                "A" -> "正确"
+                "B" -> "错误"
+                else -> ""
+            }
+            mappedAnswer == question.answer
+        } else {
+            // 非判断题保持原有逻辑
+            val correctAnswer = question.answer.toCharArray().sorted().joinToString("")
+            userAnswer == correctAnswer
+        }
+        
         _isAnswerCorrect.value = isCorrect
         _showResult.value = true
         

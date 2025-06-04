@@ -482,13 +482,20 @@ def show_question(qid):
     conn = get_db()
     c = conn.cursor()
     c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?', (qid, user_id))
-    conn.commit()
-
-    # Handle form submission (answer)
+    conn.commit()    # Handle form submission (answer)
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
         user_answer_str = "".join(sorted(user_answer))
-        correct = int(user_answer_str == "".join(sorted(q['answer'])))
+        
+        # 特殊处理判断题答案验证
+        if q.get('type') == '判断题':
+            # 判断题的用户答案是A或B，需要转换为"正确"或"错误"
+            judgment_mapping = {'A': '正确', 'B': '错误'}
+            user_judgment = judgment_mapping.get(user_answer_str, '')
+            correct = int(user_judgment == q['answer'])
+        else:
+            # 其他题型的正常处理
+            correct = int(user_answer_str == "".join(sorted(q['answer'])))
 
         # Save answer to history
         c.execute(
@@ -954,13 +961,21 @@ def show_sequential_question(qid):
     # Update current_seq_qid to the current question when viewing it
     c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?', (qid, user_id))
     conn.commit()
-    
-    # Handle POST request (user submitted an answer)
+      # Handle POST request (user submitted an answer)
     if request.method == 'POST':
         user_answer = request.form.getlist('answer')
         user_answer_str = "".join(sorted(user_answer))
-        correct = int(user_answer_str == "".join(sorted(q['answer'])))
         
+        # 特殊处理判断题答案验证
+        if q.get('type') == '判断题':
+            # 判断题的用户答案是A或B，需要转换为"正确"或"错误"
+            judgment_mapping = {'A': '正确', 'B': '错误'}
+            user_judgment = judgment_mapping.get(user_answer_str, '')
+            correct = int(user_judgment == q['answer'])
+        else:
+            # 其他题型的正常处理
+            correct = int(user_answer_str == "".join(sorted(q['answer'])))
+
         # Save answer to history
         c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) '
                   'VALUES (?,?,?,?)',
@@ -1141,8 +1156,7 @@ def submit_timed_mode():
         return redirect(url_for('index'))
     
     question_ids = json.loads(exam['question_ids'])
-    
-    # Process answers
+      # Process answers
     correct_count = 0
     total = len(question_ids)
     
@@ -1154,7 +1168,16 @@ def submit_timed_mode():
             continue
             
         user_answer_str = "".join(sorted(user_answer))
-        correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
+        
+        # 特殊处理判断题答案验证
+        if q.get('type') == '判断题':
+            # 判断题的用户答案是A或B，需要转换为"正确"或"错误"
+            judgment_mapping = {'A': '正确', 'B': '错误'}
+            user_judgment = judgment_mapping.get(user_answer_str, '')
+            correct = 1 if user_judgment == q['answer'] else 0
+        else:
+            # 其他题型的正常处理
+            correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
         
         if correct:
             correct_count += 1
@@ -1263,8 +1286,7 @@ def submit_exam():
         }), 404
     
     question_ids = json.loads(exam['question_ids'])
-    
-    # Process answers
+      # Process answers
     correct_count = 0
     total = len(question_ids)
     question_results = []
@@ -1277,7 +1299,16 @@ def submit_exam():
             continue
             
         user_answer_str = "".join(sorted(user_answer))
-        correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
+        
+        # 特殊处理判断题答案验证
+        if q.get('type') == '判断题':
+            # 判断题的用户答案是A或B，需要转换为"正确"或"错误"
+            judgment_mapping = {'A': '正确', 'B': '错误'}
+            user_judgment = judgment_mapping.get(user_answer_str, '')
+            correct = 1 if user_judgment == q['answer'] else 0
+        else:
+            # 其他题型的正常处理
+            correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
         
         if correct:
             correct_count += 1

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -23,11 +24,14 @@ import com.exammaster.data.repository.ExamRepository
 import com.exammaster.ui.navigation.NavGraph
 import com.exammaster.ui.navigation.Screen
 import com.exammaster.ui.screens.*
+import com.exammaster.ui.settings.SettingsScreen
 import com.exammaster.ui.theme.ExamMasterTheme
 import com.exammaster.ui.viewmodel.ExamViewModel
 import com.exammaster.ui.viewmodel.ViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,25 +44,22 @@ class MainActivity : ComponentActivity() {
             database.favoriteDao(),
             database.examSessionDao()
         )
-        
-        setContent {
+          setContent {
             ExamMasterTheme {
                 val viewModelFactory = ViewModelFactory(repository)
                 val viewModel: ExamViewModel = viewModel(factory = viewModelFactory)
                 
                 // Initialize data on first launch
                 LaunchedEffect(Unit) {
-                    launch {
-                        val questionCount = repository.getQuestionCount()
-                        if (questionCount == 0) {
-                            // Load questions from CSV file
-                            val questions = QuestionDataLoader.loadQuestionsFromAssets(this@MainActivity)
-                            if (questions.isNotEmpty()) {
-                                repository.insertQuestions(questions)
-                            } else {
-                                // Fallback to default questions
-                                repository.insertQuestions(QuestionDataLoader.getDefaultQuestions())
-                            }
+                    val questionCount = repository.getQuestionCount()
+                    if (questionCount == 0) {
+                        // Load questions from CSV file
+                        val questions = QuestionDataLoader.loadQuestionsFromAssets(this@MainActivity)
+                        if (questions.isNotEmpty()) {
+                            repository.insertQuestions(questions)
+                        } else {
+                            // Fallback to default questions
+                            repository.insertQuestions(QuestionDataLoader.getDefaultQuestions())
                         }
                     }
                 }
@@ -79,25 +80,23 @@ fun ExamMasterApp(viewModel: ExamViewModel) {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                
-                val items = listOf(
+                  val items = listOf(
                     Screen.Home,
                     Screen.History,
                     Screen.Favorites,
                     Screen.Statistics,
-                    Screen.About
+                    Screen.Settings
                 )
                 
                 items.forEach { screen ->
-                    NavigationBarItem(
-                        icon = {
+                    NavigationBarItem(                        icon = {
                             Icon(
                                 when (screen) {
                                     Screen.Home -> Icons.Default.Home
                                     Screen.History -> Icons.Default.History
                                     Screen.Favorites -> Icons.Default.Favorite
                                     Screen.Statistics -> Icons.Default.BarChart
-                                    Screen.About -> Icons.Default.Info
+                                    Screen.Settings -> Icons.Default.Settings
                                     else -> Icons.Default.Home
                                 },
                                 contentDescription = screen.title
@@ -112,18 +111,17 @@ fun ExamMasterApp(viewModel: ExamViewModel) {
                                 }
                                 launchSingleTop = true
                                 restoreState = true
-                            }
-                        }
+                            }                        }
                     )
                 }
             }
         }
-    ) { innerPadding ->        NavHost(
+    ) { innerPadding ->
+        NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(Screen.Home.route) {
+        ) {            composable(Screen.Home.route) {
                 HomeScreen(navController, viewModel)
             }
             composable(Screen.Question.route) {
@@ -162,6 +160,9 @@ fun ExamMasterApp(viewModel: ExamViewModel) {
             }
             composable(Screen.About.route) {
                 AboutScreen(navController, viewModel)
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(navController)
             }
         }
     }

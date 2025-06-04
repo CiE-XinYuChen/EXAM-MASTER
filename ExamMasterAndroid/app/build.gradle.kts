@@ -1,7 +1,8 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    kotlin("kapt")
+    id("com.google.dagger.hilt.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -20,14 +21,36 @@ android {
             useSupportLibrary = true        }
     }
     
+    signingConfigs {
+        create("release") {
+            storeFile = file("../keystore/release.keystore")
+            storePassword = "exammaster"
+            keyAlias = "exammaster"
+            keyPassword = "exammaster"
+        }
+    }
+    
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+    }
+    
+    // 添加构建优化配置
+    buildFeatures {
+        compose = true
+        // 禁用不需要的构建功能
+        buildConfig = false
+        aidl = false
+        renderScript = false
+        resValues = false
+        shaders = false
     }
     
     compileOptions {
@@ -37,10 +60,7 @@ android {
     
     kotlinOptions {
         jvmTarget = "17"
-    }
-    
-    buildFeatures {
-        compose = true
+        freeCompilerArgs += listOf("-Xopt-in=kotlin.RequiresOptIn")
     }
     
     composeOptions {
@@ -69,12 +89,17 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.6")
     
     // ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    
-    // Room Database
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")    // Room Database
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+      // DataStore
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    
+    // Hilt
+    implementation("com.google.dagger:hilt-android:2.48")
+    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+    ksp("com.google.dagger:hilt-compiler:2.48")
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
