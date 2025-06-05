@@ -27,6 +27,8 @@ class SettingsViewModel @Inject constructor(
     private val _settings = MutableStateFlow(Settings())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
 
+    private var hasShownToast = false
+
     init {
         // 观察设置变化
         viewModelScope.launch {
@@ -50,7 +52,7 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun updateThemeColor(themeColor: ThemeColor) {
         viewModelScope.launch {
             try {
@@ -65,26 +67,26 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun updateAppIcon(appIcon: AppIcon) {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
-                // 首先更新储存的图标设置
                 settingsRepository.updateAppIcon(appIcon)
-                // 然后尝试更改图标
                 val success = changeAppIcon(appIcon)
-                
-                // 显示成功提示，提醒用户可能需要重启应用
-                val app = ExamMasterApplication.getInstance()
-                val toastMessage = if (success) {
-                    "图标已更改，重启应用后完全生效"
-                } else {
-                    "图标更改失败，请重启应用后重试"
+
+                if (!hasShownToast) {
+                    val app = ExamMasterApplication.getInstance()
+                    val toastMessage = if (success) {
+                        "图标已更改，重启应用后完全生效"
+                    } else {
+                        "图标更改失败，请重启应用后重试"
+                    }
+
+                    Toast.makeText(app, toastMessage, Toast.LENGTH_LONG).show()
+                    hasShownToast = true
                 }
-                
-                Toast.makeText(app, toastMessage, Toast.LENGTH_LONG).show()
-                
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = if (success) null else "图标更改失败，重启应用后可能生效"
@@ -97,7 +99,7 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
-    
+
     private fun changeAppIcon(appIcon: AppIcon): Boolean {
         // 调用应用程序类中的图标更换功能
         return try {

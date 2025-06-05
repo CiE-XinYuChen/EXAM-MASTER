@@ -3,7 +3,6 @@ package com.exammaster
 import android.app.Application
 import android.content.ComponentName
 import android.content.pm.PackageManager
-import android.widget.Toast
 import com.exammaster.data.models.AppIcon
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -44,12 +43,8 @@ class ExamMasterApplication : Application() {
                 PackageManager.DONT_KILL_APP
             )
 
-            // 显示 Toast 消息
-            Toast.makeText(applicationContext, "图标已更改，重启应用后生效", Toast.LENGTH_SHORT).show()
             true
         } catch (e: Exception) {
-            // 显示错误 Toast 消息
-            Toast.makeText(applicationContext, "图标更改失败", Toast.LENGTH_SHORT).show()
             e.printStackTrace()
             false
         }
@@ -77,11 +72,10 @@ class ExamMasterApplication : Application() {
             e.printStackTrace()
         }
     }
-    
-    // 获取对应图标的组件名
+      // 获取对应图标的组件名
     private fun getComponentNameForIcon(appIcon: AppIcon): ComponentName {
         return when (appIcon) {
-            AppIcon.DEFAULT -> ComponentName(this, MainActivity::class.java)
+            AppIcon.DEFAULT -> ComponentName(this, "$packageName.MainActivity.Default")
             AppIcon.BLUE -> ComponentName(this, "$packageName.MainActivity.Blue")
             AppIcon.GREEN -> ComponentName(this, "$packageName.MainActivity.Green")
             AppIcon.RED -> ComponentName(this, "$packageName.MainActivity.Red")
