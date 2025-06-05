@@ -12,23 +12,108 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# 保留行号信息，方便调试
+-keepattributes SourceFile,LineNumberTable
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 保留注解
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes Exceptions
 
-# Keep Room classes
+# 保留R资源类
+-keep class **.R
+-keep class **.R$* {
+    <fields>;
+}
+
+# 保留应用程序类
+-keep class com.exammaster.ExamMasterApplication { *; }
+-keep class com.exammaster.MainActivity { *; }
+
+# 保留所有Model类
+-keep class com.exammaster.data.models.** { *; }
+
+# 保留所有Entity类
+-keep class com.exammaster.data.database.entities.** { *; }
+
+# 保留所有DAO类
+-keep class com.exammaster.data.database.dao.** { *; }
+
+# 保留所有Repository类
+-keep class com.exammaster.data.repository.** { *; }
+
+# 保留所有ViewModel类
+-keep class com.exammaster.ui.viewmodel.** { *; }
+
+# 保留所有依赖注入模块
+-keep class com.exammaster.di.** { *; }
+
+# 保留数据加载器
+-keep class com.exammaster.data.QuestionDataLoader { *; }
+
+# 保留DataStore相关类
+-keep class com.exammaster.data.datastore.** { *; }
+
+# 保留Compose相关类
+-keep class androidx.compose.** { *; }
+-keepclassmembers class androidx.compose.** { *; }
+
+# 保留Kotlin协程相关类
+-keep class kotlinx.coroutines.** { *; }
+-keepclassmembers class kotlinx.coroutines.** { *; }
+
+# Room数据库相关
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
 -dontwarn androidx.room.paging.**
 
-# Keep Hilt generated classes
+# Hilt相关
 -keep class dagger.hilt.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ApplicationComponentManager { *; }
+-keep @dagger.hilt.android.lifecycle.HiltViewModel class *
 
-# Keep serialization classes
+# 序列化相关
 -keep class kotlinx.serialization.** { *; }
 -keep class * implements kotlinx.serialization.KSerializer { *; }
+
+# Gson相关
+-keep class com.google.gson.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Navigation相关
+-keep class androidx.navigation.** { *; }
+-keepnames class androidx.navigation.fragment.NavHostFragment
+
+# 保留枚举类
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# 保留Parcelable实现类
+-keep class * implements android.os.Parcelable {
+  public static final android.os.Parcelable$Creator *;
+}
+
+# 保留Serializable实现类
+-keep class * implements java.io.Serializable { *; }
+
+# 保留native方法
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# 保留自定义View
+-keep public class * extends android.view.View {
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+    public void set*(...);
+    *** get*();
+}
