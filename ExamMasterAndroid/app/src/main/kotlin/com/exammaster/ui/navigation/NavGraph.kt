@@ -5,7 +5,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.exammaster.ui.screens.*
-import com.exammaster.ui.settings.SettingsScreen
 import com.exammaster.ui.viewmodel.ExamViewModel
 
 @Composable
@@ -65,16 +64,11 @@ fun NavGraph(
                 viewModel = viewModel
             )
         }
-          composable(Screen.About.route) {
+        
+        composable(Screen.About.route) {
             AboutScreen(
                 navController = navController,
                 viewModel = viewModel
-            )
-        }
-        
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                navController = navController
             )
         }
     }
@@ -88,6 +82,5 @@ sealed class Screen(val route: String, val title: String) {
     object Statistics : Screen("statistics", "统计")
     object Search : Screen("search", "搜索")
     object Browse : Screen("browse", "浏览")
-    object Settings : Screen("settings", "设置")
     object About : Screen("about", "关于")
 }

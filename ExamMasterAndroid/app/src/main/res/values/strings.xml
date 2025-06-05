@@ -89,16 +89,14 @@
     
     <!-- Settings -->
     <string name="settings_title">设置</string>
-    <string name="general_settings">常规设置</string>    <string name="appearance_settings">外观设置</string>
+    <string name="general_settings">常规设置</string>
+    <string name="appearance_settings">外观设置</string>
     <string name="notification_settings">通知设置</string>
     <string name="data_settings">数据设置</string>
     <string name="theme_mode">主题模式</string>
     <string name="theme_light">浅色</string>
     <string name="theme_dark">深色</string>
     <string name="theme_system">跟随系统</string>
-    <string name="app_icon">应用图标</string>
-    <string name="icon_changed">应用图标已更改</string>
-    <string name="icon_change_failed">应用图标更改失败</string>
     <string name="notifications_enabled">启用通知</string>
     <string name="sound_enabled">启用声音</string>
     <string name="vibration_enabled">启用震动</string>
@@ -106,16 +104,9 @@
     <string name="default_question_count">默认题目数量</string>
     <string name="default_time_duration">默认考试时长</string>
     <string name="import_questions">导入题库</string>
-    <string name="export_data">导出数据</string>    <string name="clear_all_data">清除所有数据</string>
+    <string name="export_data">导出数据</string>
+    <string name="clear_all_data">清除所有数据</string>
     <string name="confirm_clear_data">确定要清除所有数据吗？此操作不可恢复。</string>
-    <string name="show_correct_answer">显示正确答案</string>
-    <string name="enable_progress_tracking">启用进度跟踪</string>
-    <string name="auto_save_progress">自动保存进度</string>
-    <string name="enable_statistics">启用统计功能</string>
-    <string name="reminder_interval">提醒间隔</string>
-    <string name="reminder_interval_hours">%d 小时</string>
-    <string name="data_management">数据管理</string>
-    <string name="personalization">个性化配置</string>
     
     <!-- Common -->
     <string name="ok">确定</string>

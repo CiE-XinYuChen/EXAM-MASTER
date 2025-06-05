@@ -116,15 +116,15 @@ fun QuestionScreen(
                         }
                     }
                 }
-                  // Options
+                
+                // Options
                 question.getFormattedOptions().forEach { (key, value) ->
                     OptionItem(
                         option = key,
                         text = value,
                         isSelected = selectedAnswers.contains(key),
                         isEnabled = !showResult,
-                        onSelect = { viewModel.selectAnswer(key) },
-                        isJudgmentQuestion = question.qtype == "判断题"
+                        onSelect = { viewModel.selectAnswer(key) }
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -164,17 +164,11 @@ fun QuestionScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                              if (!isAnswerCorrect) {
+                            
+                            if (!isAnswerCorrect) {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                
-                                val displayAnswer = if (question.qtype == "判断题") {
-                                    question.answer // 判断题直接显示 "正确"/"错误"
-                                } else {
-                                    question.answer // 其他题型保持原样
-                                }
-                                
                                 Text(
-                                    text = "正确答案：$displayAnswer",
+                                    text = "正确答案：${question.answer}",
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -224,9 +218,9 @@ private fun OptionItem(
     text: String,
     isSelected: Boolean,
     isEnabled: Boolean,
-    onSelect: () -> Unit,
-    isJudgmentQuestion: Boolean = false
-) {    Card(
+    onSelect: () -> Unit
+) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(
@@ -242,8 +236,6 @@ private fun OptionItem(
         ),
         border = if (isSelected) 
             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-        else if (isJudgmentQuestion) // 判断题强调单选特性
-            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
         else null
     ) {
         Row(
