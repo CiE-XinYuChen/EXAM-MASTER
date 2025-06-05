@@ -69,16 +69,15 @@
             {{ result_msg }}
         </div>
     {% endif %}
-      <!-- 选项表单 -->
+    
+    <!-- 选项表单 -->
     <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="question-form">
         <ul class="options-list">
-            {% if question.type == '判断题' %}
-                <!-- 判断题特殊处理 -->
-                {% set judgment_options = [('A', '正确'), ('B', '错误')] %}
-                {% for opt_key, opt_val in judgment_options %}
-                    {% set checked = user_answer is defined and (opt_key in user_answer) %}
-                    <li class="option-item">
-                        <label class="option-label {% if checked and result_msg %}{% if (opt_val == question.answer) %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
+            {% for opt_key, opt_val in question.options.items() %}
+                {% set checked = user_answer is defined and (opt_key in user_answer) %}
+                <li class="option-item">
+                    <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
+                        {% if question.type == '单选题' %}
                             <input type="radio" 
                                    class="option-checkbox" 
                                    name="answer"
@@ -86,37 +85,18 @@
                                    {% if checked %}checked{% endif %}
                                    {% if result_msg %}disabled{% endif %}
                                    required>
-                            <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
-                        </label>
-                    </li>
-                {% endfor %}
-            {% else %}
-                <!-- 其他题型的正常处理 -->
-                {% for opt_key, opt_val in question.options.items() %}
-                    {% set checked = user_answer is defined and (opt_key in user_answer) %}
-                    <li class="option-item">
-                        <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
-                            {% if question.type == '单选题' %}
-                                <input type="radio" 
-                                       class="option-checkbox" 
-                                       name="answer"
-                                       value="{{ opt_key }}"
-                                       {% if checked %}checked{% endif %}
-                                       {% if result_msg %}disabled{% endif %}
-                                       required>
-                            {% else %}
-                                <input type="checkbox" 
-                                       class="option-checkbox" 
-                                       name="answer"
-                                       value="{{ opt_key }}"
-                                       {% if checked %}checked{% endif %}
-                                       {% if result_msg %}disabled{% endif %}>
-                            {% endif %}
-                            <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
-                        </label>
-                    </li>
-                {% endfor %}
-            {% endif %}
+                        {% else %}
+                            <input type="checkbox" 
+                                   class="option-checkbox" 
+                                   name="answer"
+                                   value="{{ opt_key }}"
+                                   {% if checked %}checked{% endif %}
+                                   {% if result_msg %}disabled{% endif %}>
+                        {% endif %}
+                        <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
+                    </label>
+                </li>
+            {% endfor %}
         </ul>
         
         <!-- 底部操作按钮 -->

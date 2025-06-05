@@ -72,28 +72,7 @@ fun HomeScreen(
         // Mode Selection Buttons
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {            item {
-                ModeButton(
-                    title = "练习模式",
-                    subtitle = "随机练习、顺序练习、错题本",
-                    icon = Icons.Default.School,
-                    onClick = {
-                        navController.navigate("practice")
-                    }
-                )
-            }
-            
-            item {
-                ModeButton(
-                    title = "考试模式",
-                    subtitle = "限时考试、模拟考试",
-                    icon = Icons.Default.Timer,
-                    onClick = {
-                        navController.navigate("exam_mode")
-                    }
-                )
-            }
-            
+        ) {
             item {
                 ModeButton(
                     title = "浏览题目",
@@ -104,25 +83,27 @@ fun HomeScreen(
                     }
                 )
             }
-              item {
+            
+            item {
                 ModeButton(
                     title = "顺序答题",
                     subtitle = "从上次浏览位置开始顺序答题",
                     icon = Icons.Default.List,
                     onClick = {
                         viewModel.startSequentialFromLastBrowsed()
-                        navController.navigate("question_practice")
+                        navController.navigate(Screen.Question.route)
                     }
                 )
             }
-              item {
+            
+            item {
                 ModeButton(
                     title = "错题练习",
                     subtitle = "重新练习答错的题目",
                     icon = Icons.Default.Report,
                     onClick = {
-                        viewModel.startPracticeMode(ExamViewModel.QuizMode.WRONG_ONLY)
-                        navController.navigate("question_practice")
+                        // TODO: Implement wrong questions mode
+                        navController.navigate(Screen.Question.route)
                     }
                 )
             }

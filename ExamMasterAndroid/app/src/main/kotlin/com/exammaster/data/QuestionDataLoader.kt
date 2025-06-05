@@ -52,21 +52,14 @@ object QuestionDataLoader {
                 val answer = fields[7].replace("\"", "")
                 val difficulty = if (fields.size > 8) fields[8].replace("\"", "") else "无"
                 val qtype = if (fields.size > 9) fields[9].replace("\"", "") else "多选题"
-                  // Build options map
-                val options = mutableMapOf<String, String>()
                 
-                // 如果是判断题，生成固定的选项
-                if (qtype == "判断题") {
-                    options["A"] = "正确"
-                    options["B"] = "错误"
-                } else {
-                    // 对于其他题型，使用CSV中的选项
-                    if (optionA.isNotEmpty()) options["A"] = optionA
-                    if (optionB.isNotEmpty()) options["B"] = optionB
-                    if (optionC.isNotEmpty()) options["C"] = optionC
-                    if (optionD.isNotEmpty()) options["D"] = optionD
-                    if (optionE.isNotEmpty()) options["E"] = optionE
-                }
+                // Build options map
+                val options = mutableMapOf<String, String>()
+                if (optionA.isNotEmpty()) options["A"] = optionA
+                if (optionB.isNotEmpty()) options["B"] = optionB
+                if (optionC.isNotEmpty()) options["C"] = optionC
+                if (optionD.isNotEmpty()) options["D"] = optionD
+                if (optionE.isNotEmpty()) options["E"] = optionE
                 
                 val optionsJson = Gson().toJson(options)
                 
