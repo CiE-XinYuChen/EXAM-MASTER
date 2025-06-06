@@ -178,5 +178,6 @@ class ExamRepository(
     suspend fun clearAllUserData() {
         deleteAllHistory()
         deleteAllFavorites()
+        examSessionDao.deleteAllExamSessions()
     }
 }

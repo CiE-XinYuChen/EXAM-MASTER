@@ -164,14 +164,10 @@ fun QuestionScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                              if (!isAnswerCorrect) {
+                            if (!isAnswerCorrect) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
-                                val displayAnswer = if (question.qtype == "判断题") {
-                                    question.answer // 判断题直接显示 "正确"/"错误"
-                                } else {
-                                    question.answer // 其他题型保持原样
-                                }
+                                val displayAnswer = question.getFormattedAnswer()
                                 
                                 Text(
                                     text = "正确答案：$displayAnswer",

@@ -25,6 +25,7 @@ fun HistoryScreen(
     viewModel: ExamViewModel
 ) {
     val historyList by viewModel.allHistory.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -49,7 +50,7 @@ fun HistoryScreen(
             
             IconButton(
                 onClick = { 
-                    viewModel.resetHistory()
+                    showDeleteDialog = true
                 }
             ) {
                 Icon(Icons.Default.DeleteSweep, contentDescription = "清空历史")
@@ -94,6 +95,32 @@ fun HistoryScreen(
                     )
                 }
             }
+        }
+        
+        // 确认删除对话框
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("确认删除") },
+                text = { Text("确定要清空所有答题历史记录吗？此操作不可撤销。") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.resetHistory()
+                            showDeleteDialog = false
+                        }
+                    ) {
+                        Text("确认删除")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = false }
+                    ) {
+                        Text("取消")
+                    }
+                }
+            )
         }
     }
 }

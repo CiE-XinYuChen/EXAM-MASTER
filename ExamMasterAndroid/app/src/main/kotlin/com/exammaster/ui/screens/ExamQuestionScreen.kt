@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.exammaster.ui.viewmodel.ExamViewModel
 import kotlinx.coroutines.delay
+// 导入我们自定义的动画组件
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -344,8 +345,8 @@ private fun ExamTopBar(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 LinearProgressIndicator(
-                    progress = (progress.currentIndex + 1).toFloat() / progress.totalQuestions.toFloat(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    progress = { (progress.currentIndex + 1).toFloat() / progress.totalQuestions.toFloat() }
                 )
             }
         }

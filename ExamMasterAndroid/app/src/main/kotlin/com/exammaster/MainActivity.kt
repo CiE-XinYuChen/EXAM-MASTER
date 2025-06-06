@@ -167,53 +167,10 @@ fun ExamMasterApp(viewModel: ExamViewModel) {
             }
         }
     ) { innerPadding ->
-        NavHost(
+        NavGraph(
             navController = navController,
-            startDestination = Screen.Home.route,
+            viewModel = viewModel,
             modifier = Modifier.padding(innerPadding)
-        ) {            composable(Screen.Home.route) {
-                HomeScreen(navController, viewModel)
-            }
-            composable(Screen.Question.route) {
-                QuestionScreen(navController, viewModel)
-            }
-            composable("practice") {
-                PracticeScreen(navController, viewModel)
-            }
-            composable("exam_mode") {
-                ExamModeScreen(navController, viewModel)
-            }
-            composable("question_practice") {
-                QuestionPracticeScreen(navController, viewModel)
-            }
-            composable("exam_question") {
-                ExamQuestionScreen(navController, viewModel)
-            }
-            composable("exam_result/{examSessionId}") { backStackEntry ->
-                val examSessionId = backStackEntry.arguments?.getString("examSessionId") ?: "0"
-                ExamResultScreen(navController, viewModel, examSessionId)
-            }
-            composable(Screen.History.route) {
-                HistoryScreen(navController, viewModel)
-            }
-            composable(Screen.Favorites.route) {
-                FavoritesScreen(navController, viewModel)
-            }
-            composable(Screen.Statistics.route) {
-                StatisticsScreen(navController, viewModel)
-            }
-            composable(Screen.Search.route) {
-                SearchScreen(navController, viewModel)
-            }
-            composable(Screen.Browse.route) {
-                BrowseScreen(navController, viewModel)
-            }
-            composable(Screen.About.route) {
-                AboutScreen(navController, viewModel)
-            }
-            composable(Screen.Settings.route) {
-                SettingsScreen(navController)
-            }
-        }
+        )
     }
 }

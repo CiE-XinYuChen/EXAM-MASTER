@@ -78,7 +78,7 @@ fun HomeScreen(
                     subtitle = "随机练习、顺序练习、错题本",
                     icon = Icons.Default.School,
                     onClick = {
-                        navController.navigate("practice")
+                        navController.navigate(Screen.Practice.route)
                     }
                 )
             }
@@ -89,7 +89,7 @@ fun HomeScreen(
                     subtitle = "限时考试、模拟考试",
                     icon = Icons.Default.Timer,
                     onClick = {
-                        navController.navigate("exam_mode")
+                        navController.navigate(Screen.ExamMode.route)
                     }
                 )
             }
@@ -111,7 +111,7 @@ fun HomeScreen(
                     icon = Icons.Default.List,
                     onClick = {
                         viewModel.startSequentialFromLastBrowsed()
-                        navController.navigate("question_practice")
+                        navController.navigate(Screen.QuestionPractice.route)
                     }
                 )
             }
@@ -122,7 +122,7 @@ fun HomeScreen(
                     icon = Icons.Default.Report,
                     onClick = {
                         viewModel.startPracticeMode(ExamViewModel.QuizMode.WRONG_ONLY)
-                        navController.navigate("question_practice")
+                        navController.navigate(Screen.QuestionPractice.route)
                     }
                 )
             }

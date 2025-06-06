@@ -89,6 +89,10 @@ class ExamViewModel @Inject constructor(
     private val _settings = MutableStateFlow(Settings())
     val settings: StateFlow<Settings> = _settings.asStateFlow()
     
+    // 跟踪最近加载的题目ID，避免短时间内重复出现相同题目
+    private val recentlyLoadedQuestionIds = mutableSetOf<String>()
+    private val MAX_RECENT_QUESTIONS = 5 // 跟踪最近的5道题
+    
     init {
         loadStatistics()
         // 观察设置变化
@@ -104,26 +108,53 @@ class ExamViewModel @Inject constructor(
             try {
                 _isLoading.value = true
                 
-                // 获取随机题目
-                val question = repository.getRandomUncompletedQuestion() ?: repository.getRandomQuestion()
+                // 获取所有题目的数量
+                val totalQuestions = repository.getQuestionCount()
                 
-                // 确保不会重复加载同一题目
-                if (question?.id == _currentQuestion.value?.id) {
-                    // 如果是同一题目，再次尝试获取不同的题目
-                    val newQuestion = repository.getRandomQuestion()
-                    if (newQuestion != null && question != null && newQuestion.id != question.id) {
-                        _currentQuestion.value = newQuestion
-                    } else {
-                        _currentQuestion.value = question
-                    }
-                } else {
+                // 如果题库太小或为空，直接返回随机题目
+                if (totalQuestions <= MAX_RECENT_QUESTIONS) {
+                    val question = repository.getRandomQuestion()
                     _currentQuestion.value = question
+                    _selectedAnswers.value = emptySet()
+                    _showResult.value = false
+                    _currentMode.value = QuizMode.RANDOM
+                    _isLoading.value = false
+                    return@launch
                 }
                 
-                // 重置状态
-                _selectedAnswers.value = emptySet()
-                _showResult.value = false
-                _currentMode.value = QuizMode.RANDOM
+                // 尝试获取未完成且未在最近列表中的题目
+                var attempts = 0
+                var question: Question? = null
+                
+                // 最多尝试5次获取不在最近列表中的题目
+                while (attempts < 5) {
+                    question = repository.getRandomUncompletedQuestion() ?: repository.getRandomQuestion()
+                    
+                    // 如果获取到的题目不在最近列表中或是唯一可用的题目，则使用它
+                    if (question != null && (!recentlyLoadedQuestionIds.contains(question.id) || attempts >= 3)) {
+                        break
+                    }
+                    attempts++
+                }
+                
+                // 设置当前题目
+                if (question != null) {
+                    // 更新最近加载的题目ID列表
+                    if (recentlyLoadedQuestionIds.size >= MAX_RECENT_QUESTIONS) {
+                        // 如果列表已满，移除最早添加的ID
+                        recentlyLoadedQuestionIds.iterator().next().let {
+                            recentlyLoadedQuestionIds.remove(it)
+                        }
+                    }
+                    // 添加当前题目ID
+                    recentlyLoadedQuestionIds.add(question.id)
+                    
+                    // 设置当前题目
+                    _currentQuestion.value = question
+                    _selectedAnswers.value = emptySet()
+                    _showResult.value = false
+                    _currentMode.value = QuizMode.RANDOM
+                }
             } catch (e: Exception) {
                 android.util.Log.e("ExamViewModel", "Error loading random question: ${e.message}")
             } finally {
@@ -137,18 +168,42 @@ class ExamViewModel @Inject constructor(
             try {
                 _isLoading.value = true
                 val currentId = _currentQuestion.value?.id
+                
+                // 获取下一个顺序题目
                 val question = repository.getNextSequentialQuestion(currentId)
                 
-                // 确保不会重复加载同一题目
-                if (question?.id == _currentQuestion.value?.id && question != null) {
-                    // 如果是同一题目，尝试再获取下一题
-                    val nextQuestion = repository.getNextSequentialQuestion(question.id)
-                    if (nextQuestion != null) {
-                        _currentQuestion.value = nextQuestion
+                if (question == null) {
+                    // 如果没有下一题，则重新从开始位置获取题目
+                    val firstQuestion = repository.getSequentialQuestionStartingFrom(null)
+                    _currentQuestion.value = firstQuestion
+                } else if (question.id == _currentQuestion.value?.id) {
+                    // 如果是同一题目（可能是数据库只有一个题目），查看是否有其他可用题目
+                    val allQuestions = repository.getAllQuestions().first()
+                    if (allQuestions.size > 1) {
+                        // 尝试获取非当前题目的其他题目
+                        val otherQuestion = allQuestions.filter { it.id != question.id }.randomOrNull()
+                        if (otherQuestion != null) {
+                            _currentQuestion.value = otherQuestion
+                        } else {
+                            _currentQuestion.value = question
+                        }
                     } else {
+                        // 数据库只有一个题目，保持当前题目
                         _currentQuestion.value = question
                     }
                 } else {
+                    // 更新最近加载的题目列表
+                    if (question.id !in recentlyLoadedQuestionIds) {
+                        if (recentlyLoadedQuestionIds.size >= MAX_RECENT_QUESTIONS) {
+                            // 如果列表已满，移除最早添加的ID
+                            recentlyLoadedQuestionIds.iterator().next().let {
+                                recentlyLoadedQuestionIds.remove(it)
+                            }
+                        }
+                        recentlyLoadedQuestionIds.add(question.id)
+                    }
+                    
+                    // 设置当前题目
                     _currentQuestion.value = question
                 }
                 
@@ -212,13 +267,7 @@ class ExamViewModel @Inject constructor(
         
         // 判断题特殊处理：因为选项固定为 A-正确，B-错误
         val isCorrect = if (question.qtype == "判断题") {
-            // 将 A/B 选项映射到 "正确"/"错误" 再与答案比较
-            val mappedAnswer = when (userAnswer) {
-                "A" -> "正确"
-                "B" -> "错误"
-                else -> ""
-            }
-            mappedAnswer == question.answer
+            isJudgmentAnswerCorrect(userAnswer, question.answer)
         } else {
             // 非判断题保持原有逻辑
             val correctAnswer = question.answer.toCharArray().sorted().joinToString("")
@@ -245,6 +294,20 @@ class ExamViewModel @Inject constructor(
                 nextQuestion()
             }
         }
+    }
+    
+    /**
+     * 判断题答案处理辅助函数
+     * 将用户选择的A/B选项转换为"正确"/"错误"并与标准答案比较
+     */
+    private fun isJudgmentAnswerCorrect(userAnswer: String, correctAnswer: String): Boolean {
+        // 将 A/B 选项映射到 "正确"/"错误" 再与答案比较
+        val mappedAnswer = when (userAnswer) {
+            "A" -> "正确"
+            "B" -> "错误"
+            else -> ""
+        }
+        return mappedAnswer == correctAnswer
     }
     
     fun nextQuestion() {
@@ -319,14 +382,33 @@ class ExamViewModel @Inject constructor(
                 _isLoading.value = true
                 val wrongQuestions = repository.getWrongQuestions()
                 
-                // 获取随机错题，确保不重复
-                var question = wrongQuestions.randomOrNull()
-                
-                // 如果错题列表中有多个题目，确保不会连续出现相同题目
-                if (question?.id == _currentQuestion.value?.id && wrongQuestions.size > 1) {
-                    val filteredQuestions = wrongQuestions.filter { it.id != _currentQuestion.value?.id }
-                    question = filteredQuestions.randomOrNull() ?: question
+                if (wrongQuestions.isEmpty()) {
+                    // 如果没有错误的题目，设置为null
+                    _currentQuestion.value = null
+                    _selectedAnswers.value = emptySet()
+                    _showResult.value = false
+                    _currentMode.value = QuizMode.WRONG_ONLY
+                    _isLoading.value = false
+                    return@launch
                 }
+                
+                // 过滤掉最近已加载的题目
+                val availableQuestions = wrongQuestions.filter { !recentlyLoadedQuestionIds.contains(it.id) }
+                
+                // 如果过滤后没有可用题目，则使用所有错题
+                val questionPool = if (availableQuestions.isEmpty()) wrongQuestions else availableQuestions
+                
+                // 随机选择一个题目
+                val question = questionPool.random()
+                
+                // 更新最近加载的题目列表
+                if (recentlyLoadedQuestionIds.size >= MAX_RECENT_QUESTIONS) {
+                    // 如果列表已满，移除最早添加的ID
+                    recentlyLoadedQuestionIds.iterator().next().let {
+                        recentlyLoadedQuestionIds.remove(it)
+                    }
+                }
+                recentlyLoadedQuestionIds.add(question.id)
                 
                 _currentQuestion.value = question
                 _selectedAnswers.value = emptySet()
@@ -494,13 +576,7 @@ class ExamViewModel @Inject constructor(
                 
                 // 判断题特殊处理
                 val isCorrect = if (question.qtype == "判断题") {
-                    // 将 A/B 选项映射到 "正确"/"错误" 再与答案比较
-                    val mappedAnswer = when (userAnswer) {
-                        "A" -> "正确"
-                        "B" -> "错误"
-                        else -> ""
-                    }
-                    mappedAnswer == question.answer
+                    isJudgmentAnswerCorrect(userAnswer, question.answer)
                 } else {
                     // 非判断题保持原有逻辑
                     val correctAnswer = question.answer.toCharArray().sorted().joinToString("")
@@ -557,13 +633,7 @@ class ExamViewModel @Inject constructor(
                 if (history != null) {
                     // 判断题特殊处理
                     val isCorrect = if (question.qtype == "判断题") {
-                        // 将 A/B 选项映射到 "正确"/"错误" 再与答案比较
-                        val mappedAnswer = when (history.userAnswer) {
-                            "A" -> "正确"
-                            "B" -> "错误"
-                            else -> ""
-                        }
-                        mappedAnswer == question.answer
+                        isJudgmentAnswerCorrect(history.userAnswer, question.answer)
                     } else {
                         // 非判断题保持原有逻辑
                         history.correct
@@ -809,5 +879,19 @@ class ExamViewModel @Inject constructor(
                 // 处理可能的异常
             }
         }
+    }
+    
+    // 获取所有题型
+    fun getAllQuestionTypes(): Flow<List<String>> = flow {
+        val types = repository.getAllQuestions().first()
+            .mapNotNull { it.qtype }
+            .distinct()
+            .sorted()
+        emit(types)
+    }
+    
+    // 获取所有难度级别
+    fun getAllDifficulties(): Flow<List<String>> = flow {
+        emit(repository.getAllDifficulties())
     }
 }

@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.exammaster.ui.viewmodel.ExamViewModel
-import com.patrykandpatrick.vico.compose.axis.horizontal.bottomAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.startAxis
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
@@ -242,13 +242,13 @@ private fun OverviewTab(
                     } else 0f
                     
                     LinearProgressIndicator(
-                        progress = progress,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(12.dp)
                             .clip(RoundedCornerShape(6.dp)),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        progress = { progress }
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -706,7 +706,6 @@ private fun CategoryProgressItem(
         Spacer(modifier = Modifier.height(4.dp))
         
         LinearProgressIndicator(
-            progress = if (total > 0) correct.toFloat() / total.toFloat() else 0f,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
@@ -716,7 +715,8 @@ private fun CategoryProgressItem(
                 accuracy >= 60 -> Color(0xFFFF9800)
                 else -> Color(0xFFf44336)
             },
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            progress = { if (total > 0) correct.toFloat() / total.toFloat() else 0f }
         )
     }
 }
@@ -952,8 +952,8 @@ private fun DailyActivityChart(dailyStats: List<com.exammaster.data.database.dao
         Chart(
             chart = lineChart(),
             chartModelProducer = chartEntryProducer,
-            startAxis = startAxis(),
-            bottomAxis = bottomAxis()
+            startAxis = rememberStartAxis(),
+            bottomAxis = rememberBottomAxis()
         )
     }
 }
@@ -981,8 +981,8 @@ private fun CategoryPerformanceChart(categoryStats: List<com.exammaster.data.dat
         Chart(
             chart = columnChart(),
             chartModelProducer = chartEntryProducer,
-            startAxis = startAxis(),
-            bottomAxis = bottomAxis()
+            startAxis = rememberStartAxis(),
+            bottomAxis = rememberBottomAxis()
         )
     }
 }
@@ -1010,8 +1010,8 @@ private fun DifficultyAnalysisChart(difficultyStats: List<com.exammaster.data.da
         Chart(
             chart = columnChart(),
             chartModelProducer = chartEntryProducer,
-            startAxis = startAxis(),
-            bottomAxis = bottomAxis()
+            startAxis = rememberStartAxis(),
+            bottomAxis = rememberBottomAxis()
         )
     }
 }

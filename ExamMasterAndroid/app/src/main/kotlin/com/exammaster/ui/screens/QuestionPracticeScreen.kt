@@ -1,8 +1,6 @@
 // QuestionPracticeScreen.kt
 package com.exammaster.ui.screens
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,24 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.exammaster.ui.viewmodel.ExamViewModel
-
-/* -------------------------------------------------------------------------- */
-/*  Animated wrapper – 封装题目切换动效                                         */
-/* -------------------------------------------------------------------------- */
-// @OptIn(ExperimentalAnimationApi::class)
-// @Composable
-// fun <T> AnimatedQuestionContent(
-// targetState: T,
-// modifier: Modifier = Modifier,
-//    content: @Composable (T) -> Unit
-// ) {
-// AnimatedContent(
-// targetState = targetState,
-// modifier = modifier,
-// label = "questionAnimatedContent",
-// content = content
-// )
-// }
 
 /* -------------------------------------------------------------------------- */
 /*  练习主页面                                                                 */

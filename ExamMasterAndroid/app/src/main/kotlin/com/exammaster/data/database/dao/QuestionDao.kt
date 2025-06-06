@@ -22,7 +22,14 @@ interface QuestionDao {
     """)
     suspend fun getRandomUncompletedQuestion(): Question?
 
-    @Query("SELECT * FROM questions WHERE stem LIKE :query")
+    @Query("""
+        SELECT * FROM questions 
+        WHERE stem LIKE :query 
+        OR options LIKE :query 
+        OR id LIKE :query 
+        OR qtype LIKE :query 
+        OR difficulty LIKE :query
+    """)
     suspend fun searchQuestions(query: String): List<Question>
 
     @Query("SELECT * FROM questions WHERE category = :category")

@@ -29,4 +29,7 @@ interface ExamSessionDao {
 
     @Query("UPDATE exam_sessions SET completed = 1, score = :score WHERE id = :id")
     suspend fun completeExamSession(id: Int, score: Float)
+
+    @Query("DELETE FROM exam_sessions")
+    suspend fun deleteAllExamSessions()
 }

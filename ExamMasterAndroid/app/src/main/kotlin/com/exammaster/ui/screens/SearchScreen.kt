@@ -1,7 +1,9 @@
 package com.exammaster.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.exammaster.ui.viewmodel.ExamViewModel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,15 +34,51 @@ fun SearchScreen(
     var searchQuery by remember { mutableStateOf("") }
     val searchResults = remember { mutableStateOf<List<com.exammaster.data.database.entities.Question>>(emptyList()) }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val coroutineScope = rememberCoroutineScope()
     
-    LaunchedEffect(searchQuery) {
-        if (searchQuery.isNotBlank()) {
-            viewModel.searchQuestions(searchQuery).collect { results ->
-                searchResults.value = results
-            }
-        } else {
-            searchResults.value = emptyList()
+    // 添加过滤器状态
+    var selectedType by remember { mutableStateOf<String?>(null) }
+    var selectedDifficulty by remember { mutableStateOf<String?>(null) }
+    var showFilters by remember { mutableStateOf(false) }
+    
+    // 获取所有题型和难度级别
+    val allTypes = remember { mutableStateOf<List<String>>(emptyList()) }
+    val allDifficulties = remember { mutableStateOf<List<String>>(emptyList()) }
+    
+    // 加载题型和难度数据
+    LaunchedEffect(Unit) {
+        viewModel.getAllQuestionTypes().collect { types ->
+            allTypes.value = types
         }
+        
+        viewModel.getAllDifficulties().collect { difficulties ->
+            allDifficulties.value = difficulties
+        }
+    }
+    
+    // 搜索和过滤
+    fun performSearch() {
+        if (searchQuery.isBlank() && selectedType == null && selectedDifficulty == null) {
+            searchResults.value = emptyList()
+            return
+        }
+        
+        coroutineScope.launch {
+            val results = viewModel.searchQuestions(searchQuery).first()
+            
+            // 应用过滤器
+            val filteredResults = results.filter { question ->
+                val typeMatch = selectedType == null || question.qtype == selectedType
+                val difficultyMatch = selectedDifficulty == null || question.difficulty == selectedDifficulty
+                typeMatch && difficultyMatch
+            }
+            
+            searchResults.value = filteredResults
+        }
+    }
+    
+    LaunchedEffect(searchQuery, selectedType, selectedDifficulty) {
+        performSearch()
     }
     
     Column(
@@ -61,7 +102,12 @@ fun SearchScreen(
                 fontWeight = FontWeight.Bold
             )
             
-            Spacer(modifier = Modifier.width(48.dp)) // Balance the layout
+            IconButton(onClick = { showFilters = !showFilters }) {
+                Icon(
+                    imageVector = Icons.Default.FilterList,
+                    contentDescription = "过滤器"
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -93,16 +139,92 @@ fun SearchScreen(
             keyboardActions = KeyboardActions(
                 onSearch = {
                     keyboardController?.hide()
+                    performSearch()
                 }
             ),
             singleLine = true
         )
         
+        // 过滤器
+        AnimatedVisibility(visible = showFilters) {
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Text(
+                    text = "题型",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedType == null,
+                            onClick = { 
+                                selectedType = null
+                                performSearch()
+                            },
+                            label = { Text("全部") }
+                        )
+                    }
+                    
+                    items(allTypes.value) { type ->
+                        FilterChip(
+                            selected = selectedType == type,
+                            onClick = { 
+                                selectedType = if (selectedType == type) null else type
+                                performSearch()
+                            },
+                            label = { Text(type) }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "难度",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = selectedDifficulty == null,
+                            onClick = { 
+                                selectedDifficulty = null
+                                performSearch()
+                            },
+                            label = { Text("全部") }
+                        )
+                    }
+                    
+                    items(allDifficulties.value) { difficulty ->
+                        FilterChip(
+                            selected = selectedDifficulty == difficulty,
+                            onClick = { 
+                                selectedDifficulty = if (selectedDifficulty == difficulty) null else difficulty
+                                performSearch()
+                            },
+                            label = { Text(difficulty) }
+                        )
+                    }
+                }
+            }
+        }
+        
         Spacer(modifier = Modifier.height(16.dp))
         
         // Search Results
         when {
-            searchQuery.isEmpty() -> {
+            searchQuery.isEmpty() && selectedType == null && selectedDifficulty == null -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
