@@ -47,8 +47,8 @@ fun StatisticsScreen(
     val advancedStatistics by viewModel.advancedStatistics.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
     
-    // Load advanced statistics when screen is composed
-    LaunchedEffect(Unit) {
+    // Load advanced statistics when screen is composed or tab changes
+    LaunchedEffect(Unit, selectedTab) {
         viewModel.loadAdvancedStatistics()
     }
     
@@ -205,7 +205,8 @@ private fun OverviewTab(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceAround
-                    ) {                        WeeklyProgressItem(
+                    ) {                        
+                        WeeklyProgressItem(
                             label = "本周答题",
                             value = advancedStatistics?.weeklyCount ?: 0,
                             icon = Icons.Default.CalendarToday
@@ -271,32 +272,31 @@ private fun OverviewTab(
                 }
             }
         }
-          // Category Distribution
+        
+        // Category Distribution
         item {
-            advancedStatistics?.categoryStats?.let { categoryStats ->
-                if (categoryStats.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            if (advancedStatistics != null && advancedStatistics.categoryStats.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "分类答题情况",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 16.dp)                            )
-                            
-                            for (category in categoryStats.take(5)) {
-                                CategoryProgressItem(
-                                    category = category.category,
-                                    correct = category.correctCount,
-                                    total = category.totalCount,
-                                    accuracy = category.accuracy
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
+                        Text(
+                            text = "分类答题情况",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)                            )
+                        
+                        for (category in advancedStatistics.categoryStats.take(5)) {
+                            CategoryProgressItem(
+                                category = category.category,
+                                correct = category.correctCount,
+                                total = category.totalCount,
+                                accuracy = category.accuracy
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
@@ -308,6 +308,18 @@ private fun OverviewTab(
 // Charts Tab - 图表标签页
 @Composable
 private fun ChartsTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
+    if (advancedStatistics == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -330,13 +342,13 @@ private fun ChartsTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    advancedStatistics?.dailyStats?.let { dailyStats ->
+                    advancedStatistics.dailyStats.let { dailyStats ->
                         if (dailyStats.isNotEmpty()) {
                             DailyActivityChart(dailyStats)
                         } else {
                             EmptyChartPlaceholder("暂无每日数据")
                         }
-                    } ?: EmptyChartPlaceholder("加载中...")
+                    }
                 }
             }
         }
@@ -357,13 +369,13 @@ private fun ChartsTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    advancedStatistics?.categoryStats?.let { categoryStats ->
+                    advancedStatistics.categoryStats.let { categoryStats ->
                         if (categoryStats.isNotEmpty()) {
                             CategoryPerformanceChart(categoryStats)
                         } else {
                             EmptyChartPlaceholder("暂无分类数据")
                         }
-                    } ?: EmptyChartPlaceholder("加载中...")
+                    }
                 }
             }
         }
@@ -384,13 +396,13 @@ private fun ChartsTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                     
-                    advancedStatistics?.difficultyStats?.let { difficultyStats ->
+                    advancedStatistics.difficultyStats.let { difficultyStats ->
                         if (difficultyStats.isNotEmpty()) {
                             DifficultyAnalysisChart(difficultyStats)
                         } else {
                             EmptyChartPlaceholder("暂无难度数据")
                         }
-                    } ?: EmptyChartPlaceholder("加载中...")
+                    }
                 }
             }
         }
@@ -400,6 +412,18 @@ private fun ChartsTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
 // History Tab - 历史标签页
 @Composable
 private fun HistoryTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
+    if (advancedStatistics == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -415,18 +439,14 @@ private fun HistoryTab(advancedStatistics: ExamViewModel.AdvancedStatistics?) {
             )
         }
         
-        advancedStatistics?.recentHistory?.let { history ->
-            if (history.isNotEmpty()) {
-                items(history) { historyItem ->
-                    HistoryItem(historyItem)
-                }
-            } else {
-                item {
-                    EmptyHistoryPlaceholder()
-                }
+        if (advancedStatistics.recentHistory.isNotEmpty()) {
+            items(advancedStatistics.recentHistory) { historyItem ->
+                HistoryItem(historyItem)
             }
-        } ?: item {
-            LoadingPlaceholder()
+        } else {
+            item {
+                EmptyHistoryPlaceholder()
+            }
         }
     }
 }
@@ -439,6 +459,18 @@ private fun AnalysisTab(
     navController: NavController,
     viewModel: ExamViewModel
 ) {
+    if (advancedStatistics == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -468,25 +500,23 @@ private fun AnalysisTab(
         
         // Most Attempted Questions
         item {
-            advancedStatistics?.mostAttempted?.let { questions ->
-                if (questions.isNotEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            if (advancedStatistics.mostAttempted.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "常答题目",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 16.dp)                            )
-                            
-                            for (question in questions.take(5)) {
-                                MostAttemptedQuestionItem(question)
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
+                        Text(
+                            text = "常答题目",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)                            )
+                        
+                        for (question in advancedStatistics.mostAttempted.take(5)) {
+                            MostAttemptedQuestionItem(question)
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }
