@@ -1090,13 +1090,32 @@ def show_question(qid):
         user_settings = c.fetchone()
         auto_jump_next = user_settings['auto_jump_next'] if user_settings else 0
         
+        # Get current bank_id for auto-jump
+        bank_id = get_user_current_bank_id()
+        
         if correct and auto_jump_next:
             # Auto-jump to next random question
-            next_qid = random_question_id(user_id)
+            next_qid = random_question_id(user_id, bank_id)
             if next_qid:
+                # Get updated stats for current bank before jumping
+                bank_id = get_user_current_bank_id()
+                c.execute('SELECT COUNT(*) AS total FROM questions WHERE bank_id = ?', (bank_id,))
+                total = c.fetchone()['total']
+                c.execute('''SELECT COUNT(DISTINCT h.question_id) AS answered 
+                             FROM history h 
+                             JOIN questions q ON h.question_id = q.id 
+                             WHERE h.user_id = ? AND q.bank_id = ?''', (user_id, bank_id))
+                answered = c.fetchone()['answered']
+                
                 conn.close()
-                flash("回答正确！自动跳转到下一题", "success")
-                return redirect(url_for('show_question', qid=next_qid))
+                # 不使用flash，而是通过模板变量显示状态图标
+                return render_template('question.html',
+                                      question=fetch_question(next_qid),
+                                      auto_jump_success=True,
+                                      answered=answered,
+                                      total=total,
+                                      is_favorite=is_favorite(user_id, next_qid),
+                                      auto_jump_enabled=auto_jump_next)
 
         # Get updated stats for current bank
         bank_id = get_user_current_bank_id()

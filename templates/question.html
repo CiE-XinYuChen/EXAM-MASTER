@@ -35,6 +35,14 @@
             {% if question.category and question.category != '未分类' %}
                 <span class="badge badge-primary">{{ question.category }}</span>
             {% endif %}
+            
+            <!-- 答题状态图标 - 移动端时显示在question-info内 -->
+            {% if auto_jump_success %}
+            <div class="answer-status-icon">
+                <i class="fas fa-check-circle"></i>
+                <span class="status-text">答对了！自动跳转中...</span>
+            </div>
+            {% endif %}
         </div>
         
         <div class="question-actions-top">
@@ -381,11 +389,21 @@
         border: 1px solid rgba(40, 167, 69, 0.3);
         border-radius: 20px;
         font-size: 0.875rem;
-        margin-bottom: 0.5rem;
     }
     
     .auto-jump-status i {
         font-size: 1rem;
+    }
+    
+    /* 大屏幕端确保按钮左右排列 */
+    @media (min-width: 769px) {
+        .question-header .question-actions-top {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
     }
     
     @media (max-width: 768px) {
@@ -415,7 +433,6 @@
         }
         
         .question-header .auto-jump-status {
-            margin-bottom: 0;
             align-self: flex-start;
             order: 1;
         }
@@ -458,8 +475,10 @@
         
         .question-header .question-actions-top {
             gap: 0.625rem;
-            flex-direction: column;
-            align-items: stretch;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
         }
         
         .question-header .auto-jump-status {
@@ -469,6 +488,21 @@
         
         .question-header .favorite-btn {
             order: 1;
+            align-self: stretch;
+            text-align: center;
+        }
+    }
+    
+    @media (max-width: 360px) {
+        .question-header .question-actions-top {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.5rem;
+        }
+        
+        .question-header .auto-jump-status,
+        .question-header .favorite-btn {
+            order: unset;
             align-self: stretch;
             text-align: center;
         }
@@ -563,6 +597,21 @@ function showToast(message, type = 'info') {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 自动跳转成功状态图标显示逻辑
+    {% if auto_jump_success %}
+    const statusIcon = document.querySelector('.answer-status-icon');
+    if (statusIcon) {
+        // 3秒后自动隐藏状态图标
+        setTimeout(() => {
+            statusIcon.style.opacity = '0';
+            statusIcon.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                statusIcon.style.display = 'none';
+            }, 300);
+        }, 3000);
+    }
+    {% endif %}
+    
     // 确保单选题和判断题只能选择一个选项
     {% if question.type in ['单选题', '判断题'] %}
     const radioButtons = document.querySelectorAll('input[type="radio"][name="answer"]');
