@@ -46,6 +46,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'change_this_in_production')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
+# Add built-in functions to Jinja2 global environment
+app.jinja_env.globals.update(max=max, min=min)
+
 #############################
 # Database Helper Functions #
 #############################
@@ -75,8 +78,23 @@ def init_db():
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         current_seq_qid TEXT,
+        auto_jump_next INTEGER DEFAULT 0,
+        current_bank_id INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
+    
+    # Add columns to existing users table if they don't exist
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN auto_jump_next INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+    
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN current_bank_id INTEGER DEFAULT 1')
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
     
     # History table for tracking user answers
     c.execute('''CREATE TABLE IF NOT EXISTS history (
@@ -98,8 +116,17 @@ def init_db():
         qtype TEXT,
         category TEXT,
         options TEXT, -- JSON stored options
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        bank_id INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (bank_id) REFERENCES question_banks(id)
     )''')
+    
+    # Add bank_id column to existing questions table if it doesn't exist
+    try:
+        c.execute('ALTER TABLE questions ADD COLUMN bank_id INTEGER DEFAULT 1')
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
     
     # Favorites table for user bookmarks
     c.execute('''CREATE TABLE IF NOT EXISTS favorites (
@@ -126,7 +153,36 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users(id)
     )''')
     
+    # Question banks table for managing multiple question banks
+    c.execute('''CREATE TABLE IF NOT EXISTS question_banks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        filename TEXT,
+        question_count INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    # Add new columns to existing question_banks table if they don't exist
+    try:
+        c.execute('ALTER TABLE question_banks ADD COLUMN filename TEXT')
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        c.execute('ALTER TABLE question_banks ADD COLUMN question_count INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
+    
     conn.commit()
+
+    # Initialize default question bank if not exists
+    c.execute('SELECT COUNT(*) as cnt FROM question_banks')
+    if c.fetchone()['cnt'] == 0:
+        c.execute('''INSERT INTO question_banks (name, description, filename) 
+                     VALUES (?, ?, ?)''', 
+                  ('默认题库', '系统默认题库', 'questions.csv'))
+        conn.commit()
 
     # Load questions from CSV if the table is empty
     c.execute('SELECT COUNT(*) as cnt FROM questions')
@@ -135,12 +191,13 @@ def init_db():
     
     conn.close()
 
-def load_questions_to_db(conn):
+def load_questions_to_db(conn, bank_id=1):
     """
     Load questions from a CSV file into the database.
     
     Args:
         conn (sqlite3.Connection): The database connection
+        bank_id (int): The question bank ID to associate questions with
     """
     try:
         with open('questions.csv', 'r', encoding='utf-8-sig') as f:
@@ -152,7 +209,7 @@ def load_questions_to_db(conn):
                     if row.get(opt) and row[opt].strip():
                         options[opt] = row[opt]
                 c.execute(
-                    "INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options) VALUES (?,?,?,?,?,?,?)",
+                    "INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options, bank_id) VALUES (?,?,?,?,?,?,?,?)",
                     (
                         row["题号"],
                         row["题干"],
@@ -161,6 +218,7 @@ def load_questions_to_db(conn):
                         row["题型"],
                         row.get("类别", "未分类"),
                         json.dumps(options, ensure_ascii=False),
+                        bank_id,
                     ),
                 )
             conn.commit()
@@ -212,6 +270,25 @@ def get_user_id():
     """
     return session.get('user_id')
 
+def get_user_current_bank_id():
+    """
+    Get the current user's selected question bank ID.
+    
+    Returns:
+        int: The current question bank ID, defaults to 1
+    """
+    user_id = get_user_id()
+    if not user_id:
+        return 1
+    
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT current_bank_id FROM users WHERE id = ?', (user_id,))
+    result = c.fetchone()
+    conn.close()
+    
+    return result['current_bank_id'] if result and result['current_bank_id'] else 1
+
 ##############################
 # Question Helper Functions #
 ##############################
@@ -244,26 +321,30 @@ def fetch_question(qid):
         }
     return None
 
-def random_question_id(user_id):
+def random_question_id(user_id, bank_id=None):
     """
     Get a random question ID for a user, excluding questions they've already answered.
     
     Args:
         user_id (int): The user ID
+        bank_id (int): The question bank ID to filter by
         
     Returns:
         str: A random question ID or None if all questions have been answered
     """
+    if bank_id is None:
+        bank_id = get_user_current_bank_id()
+    
     conn = get_db()
     c = conn.cursor()
     c.execute('''
         SELECT id FROM questions 
-        WHERE id NOT IN (
+        WHERE bank_id = ? AND id NOT IN (
             SELECT question_id FROM history WHERE user_id=?
         )
         ORDER BY RANDOM() 
         LIMIT 1
-    ''', (user_id,))
+    ''', (bank_id, user_id))
     row = c.fetchone()
     conn.close()
     
@@ -271,19 +352,23 @@ def random_question_id(user_id):
         return row['id']
     return None
 
-def fetch_random_question_ids(num):
+def fetch_random_question_ids(num, bank_id=None):
     """
     Fetch multiple random question IDs.
     
     Args:
         num (int): The number of question IDs to fetch
+        bank_id (int): The question bank ID to filter by
         
     Returns:
         list: A list of random question IDs
     """
+    if bank_id is None:
+        bank_id = get_user_current_bank_id()
+    
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT id FROM questions ORDER BY RANDOM() LIMIT ?', (num,))
+    c.execute('SELECT id FROM questions WHERE bank_id = ? ORDER BY RANDOM() LIMIT ?', (bank_id, num))
     rows = c.fetchall()
     conn.close()
     return [r['id'] for r in rows]
@@ -393,6 +478,472 @@ def logout():
     return redirect(url_for('login'))
 
 ##############################
+# User Settings Routes #
+##############################
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def user_settings():
+    """Route for user settings page."""
+    user_id = get_user_id()
+    
+    if request.method == 'POST':
+        auto_jump_next = 1 if request.form.get('auto_jump_next') else 0
+        
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('UPDATE users SET auto_jump_next = ? WHERE id = ?', 
+                  (auto_jump_next, user_id))
+        conn.commit()
+        conn.close()
+        
+        flash("设置已保存", "success")
+        return redirect(url_for('user_settings'))
+    
+    # GET request - load current settings
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT auto_jump_next FROM users WHERE id = ?', (user_id,))
+    user_data = c.fetchone()
+    conn.close()
+    
+    auto_jump_next = user_data['auto_jump_next'] if user_data else 0
+    
+    return render_template('settings.html', auto_jump_next=auto_jump_next)
+
+@app.route('/toggle_auto_jump', methods=['POST'])
+@login_required
+def toggle_auto_jump():
+    """Toggle auto jump setting via AJAX"""
+    user_id = get_user_id()
+    
+    try:
+        data = request.get_json()
+        auto_jump = 1 if data.get('auto_jump', False) else 0
+        
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('UPDATE users SET auto_jump_next = ? WHERE id = ?', (auto_jump, user_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'auto_jump_enabled': bool(auto_jump),
+            'message': '自动跳转已' + ('开启' if auto_jump else '关闭')
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': '设置更新失败'
+        }), 500
+
+##############################
+# Question Bank Management Routes #
+##############################
+
+@app.route('/question_bank_management')
+@login_required
+def question_bank_management():
+    """Route for question bank management page."""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Get total count
+    c.execute('SELECT COUNT(*) as total FROM questions')
+    total = c.fetchone()['total']
+    
+    # Get questions with pagination
+    offset = (page - 1) * per_page
+    c.execute('''
+        SELECT id, stem, answer, difficulty, qtype, category 
+        FROM questions 
+        ORDER BY CAST(id AS INTEGER) ASC 
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset))
+    
+    questions = c.fetchall()
+    conn.close()
+    
+    # Calculate pagination info
+    total_pages = (total + per_page - 1) // per_page
+    
+    return render_template('question_bank_management.html', 
+                         questions=questions,
+                         page=page,
+                         total_pages=total_pages,
+                         total=total)
+
+@app.route('/add_question', methods=['GET', 'POST'])
+@login_required
+def add_question():
+    """Route to add a new question."""
+    if request.method == 'POST':
+        question_id = request.form.get('question_id')
+        stem = request.form.get('stem')
+        answer = request.form.get('answer')
+        difficulty = request.form.get('difficulty')
+        qtype = request.form.get('qtype')
+        category = request.form.get('category')
+        
+        # Build options
+        options = {}
+        for opt in ['A', 'B', 'C', 'D', 'E']:
+            opt_value = request.form.get(f'option_{opt}')
+            if opt_value and opt_value.strip():
+                options[opt] = opt_value.strip()
+        
+        # Validate required fields
+        if not all([question_id, stem, answer]):
+            flash("题号、题干和答案为必填项", "error")
+            return render_template('add_question.html')
+        
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Check if question ID already exists
+        c.execute('SELECT id FROM questions WHERE id = ?', (question_id,))
+        if c.fetchone():
+            conn.close()
+            flash("题号已存在，请使用不同的题号", "error")
+            return render_template('add_question.html')
+        
+        try:
+            c.execute('''
+                INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (question_id, stem, answer, difficulty, qtype, category, 
+                  json.dumps(options, ensure_ascii=False)))
+            conn.commit()
+            flash("题目添加成功", "success")
+            return redirect(url_for('question_bank_management'))
+        except Exception as e:
+            flash(f"添加题目失败: {str(e)}", "error")
+        finally:
+            conn.close()
+    
+    return render_template('add_question.html')
+
+@app.route('/edit_question/<qid>', methods=['GET', 'POST'])
+@login_required
+def edit_question(qid):
+    """Route to edit an existing question."""
+    conn = get_db()
+    c = conn.cursor()
+    
+    if request.method == 'POST':
+        stem = request.form.get('stem')
+        answer = request.form.get('answer')
+        difficulty = request.form.get('difficulty')
+        qtype = request.form.get('qtype')
+        category = request.form.get('category')
+        
+        # Build options
+        options = {}
+        for opt in ['A', 'B', 'C', 'D', 'E']:
+            opt_value = request.form.get(f'option_{opt}')
+            if opt_value and opt_value.strip():
+                options[opt] = opt_value.strip()
+        
+        # Validate required fields
+        if not all([stem, answer]):
+            flash("题干和答案为必填项", "error")
+            return redirect(url_for('edit_question', qid=qid))
+        
+        try:
+            c.execute('''
+                UPDATE questions 
+                SET stem = ?, answer = ?, difficulty = ?, qtype = ?, category = ?, options = ?
+                WHERE id = ?
+            ''', (stem, answer, difficulty, qtype, category, 
+                  json.dumps(options, ensure_ascii=False), qid))
+            conn.commit()
+            flash("题目更新成功", "success")
+            return redirect(url_for('question_bank_management'))
+        except Exception as e:
+            flash(f"更新题目失败: {str(e)}", "error")
+        finally:
+            conn.close()
+    
+    # GET request - load existing question
+    c.execute('SELECT * FROM questions WHERE id = ?', (qid,))
+    question = c.fetchone()
+    conn.close()
+    
+    if not question:
+        flash("题目不存在", "error")
+        return redirect(url_for('question_bank_management'))
+    
+    # Parse options
+    options = json.loads(question['options']) if question['options'] else {}
+    
+    return render_template('edit_question.html', question=question, options=options)
+
+@app.route('/delete_question/<qid>', methods=['POST'])
+@login_required
+def delete_question(qid):
+    """Route to delete a question."""
+    conn = get_db()
+    c = conn.cursor()
+    
+    try:
+        # Delete from questions table
+        c.execute('DELETE FROM questions WHERE id = ?', (qid,))
+        # Delete from history table
+        c.execute('DELETE FROM history WHERE question_id = ?', (qid,))
+        # Delete from favorites table
+        c.execute('DELETE FROM favorites WHERE question_id = ?', (qid,))
+        
+        conn.commit()
+        flash("题目删除成功", "success")
+    except Exception as e:
+        flash(f"删除题目失败: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('question_bank_management'))
+
+@app.route('/import_questions', methods=['GET', 'POST'])
+@login_required
+def import_questions():
+    """Route to import questions from CSV file."""
+    if request.method == 'POST':
+        if 'csv_file' not in request.files:
+            flash("请选择CSV文件", "error")
+            return redirect(url_for('import_questions'))
+        
+        file = request.files['csv_file']
+        if file.filename == '':
+            flash("请选择CSV文件", "error")
+            return redirect(url_for('import_questions'))
+        
+        if not file.filename.lower().endswith('.csv'):
+            flash("请上传CSV格式的文件", "error")
+            return redirect(url_for('import_questions'))
+        
+        bank_name = request.form.get('bank_name', '').strip()
+        if not bank_name:
+            bank_name = file.filename.rsplit('.', 1)[0]  # 使用文件名作为题库名
+        
+        try:
+            # Read CSV content
+            csv_content = file.read().decode('utf-8-sig')
+            csv_reader = csv.DictReader(csv_content.splitlines())
+            
+            conn = get_db()
+            c = conn.cursor()
+            
+            # Create new question bank
+            c.execute('''
+                INSERT INTO question_banks (name, description, filename) 
+                VALUES (?, ?, ?)
+            ''', (bank_name, f"从 {file.filename} 导入的题库", file.filename))
+            
+            bank_id = c.lastrowid
+            
+            imported_count = 0
+            skipped_count = 0
+            
+            for row in csv_reader:
+                question_id = row.get("题号")
+                if not question_id:
+                    continue
+                
+                # Build unique question ID by combining bank_id and original question_id
+                unique_question_id = f"{bank_id}_{question_id}"
+                
+                # Check if question already exists in this bank
+                c.execute('SELECT id FROM questions WHERE id = ?', (unique_question_id,))
+                if c.fetchone():
+                    skipped_count += 1
+                    continue
+                
+                # Build options
+                options = {}
+                for opt in ['A', 'B', 'C', 'D', 'E']:
+                    if row.get(opt) and row[opt].strip():
+                        options[opt] = row[opt]
+                
+                c.execute('''
+                    INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options, bank_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    unique_question_id,
+                    row.get("题干", ""),
+                    row.get("答案", ""),
+                    row.get("难度", ""),
+                    row.get("题型", ""),
+                    row.get("类别", "未分类"),
+                    json.dumps(options, ensure_ascii=False),
+                    bank_id
+                ))
+                imported_count += 1
+            
+            # Update question count for the bank
+            c.execute('UPDATE question_banks SET question_count = ? WHERE id = ?', 
+                      (imported_count, bank_id))
+            
+            conn.commit()
+            conn.close()
+            
+            flash(f"导入完成！创建题库 '{bank_name}'，成功导入 {imported_count} 题，跳过 {skipped_count} 题（已存在）", "success")
+            return redirect(url_for('question_bank_list'))
+            
+        except Exception as e:
+            flash(f"导入失败: {str(e)}", "error")
+    
+    return render_template('import_questions.html')
+
+@app.route('/question_banks')
+@login_required
+def question_bank_list():
+    """Route to display list of question banks."""
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Get all question banks with their question counts
+    c.execute('''
+        SELECT qb.*, 
+               COALESCE(COUNT(q.id), 0) as actual_question_count
+        FROM question_banks qb
+        LEFT JOIN questions q ON qb.id = q.bank_id
+        GROUP BY qb.id
+        ORDER BY qb.created_at DESC
+    ''')
+    banks = c.fetchall()
+    
+    # Get current user's selected bank
+    user_id = get_user_id()
+    c.execute('SELECT current_bank_id FROM users WHERE id = ?', (user_id,))
+    current_bank_id = c.fetchone()['current_bank_id']
+    
+    conn.close()
+    
+    return render_template('question_banks.html', 
+                          banks=banks, 
+                          current_bank_id=current_bank_id)
+
+@app.route('/select_bank/<int:bank_id>', methods=['POST'])
+@login_required
+def select_bank(bank_id):
+    """Route to select a question bank for the user."""
+    user_id = get_user_id()
+    
+    # Verify bank exists
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM question_banks WHERE id = ?', (bank_id,))
+    bank = c.fetchone()
+    
+    if not bank:
+        flash("题库不存在", "error")
+        return redirect(url_for('question_bank_list'))
+    
+    # Update user's current bank
+    c.execute('UPDATE users SET current_bank_id = ? WHERE id = ?', 
+              (bank_id, user_id))
+    conn.commit()
+    conn.close()
+    
+    flash(f"已切换到题库：{bank['name']}", "success")
+    return redirect(url_for('index'))
+
+@app.route('/delete_bank/<int:bank_id>', methods=['POST'])
+@login_required
+def delete_bank(bank_id):
+    """Route to delete a question bank."""
+    # Don't allow deletion of default bank (id=1)
+    if bank_id == 1:
+        flash("无法删除默认题库", "error")
+        return redirect(url_for('question_bank_list'))
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Check if bank exists
+    c.execute('SELECT name FROM question_banks WHERE id = ?', (bank_id,))
+    bank = c.fetchone()
+    if not bank:
+        flash("题库不存在", "error")
+        return redirect(url_for('question_bank_list'))
+    
+    try:
+        # Delete all questions in this bank
+        c.execute('DELETE FROM questions WHERE bank_id = ?', (bank_id,))
+        
+        # Delete the bank
+        c.execute('DELETE FROM question_banks WHERE id = ?', (bank_id,))
+        
+        # Reset users who were using this bank to default bank
+        c.execute('UPDATE users SET current_bank_id = 1 WHERE current_bank_id = ?', (bank_id,))
+        
+        conn.commit()
+        flash(f"题库 '{bank['name']}' 已删除", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"删除题库失败: {str(e)}", "error")
+    finally:
+        conn.close()
+    
+    return redirect(url_for('question_bank_list'))
+
+@app.route('/export_questions')
+@login_required
+def export_questions():
+    """Route to export questions to CSV file."""
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('SELECT * FROM questions ORDER BY CAST(id AS INTEGER) ASC')
+        questions = c.fetchall()
+        conn.close()
+        
+        # Create CSV content
+        output = []
+        fieldnames = ['题号', '题干', '答案', '难度', '题型', '类别', 'A', 'B', 'C', 'D', 'E']
+        
+        # Add header
+        output.append(','.join(fieldnames))
+        
+        # Add data rows
+        for question in questions:
+            options = json.loads(question['options']) if question['options'] else {}
+            row = [
+                f'"{question["id"]}"',
+                f'"{question["stem"]}"',
+                f'"{question["answer"]}"',
+                f'"{question["difficulty"] or ""}"',
+                f'"{question["qtype"] or ""}"',
+                f'"{question["category"] or ""}"',
+                f'"{options.get("A", "")}"',
+                f'"{options.get("B", "")}"',
+                f'"{options.get("C", "")}"',
+                f'"{options.get("D", "")}"',
+                f'"{options.get("E", "")}"'
+            ]
+            output.append(','.join(row))
+        
+        # Create temporary file
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8-sig') as f:
+            f.write('\n'.join(output))
+            temp_path = f.name
+        
+        return send_file(temp_path, 
+                        as_attachment=True, 
+                        download_name=f'questions_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+                        mimetype='text/csv')
+    
+    except Exception as e:
+        flash(f"导出失败: {str(e)}", "error")
+        return redirect(url_for('question_bank_management'))
+
+##############################
 # Main Application Routes #
 ##############################
 
@@ -402,16 +953,30 @@ def index():
     """Home page route."""
     # Fetch current sequential question ID if exists
     user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
+    
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT current_seq_qid FROM users WHERE id = ?', (user_id,))
     user_data = c.fetchone()
     current_seq_qid = user_data['current_seq_qid'] if user_data and user_data['current_seq_qid'] else None
+    
+    # Get current bank info
+    c.execute('SELECT name FROM question_banks WHERE id = ?', (bank_id,))
+    bank_info = c.fetchone()
+    current_bank_name = bank_info['name'] if bank_info else '未知题库'
+    
+    # Get question count for current bank
+    c.execute('SELECT COUNT(*) as total FROM questions WHERE bank_id = ?', (bank_id,))
+    total_questions = c.fetchone()['total']
+    
     conn.close()
     
     return render_template('index.html', 
                           current_year=datetime.now().year,
-                          current_seq_qid=current_seq_qid)
+                          current_seq_qid=current_seq_qid,
+                          current_bank_name=current_bank_name,
+                          total_questions=total_questions)
 
 @app.route('/reset_history', methods=['POST'])
 @login_required
@@ -442,30 +1007,43 @@ def reset_history():
 def random_question():
     """Route to get a random question."""
     user_id = get_user_id()
-    qid = random_question_id(user_id)
+    bank_id = get_user_current_bank_id()
+    qid = random_question_id(user_id, bank_id)
     
     conn = get_db()
     c = conn.cursor()
-    # Get total questions count
-    c.execute('SELECT COUNT(*) as total FROM questions')
+    # Get total questions count for current bank
+    c.execute('SELECT COUNT(*) as total FROM questions WHERE bank_id = ?', (bank_id,))
     total = c.fetchone()['total']
-    # Get answered questions count
-    c.execute('SELECT COUNT(DISTINCT question_id) as answered FROM history WHERE user_id=?', (user_id,))
+    # Get answered questions count for current bank
+    c.execute('''SELECT COUNT(DISTINCT h.question_id) as answered 
+                 FROM history h 
+                 JOIN questions q ON h.question_id = q.id 
+                 WHERE h.user_id = ? AND q.bank_id = ?''', (user_id, bank_id))
     answered = c.fetchone()['answered']
     conn.close()
     
     if not qid:
-        flash("您已完成所有题目！可以重置历史以重新开始。", "info")
+        flash("您已完成当前题库的所有题目！可以重置历史以重新开始，或切换到其他题库。", "info")
         return render_template('question.html', question=None, answered=answered, total=total)
         
     q = fetch_question(qid)
     is_fav = is_favorite(user_id, qid)
     
+    # Get user's auto-jump setting
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT auto_jump_next FROM users WHERE id = ?', (user_id,))
+    user_settings = c.fetchone()
+    auto_jump_enabled = user_settings['auto_jump_next'] if user_settings else 0
+    conn.close()
+    
     return render_template('question.html', 
                           question=q, 
                           answered=answered, 
                           total=total,
-                          is_favorite=is_fav)
+                          is_favorite=is_fav,
+                          auto_jump_enabled=auto_jump_enabled)
 
 @app.route('/question/<qid>', methods=['GET', 'POST'])
 @login_required
@@ -497,30 +1075,70 @@ def show_question(qid):
         )
         conn.commit()
 
-        # Get updated stats
-        c.execute('SELECT COUNT(*) AS total FROM questions')
-        total = c.fetchone()['total']
-        c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?', (user_id,))
-        answered = c.fetchone()['answered']
-        conn.close()
+        # Check if user has auto-jump enabled and answer is correct
+        c.execute('SELECT auto_jump_next FROM users WHERE id = ?', (user_id,))
+        user_settings = c.fetchone()
+        auto_jump_next = user_settings['auto_jump_next'] if user_settings else 0
+        
+        if correct and auto_jump_next:
+            # Auto-jump to next random question
+            next_qid = random_question_id(user_id)
+            if next_qid:
+                conn.close()
+                flash("回答正确！自动跳转到下一题", "success")
+                return redirect(url_for('show_question', qid=next_qid))
 
-        result_msg = "回答正确" if correct else f"回答错误，正确答案：{q['answer']}"
+        # Get updated stats for current bank
+        bank_id = get_user_current_bank_id()
+        c.execute('SELECT COUNT(*) AS total FROM questions WHERE bank_id = ?', (bank_id,))
+        total = c.fetchone()['total']
+        c.execute('''SELECT COUNT(DISTINCT h.question_id) AS answered 
+                     FROM history h 
+                     JOIN questions q ON h.question_id = q.id 
+                     WHERE h.user_id = ? AND q.bank_id = ?''', (user_id, bank_id))
+        answered = c.fetchone()['answered']
+        if correct:
+            result_msg = "回答正确"
+        else:
+            result_msg = f"回答错误，正确答案：{q['answer']}        你的选项是：{user_answer_str}"
         flash(result_msg, "success" if correct else "error")
         
         is_fav = is_favorite(user_id, qid)
         
+        # Get user's auto-jump setting for display
+        conn2 = get_db()
+        c2 = conn2.cursor()
+        c2.execute('SELECT auto_jump_next FROM users WHERE id = ?', (user_id,))
+        user_settings = c2.fetchone()
+        auto_jump_enabled = user_settings['auto_jump_next'] if user_settings else 0
+        conn2.close()
+        
+        conn.close()
+        
         return render_template('question.html',
                               question=q,
                               result_msg=result_msg,
+                              user_answer=user_answer_str,
                               answered=answered,
                               total=total,
-                              is_favorite=is_fav)
+                              is_favorite=is_fav,
+                              auto_jump_enabled=auto_jump_enabled)
 
     # Handle GET request
-    c.execute('SELECT COUNT(*) AS total FROM questions')
+    bank_id = get_user_current_bank_id()
+    c.execute('SELECT COUNT(*) AS total FROM questions WHERE bank_id = ?', (bank_id,))
     total = c.fetchone()['total']
-    c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?', (user_id,))
+    c.execute('''SELECT COUNT(DISTINCT h.question_id) AS answered 
+                 FROM history h 
+                 JOIN questions q ON h.question_id = q.id 
+                 WHERE h.user_id = ? AND q.bank_id = ?''', (user_id, bank_id))
     answered = c.fetchone()['answered']
+    
+    # Get user's auto-jump setting
+    c.execute('SELECT auto_jump_next FROM users WHERE id = ?', (user_id,))
+    user_settings = c.fetchone()
+    auto_jump_enabled = user_settings['auto_jump_next'] if user_settings else 0
+    
     conn.close()
     
     is_fav = is_favorite(user_id, qid)
@@ -529,7 +1147,8 @@ def show_question(qid):
                           question=q,
                           answered=answered,
                           total=total,
-                          is_favorite=is_fav)
+                          is_favorite=is_fav,
+                          auto_jump_enabled=auto_jump_enabled)
 
 @app.route('/history')
 @login_required
@@ -585,9 +1204,15 @@ def search():
 def wrong_questions():
     """Route to view wrong answers."""
     user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
+    
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT question_id FROM history WHERE user_id=? AND correct=0', (user_id,))
+    c.execute('''SELECT DISTINCT h.question_id 
+                 FROM history h 
+                 JOIN questions q ON h.question_id = q.id 
+                 WHERE h.user_id = ? AND h.correct = 0 AND q.bank_id = ?''', 
+              (user_id, bank_id))
     rows = c.fetchall()
     conn.close()
     
@@ -606,25 +1231,40 @@ def wrong_questions():
 def only_wrong_mode():
     """Route to practice only wrong questions."""
     user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
+    
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT question_id FROM history WHERE user_id=? AND correct=0', (user_id,))
+    c.execute('''SELECT DISTINCT h.question_id 
+                 FROM history h 
+                 JOIN questions q ON h.question_id = q.id 
+                 WHERE h.user_id = ? AND h.correct = 0 AND q.bank_id = ?''', 
+              (user_id, bank_id))
     rows = c.fetchall()
     conn.close()
     
     wrong_ids = [r['question_id'] for r in rows]
     
     if not wrong_ids:
-        flash("你没有错题或还未答题", "info")
+        flash("当前题库中没有错题或还未答题", "info")
         return redirect(url_for('index'))
     
     qid = random.choice(wrong_ids)
     q = fetch_question(qid)
     is_fav = is_favorite(user_id, qid)
     
+    # Get user's auto-jump setting
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT auto_jump_next FROM users WHERE id = ?', (user_id,))
+    user_settings = c.fetchone()
+    auto_jump_enabled = user_settings['auto_jump_next'] if user_settings else 0
+    conn.close()
+    
     return render_template('question.html', 
                           question=q, 
-                          is_favorite=is_fav)
+                          is_favorite=is_fav,
+                          auto_jump_enabled=auto_jump_enabled)
 
 ##############################
 # Browse Routes #
@@ -891,26 +1531,30 @@ def sequential_start():
         # Continue from last browsed position (start from where user left off)
         current_qid = user_data['current_seq_qid']
     else:
-        # Find the first unanswered question
+        # Find the first unanswered question in current bank
+        bank_id = get_user_current_bank_id()
         c.execute('''
             SELECT id
             FROM questions
-            WHERE id NOT IN (
-                SELECT question_id FROM history WHERE user_id = ?
+            WHERE bank_id = ? AND id NOT IN (
+                SELECT h.question_id FROM history h 
+                JOIN questions q ON h.question_id = q.id 
+                WHERE h.user_id = ? AND q.bank_id = ?
             )
             ORDER BY CAST(id AS INTEGER) ASC
             LIMIT 1
-        ''', (user_id,))
+        ''', (bank_id, user_id, bank_id))
         row = c.fetchone()
         
         if row is None:
-            # If all questions are answered, find the first question
+            # If all questions in current bank are answered, find the first question in bank
             c.execute('''
                 SELECT id
                 FROM questions
+                WHERE bank_id = ?
                 ORDER BY CAST(id AS INTEGER) ASC
                 LIMIT 1
-            ''')
+            ''', (bank_id,))
             row = c.fetchone()
             
             if row is None:
@@ -966,16 +1610,19 @@ def show_sequential_question(qid):
                   'VALUES (?,?,?,?)',
                   (user_id, qid, user_answer_str, correct))
         
-        # Find next unanswered question with higher ID
+        # Find next unanswered question with higher ID in current bank
+        bank_id = get_user_current_bank_id()
         c.execute('''
             SELECT id FROM questions
-            WHERE CAST(id AS INTEGER) > ?
+            WHERE bank_id = ? AND CAST(id AS INTEGER) > ?
               AND id NOT IN (
-                  SELECT question_id FROM history WHERE user_id = ?
+                  SELECT h.question_id FROM history h 
+                  JOIN questions q ON h.question_id = q.id 
+                  WHERE h.user_id = ? AND q.bank_id = ?
               )
             ORDER BY CAST(id AS INTEGER) ASC
             LIMIT 1
-        ''', (int(qid), user_id))
+        ''', (bank_id, int(qid), user_id, bank_id))
         
         row = c.fetchone()
         if row:
@@ -983,15 +1630,17 @@ def show_sequential_question(qid):
             c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
                       (next_qid, user_id))
         else:
-            # Check if there are any questions left to answer
+            # Check if there are any questions left to answer in current bank
             c.execute('''
                 SELECT id FROM questions
-                WHERE id NOT IN (
-                    SELECT question_id FROM history WHERE user_id = ?
+                WHERE bank_id = ? AND id NOT IN (
+                    SELECT h.question_id FROM history h 
+                    JOIN questions q ON h.question_id = q.id 
+                    WHERE h.user_id = ? AND q.bank_id = ?
                 )
                 ORDER BY CAST(id AS INTEGER) ASC
                 LIMIT 1
-            ''', (user_id,))
+            ''', (bank_id, user_id, bank_id))
             
             row = c.fetchone()
             if row:
@@ -999,31 +1648,38 @@ def show_sequential_question(qid):
                 c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
                           (next_qid, user_id))
             else:
-                # All questions answered, reset to first question
+                # All questions in current bank answered, reset to first question in bank
                 c.execute('''
                     SELECT id FROM questions
+                    WHERE bank_id = ?
                     ORDER BY CAST(id AS INTEGER) ASC
                     LIMIT 1
-                ''')
+                ''', (bank_id,))
                 row = c.fetchone()
                 if row:
                     next_qid = row['id']
                     c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
                               (next_qid, user_id))
-                    flash("所有题目已完成，从第一题重新开始。", "info")
+                    flash("当前题库所有题目已完成，从第一题重新开始。", "info")
                 else:
                     c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?',
                               (user_id,))
             
-        result_msg = "回答正确！" if correct else f"回答错误，正确答案：{q['answer']}"
+        if correct:
+            result_msg = "回答正确！"
+        else:
+            result_msg = f"回答错误，正确答案：{q['answer']}        你的选项是：{user_answer_str}"
         flash(result_msg, "success" if correct else "error")
     
-    # Get progress statistics
-    c.execute('SELECT COUNT(*) AS total FROM questions')
+    # Get progress statistics for current bank
+    bank_id = get_user_current_bank_id()
+    c.execute('SELECT COUNT(*) AS total FROM questions WHERE bank_id = ?', (bank_id,))
     total = c.fetchone()['total']
     
-    c.execute('SELECT COUNT(DISTINCT question_id) AS answered '
-              'FROM history WHERE user_id = ?', (user_id,))
+    c.execute('''SELECT COUNT(DISTINCT h.question_id) AS answered 
+                 FROM history h 
+                 JOIN questions q ON h.question_id = q.id 
+                 WHERE h.user_id = ? AND q.bank_id = ?''', (user_id, bank_id))
     answered = c.fetchone()['answered']
     
     conn.commit()
@@ -1056,17 +1712,23 @@ def modes():
 def start_timed_mode():
     """Route to start timed mode quiz."""
     user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
     
     # Configuration for timed mode
     question_count = int(request.form.get('question_count', 5))
     duration_minutes = int(request.form.get('duration', 10))
     
-    question_ids = fetch_random_question_ids(question_count)
+    question_ids = fetch_random_question_ids(question_count, bank_id)
     start_time = datetime.now()
     duration = duration_minutes * 60  # Convert minutes to seconds
     
     conn = get_db()
     c = conn.cursor()
+    
+    # Check if we have enough questions
+    if len(question_ids) < question_count:
+        flash(f"当前题库中只有 {len(question_ids)} 题，无法开始定时模式", "error")
+        return redirect(url_for('index'))
     
     try:
         c.execute('''
@@ -1182,13 +1844,19 @@ def submit_timed_mode():
 def start_exam():
     """Route to start exam mode."""
     user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
     
     # Configuration
     question_count = int(request.form.get('question_count', 10))
     
-    question_ids = fetch_random_question_ids(question_count)
+    question_ids = fetch_random_question_ids(question_count, bank_id)
     start_time = datetime.now()
     duration = 0  # 0 means no time limit
+    
+    # Check if we have enough questions
+    if len(question_ids) < question_count:
+        flash(f"当前题库中只有 {len(question_ids)} 题，无法开始模拟考试", "error")
+        return redirect(url_for('index'))
     
     conn = get_db()
     c = conn.cursor()

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}创建题库 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-plus-circle"></i> 创建新题库
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">题库名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required 
+                                   placeholder="请输入题库名称">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">题库描述</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="请输入题库描述（可选）"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="csv_file" class="form-label">导入题目文件（可选）</label>
+                            <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv">
+                            <div class="form-text">
+                                可以选择CSV文件直接导入题目，也可以稍后在题库管理页面导入。
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> CSV文件格式要求</h6>
+                            <ul class="mb-0">
+                                <li><strong>必需列：</strong>题号、题干、答案</li>
+                                <li><strong>可选列：</strong>A、B、C、D、E、F（选项）、难度、题型、分类</li>
+                                <li><strong>编码：</strong>UTF-8</li>
+                                <li><strong>示例：</strong></li>
+                            </ul>
+                            <div class="mt-2">
+                                <code>
+                                题号,题干,A,B,C,D,答案,难度,题型<br>
+                                1,下列哪个是正确的？,选项A,选项B,选项C,选项D,A,简单,单选题
+                                </code>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('question_banks') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> 返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 创建题库
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.form-label {
+    font-weight: 600;
+}
+
+.alert-info {
+    border-left: 4px solid #0dcaf0;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    display: block;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %} 
