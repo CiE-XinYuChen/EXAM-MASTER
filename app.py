@@ -514,29 +514,39 @@ def user_settings():
 @app.route('/toggle_auto_jump', methods=['POST'])
 @login_required
 def toggle_auto_jump():
-    """Toggle auto jump setting via AJAX"""
+    """AJAX route to toggle auto-jump setting."""
     user_id = get_user_id()
     
     try:
+        # Get the new setting from JSON request
         data = request.get_json()
-        auto_jump = 1 if data.get('auto_jump', False) else 0
+        if data is None:
+            return jsonify({'success': False, 'message': '无效的请求数据'})
         
+        auto_jump = data.get('auto_jump', False)
+        auto_jump_value = 1 if auto_jump else 0
+        
+        # Update user setting in database
         conn = get_db()
         c = conn.cursor()
-        c.execute('UPDATE users SET auto_jump_next = ? WHERE id = ?', (auto_jump, user_id))
+        c.execute('UPDATE users SET auto_jump_next = ? WHERE id = ?', 
+                  (auto_jump_value, user_id))
         conn.commit()
         conn.close()
         
+        message = "自动跳转已开启" if auto_jump else "自动跳转已关闭"
+        
         return jsonify({
             'success': True,
-            'auto_jump_enabled': bool(auto_jump),
-            'message': '自动跳转已' + ('开启' if auto_jump else '关闭')
+            'auto_jump_enabled': auto_jump,
+            'message': message
         })
+        
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': '设置更新失败'
-        }), 500
+            'message': f'设置更新失败: {str(e)}'
+        })
 
 ##############################
 # Question Bank Management Routes #
@@ -1099,9 +1109,10 @@ def show_question(qid):
         answered = c.fetchone()['answered']
         if correct:
             result_msg = "回答正确"
+            # 不使用flash显示正确消息，只在卡片内显示
         else:
             result_msg = f"回答错误，正确答案：{q['answer']}        你的选项是：{user_answer_str}"
-        flash(result_msg, "success" if correct else "error")
+            # 不使用flash显示错误消息，只在卡片内显示
         
         is_fav = is_favorite(user_id, qid)
         
@@ -1667,9 +1678,10 @@ def show_sequential_question(qid):
             
         if correct:
             result_msg = "回答正确！"
+            # 不使用flash显示正确消息，只在卡片内显示
         else:
             result_msg = f"回答错误，正确答案：{q['answer']}        你的选项是：{user_answer_str}"
-        flash(result_msg, "success" if correct else "error")
+            # 不使用flash显示错误消息，只在卡片内显示
     
     # Get progress statistics for current bank
     bank_id = get_user_current_bank_id()
