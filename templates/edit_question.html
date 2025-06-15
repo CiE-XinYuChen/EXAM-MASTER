@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block title %}编辑题目 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="edit-question-container">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-edit"></i> 编辑题目</h2>
+            <p class="text-muted">编辑题目 {{ question.id }} 的信息</p>
+        </div>
+        
+        <form method="post" class="question-form">
+            <div class="form-section">
+                <h3><i class="fas fa-info-circle"></i> 基本信息</h3>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">题号</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   value="{{ question.id }}" 
+                                   disabled>
+                            <small class="form-text text-muted">题号不可修改</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="qtype" class="form-label">题目类型</label>
+                            <select class="form-control" id="qtype" name="qtype">
+                                <option value="">请选择题目类型</option>
+                                <option value="单选题" {% if question.qtype == '单选题' %}selected{% endif %}>单选题</option>
+                                <option value="多选题" {% if question.qtype == '多选题' %}selected{% endif %}>多选题</option>
+                                <option value="判断题" {% if question.qtype == '判断题' %}selected{% endif %}>判断题</option>
+                                <option value="填空题" {% if question.qtype == '填空题' %}selected{% endif %}>填空题</option>
+                                <option value="简答题" {% if question.qtype == '简答题' %}selected{% endif %}>简答题</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="difficulty" class="form-label">难度</label>
+                            <select class="form-control" id="difficulty" name="difficulty">
+                                <option value="">请选择难度</option>
+                                <option value="简单" {% if question.difficulty == '简单' %}selected{% endif %}>简单</option>
+                                <option value="中等" {% if question.difficulty == '中等' %}selected{% endif %}>中等</option>
+                                <option value="困难" {% if question.difficulty == '困难' %}selected{% endif %}>困难</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="category" class="form-label">类别</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="category" 
+                                   name="category" 
+                                   placeholder="例如：历史、地理、数学..."
+                                   value="{{ question.category or '未分类' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-question-circle"></i> 题目内容</h3>
+                <div class="form-group">
+                    <label for="stem" class="form-label required">题干</label>
+                    <textarea class="form-control" 
+                              id="stem" 
+                              name="stem" 
+                              rows="4" 
+                              placeholder="请输入题目的完整描述..."
+                              required>{{ question.stem }}</textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="answer" class="form-label required">正确答案</label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="answer" 
+                           name="answer" 
+                           placeholder="例如：A、AB、是、答案内容..."
+                           value="{{ question.answer }}"
+                           required>
+                    <small class="form-text text-muted">
+                        对于选择题，请输入选项字母（如A、B、AB等）；对于判断题，请输入"是"或"否"；对于其他题型，请输入具体答案
+                    </small>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-list"></i> 选项设置</h3>
+                <p class="text-muted">仅适用于选择题和判断题，其他题型可留空</p>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="option_A" class="form-label">选项 A</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="option_A" 
+                                   name="option_A" 
+                                   placeholder="请输入选项A的内容"
+                                   value="{{ options.get('A', '') }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="option_B" class="form-label">选项 B</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="option_B" 
+                                   name="option_B" 
+                                   placeholder="请输入选项B的内容"
+                                   value="{{ options.get('B', '') }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="option_C" class="form-label">选项 C</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="option_C" 
+                                   name="option_C" 
+                                   placeholder="请输入选项C的内容"
+                                   value="{{ options.get('C', '') }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="option_D" class="form-label">选项 D</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="option_D" 
+                                   name="option_D" 
+                                   placeholder="请输入选项D的内容"
+                                   value="{{ options.get('D', '') }}">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label for="option_E" class="form-label">选项 E</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="option_E" 
+                                   name="option_E" 
+                                   placeholder="请输入选项E的内容（可选）"
+                                   value="{{ options.get('E', '') }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> 保存修改
+                </button>
+                <a href="{{ url_for('show_question', qid=question.id) }}" class="btn btn-outline-info">
+                    <i class="fas fa-eye"></i> 预览题目
+                </a>
+                <a href="{{ url_for('question_bank_management') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回题库管理
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .edit-question-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .card-header h2 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary-color);
+    }
+    
+    .question-form {
+        padding: 1.5rem;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .form-section:last-of-type {
+        border-bottom: none;
+    }
+    
+    .form-section h3 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: var(--gray-800);
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: var(--gray-700);
+    }
+    
+    .form-label.required::after {
+        content: " *";
+        color: var(--danger-color);
+    }
+    
+    .form-control {
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.75rem;
+        font-size: 1rem;
+        transition: border-color 0.2s ease;
+    }
+    
+    .form-control:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+    }
+    
+    .form-control:disabled {
+        background-color: #e9ecef;
+        opacity: 1;
+    }
+    
+    .form-text {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-start;
+        padding-top: 1.5rem;
+        border-top: 1px solid #dee2e6;
+        flex-wrap: wrap;
+    }
+    
+    @media (max-width: 768px) {
+        .form-actions {
+            flex-direction: column;
+        }
+        
+        .form-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const qtypeSelect = document.getElementById('qtype');
+    const optionInputs = document.querySelectorAll('[id^="option_"]');
+    
+    // Handle question type change
+    function updateOptionsPlaceholders() {
+        const selectedType = qtypeSelect.value;
+        
+        if (selectedType === '判断题') {
+            document.getElementById('option_A').placeholder = '例如：是';
+            document.getElementById('option_B').placeholder = '例如：否';
+            document.getElementById('option_C').placeholder = '';
+            document.getElementById('option_D').placeholder = '';
+            document.getElementById('option_E').placeholder = '';
+        } else if (selectedType === '单选题' || selectedType === '多选题') {
+            document.getElementById('option_A').placeholder = '请输入选项A的内容';
+            document.getElementById('option_B').placeholder = '请输入选项B的内容';
+            document.getElementById('option_C').placeholder = '请输入选项C的内容';
+            document.getElementById('option_D').placeholder = '请输入选项D的内容';
+            document.getElementById('option_E').placeholder = '请输入选项E的内容（可选）';
+        } else {
+            optionInputs.forEach(input => {
+                input.placeholder = '此题型不需要选项';
+            });
+        }
+    }
+    
+    // Initialize placeholders
+    updateOptionsPlaceholders();
+    
+    qtypeSelect.addEventListener('change', updateOptionsPlaceholders);
+    
+    // Form validation
+    const form = document.querySelector('.question-form');
+    form.addEventListener('submit', function(e) {
+        const stem = document.getElementById('stem').value.trim();
+        const answer = document.getElementById('answer').value.trim();
+        
+        if (!stem || !answer) {
+            e.preventDefault();
+            alert('请填写所有必填项！');
+            return;
+        }
+        
+        // Additional validation for specific question types
+        const qtype = document.getElementById('qtype').value;
+        if (qtype === '单选题' || qtype === '多选题' || qtype === '判断题') {
+            const hasOptions = Array.from(optionInputs).some(input => input.value.trim());
+            if (!hasOptions) {
+                e.preventDefault();
+                alert('选择题和判断题需要至少设置一个选项！');
+                return;
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 
