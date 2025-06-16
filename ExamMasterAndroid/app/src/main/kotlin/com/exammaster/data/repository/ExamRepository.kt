@@ -56,6 +56,8 @@ class ExamRepository(
     
     suspend fun getTotalAnswerCount(): Int = historyDao.getTotalAnswerCount()
     
+    suspend fun getQuestionAttemptCount(questionId: String): Int = historyDao.getQuestionAttemptCount(questionId)
+    
     suspend fun insertHistory(history: History) = historyDao.insertHistory(history)
     
     suspend fun deleteAllHistory() = historyDao.deleteAllHistory()
@@ -91,11 +93,41 @@ class ExamRepository(
     
     suspend fun insertExamSession(examSession: ExamSession): Long = 
         examSessionDao.insertExamSession(examSession)
-    
-    suspend fun updateExamSession(examSession: ExamSession) = examSessionDao.updateExamSession(examSession)
+      suspend fun updateExamSession(examSession: ExamSession) = examSessionDao.updateExamSession(examSession)
     
     suspend fun completeExamSession(id: Int, score: Float) = 
         examSessionDao.completeExamSession(id, score)
+
+    // Advanced statistics operations
+    suspend fun getDailyStatistics() = historyDao.getDailyStatistics()
+    
+    suspend fun getCategoryStatistics() = historyDao.getCategoryStatistics()
+    
+    suspend fun getDifficultyStatistics() = historyDao.getDifficultyStatistics()
+    
+    suspend fun getRecentHistory(limit: Int = 50) = historyDao.getRecentHistory(limit)
+    
+    suspend fun getWeeklyAnswerCount(): Int {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return historyDao.getWeeklyAnswerCount(calendar.timeInMillis)
+    }
+    
+    suspend fun getMonthlyAnswerCount(): Int {
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        return historyDao.getMonthlyAnswerCount(calendar.timeInMillis)
+    }
+    
+    suspend fun getMostAttemptedQuestions() = historyDao.getMostAttemptedQuestions()
 
     // Complex operations
     suspend fun getWrongQuestions(): List<Question> {
@@ -137,8 +169,7 @@ class ExamRepository(
             } else {
                 allQuestions.first() // If not found, start from first
             }
-        }
-    }
+        }    }
     
     suspend fun getRandomQuestions(count: Int): List<Question> {
         val allQuestions = getQuestionsInSequence()
@@ -149,5 +180,6 @@ class ExamRepository(
     suspend fun clearAllUserData() {
         deleteAllHistory()
         deleteAllFavorites()
+        examSessionDao.deleteAllExamSessions()
     }
 }

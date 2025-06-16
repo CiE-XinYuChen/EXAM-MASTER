@@ -116,15 +116,15 @@ fun QuestionScreen(
                         }
                     }
                 }
-                
-                // Options
+                  // Options
                 question.getFormattedOptions().forEach { (key, value) ->
                     OptionItem(
                         option = key,
                         text = value,
                         isSelected = selectedAnswers.contains(key),
                         isEnabled = !showResult,
-                        onSelect = { viewModel.selectAnswer(key) }
+                        onSelect = { viewModel.selectAnswer(key) },
+                        isJudgmentQuestion = question.qtype == "判断题"
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -164,11 +164,13 @@ fun QuestionScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            
                             if (!isAnswerCorrect) {
                                 Spacer(modifier = Modifier.height(8.dp))
+                                
+                                val displayAnswer = question.getFormattedAnswer()
+                                
                                 Text(
-                                    text = "正确答案：${question.answer}",
+                                    text = "正确答案：$displayAnswer",
                                     color = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -218,9 +220,9 @@ private fun OptionItem(
     text: String,
     isSelected: Boolean,
     isEnabled: Boolean,
-    onSelect: () -> Unit
-) {
-    Card(
+    onSelect: () -> Unit,
+    isJudgmentQuestion: Boolean = false
+) {    Card(
         modifier = Modifier
             .fillMaxWidth()
             .selectable(
@@ -236,6 +238,8 @@ private fun OptionItem(
         ),
         border = if (isSelected) 
             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        else if (isJudgmentQuestion) // 判断题强调单选特性
+            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
         else null
     ) {
         Row(

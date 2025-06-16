@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block title %}题库管理 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="question-bank-container">
+    <div class="card">
+        <div class="card-header">
+            <div class="header-content">
+                <div class="title-section">
+                    <h2><i class="fas fa-database"></i> 题库管理</h2>
+                    <p class="text-muted">管理系统中的题目，共 {{ total }} 题</p>
+                </div>
+                <div class="action-buttons">
+                    <a href="{{ url_for('add_question') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 添加题目
+                    </a>
+                    <a href="{{ url_for('import_questions') }}" class="btn btn-success">
+                        <i class="fas fa-upload"></i> 导入CSV
+                    </a>
+                    <a href="{{ url_for('export_questions') }}" class="btn btn-info">
+                        <i class="fas fa-download"></i> 导出CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        {% if questions %}
+        <div class="questions-table-container">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th width="8%">题号</th>
+                        <th width="40%">题干</th>
+                        <th width="8%">答案</th>
+                        <th width="10%">类型</th>
+                        <th width="8%">难度</th>
+                        <th width="12%">类别</th>
+                        <th width="14%">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in questions %}
+                    <tr>
+                        <td><span class="badge badge-primary">{{ question.id }}</span></td>
+                        <td class="question-stem">
+                            {{ question.stem[:100] }}{% if question.stem|length > 100 %}...{% endif %}
+                        </td>
+                        <td><span class="badge badge-success">{{ question.answer }}</span></td>
+                        <td>{{ question.qtype or '-' }}</td>
+                        <td>
+                            {% if question.difficulty %}
+                                <span class="badge {% if question.difficulty == '简单' %}badge-success{% elif question.difficulty == '中等' %}badge-warning{% else %}badge-danger{% endif %}">
+                                    {{ question.difficulty }}
+                                </span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ question.category or '未分类' }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('show_question', qid=question.id) }}" 
+                                   class="btn btn-outline-primary" title="预览">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('edit_question', qid=question.id) }}" 
+                                   class="btn btn-outline-secondary" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" 
+                                      action="{{ url_for('delete_question', qid=question.id) }}" 
+                                      style="display: inline;"
+                                      onsubmit="return confirm('确定要删除这道题目吗？此操作不可恢复。')">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="pagination-container">
+            <nav aria-label="题目分页">
+                <ul class="pagination">
+                    {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('question_bank_management', page=1) }}">首页</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('question_bank_management', page=page-1) }}">上一页</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for p in range(max(1, page-2), min(total_pages+1, page+3)) %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('question_bank_management', page=p) }}">{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    
+                    {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('question_bank_management', page=page+1) }}">下一页</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('question_bank_management', page=total_pages) }}">末页</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox" style="font-size: 4rem; color: var(--gray-400); margin-bottom: 1rem;"></i>
+            <h3>暂无题目</h3>
+            <p class="text-muted">开始添加题目或导入CSV文件来构建您的题库</p>
+            <div class="mt-3">
+                <a href="{{ url_for('add_question') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 添加第一道题目
+                </a>
+                <a href="{{ url_for('import_questions') }}" class="btn btn-success">
+                    <i class="fas fa-upload"></i> 导入CSV文件
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                    {% if questions %}
+                        显示第 {{ (page-1)*20 + 1 }}-{{ min(page*20, total) }} 题，共 {{ total }} 题
+                    {% endif %}
+                </small>
+                <a href="{{ url_for('user_settings') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回设置
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .question-bank-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .title-section h2 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary-color);
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .questions-table-container {
+        overflow-x: auto;
+    }
+    
+    .table {
+        margin: 0;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-top: none;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .question-stem {
+        max-width: 300px;
+        word-break: break-word;
+        line-height: 1.4;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    
+    .pagination-container {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+    }
+    
+    .pagination {
+        justify-content: center;
+        margin: 0;
+    }
+    
+    .page-link {
+        color: var(--primary-color);
+    }
+    
+    .page-item.active .page-link {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    .card-footer {
+        padding: 1rem 1.5rem;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    @media (max-width: 768px) {
+        .header-content {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .action-buttons {
+            justify-content: stretch;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .questions-table-container {
+            font-size: 0.875rem;
+        }
+        
+        .question-stem {
+            max-width: 200px;
+        }
+        
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .btn-group .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %} 

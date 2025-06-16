@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+
+{% block title %}导入题目 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="import-questions-container">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-upload"></i> 导入题目</h2>
+            <p class="text-muted">从CSV文件批量导入题目到题库中</p>
+        </div>
+        
+        <div class="import-content">
+            <div class="import-instructions">
+                <h3><i class="fas fa-info-circle"></i> 导入说明</h3>
+                <div class="instruction-list">
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <span>支持CSV格式文件，编码要求为UTF-8</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <span>文件必须包含以下列：题号、题干、答案</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-check-circle text-success"></i>
+                        <span>可选列：难度、题型、类别、A、B、C、D、E（选项）</span>
+                    </div>
+                    <div class="instruction-item">
+                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                        <span>题号重复的题目将被跳过</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="csv-format-example">
+                <h3><i class="fas fa-table"></i> CSV格式示例</h3>
+                <div class="example-table">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>题号</th>
+                                <th>题干</th>
+                                <th>答案</th>
+                                <th>难度</th>
+                                <th>题型</th>
+                                <th>类别</th>
+                                <th>A</th>
+                                <th>B</th>
+                                <th>C</th>
+                                <th>D</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>中国的首都是哪里？</td>
+                                <td>A</td>
+                                <td>简单</td>
+                                <td>单选题</td>
+                                <td>地理</td>
+                                <td>北京</td>
+                                <td>上海</td>
+                                <td>广州</td>
+                                <td>深圳</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>以下哪些是计算机语言？</td>
+                                <td>AB</td>
+                                <td>中等</td>
+                                <td>多选题</td>
+                                <td>计算机</td>
+                                <td>Python</td>
+                                <td>Java</td>
+                                <td>汽车</td>
+                                <td>飞机</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <form method="post" enctype="multipart/form-data" class="import-form">
+                <div class="bank-name-section">
+                    <h3><i class="fas fa-database"></i> 题库信息</h3>
+                    <div class="form-group">
+                        <label for="bank_name">题库名称（选填）</label>
+                        <input type="text" 
+                               name="bank_name" 
+                               id="bank_name" 
+                               class="form-control" 
+                               placeholder="如果不填写，将使用文件名作为题库名称">
+                        <small class="form-text text-muted">每个CSV文件将创建一个独立的题库</small>
+                    </div>
+                </div>
+                
+                <div class="upload-section">
+                    <h3><i class="fas fa-file-upload"></i> 选择文件</h3>
+                    <div class="file-upload-area">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <div class="upload-text">
+                            <p><strong>点击选择CSV文件</strong> 或拖拽文件到此区域</p>
+                            <p class="text-muted">支持.csv格式，最大文件大小10MB</p>
+                        </div>
+                        <input type="file" 
+                               name="csv_file" 
+                               id="csv_file" 
+                               accept=".csv" 
+                               required 
+                               class="file-input">
+                    </div>
+                    <div class="file-info" id="file-info" style="display: none;">
+                        <i class="fas fa-file-csv text-success"></i>
+                        <span id="file-name"></span>
+                        <span id="file-size" class="text-muted"></span>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success" disabled id="submit-btn">
+                        <i class="fas fa-upload"></i> 开始导入
+                    </button>
+                    <a href="{{ url_for('question_bank_list') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> 返回题库列表
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .import-questions-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .card-header h2 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary-color);
+    }
+    
+    .import-content {
+        padding: 1.5rem;
+    }
+    
+    .import-instructions,
+    .csv-format-example,
+    .bank-name-section,
+    .upload-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .upload-section {
+        border-bottom: none;
+    }
+    
+    .import-instructions h3,
+    .csv-format-example h3,
+    .bank-name-section h3,
+    .upload-section h3 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        color: var(--gray-800);
+        border-bottom: 2px solid var(--primary-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    .instruction-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .instruction-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .instruction-item i {
+        font-size: 1.1rem;
+        width: 1.5rem;
+        text-align: center;
+    }
+    
+    .example-table {
+        overflow-x: auto;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .example-table .table {
+        margin: 0;
+        font-size: 0.875rem;
+    }
+    
+    .example-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .file-upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+        position: relative;
+        background-color: #f8f9fa;
+    }
+    
+    .file-upload-area:hover {
+        border-color: var(--primary-color);
+        background-color: rgba(67, 97, 238, 0.05);
+    }
+    
+    .file-upload-area.dragover {
+        border-color: var(--success-color);
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+        color: var(--gray-400);
+        margin-bottom: 1rem;
+    }
+    
+    .upload-text p {
+        margin: 0.5rem 0;
+    }
+    
+    .file-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+    
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background-color: #e8f5e8;
+        border: 1px solid #d4edda;
+        border-radius: 6px;
+        margin-top: 1rem;
+    }
+    
+    .file-info i {
+        font-size: 1.5rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-start;
+        padding-top: 1.5rem;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    @media (max-width: 768px) {
+        .file-upload-area {
+            padding: 1.5rem 1rem;
+        }
+        
+        .upload-icon {
+            font-size: 2rem;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+        
+        .form-actions .btn {
+            width: 100%;
+        }
+        
+        .example-table {
+            font-size: 0.75rem;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('csv_file');
+    const fileUploadArea = document.querySelector('.file-upload-area');
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // Handle file selection
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            displayFileInfo(file);
+        }
+    });
+    
+    // Handle drag and drop
+    fileUploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    });
+    
+    fileUploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+    });
+    
+    fileUploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+                fileInput.files = files;
+                displayFileInfo(file);
+            } else {
+                alert('请选择CSV格式的文件！');
+            }
+        }
+    });
+    
+    function displayFileInfo(file) {
+        fileName.textContent = file.name;
+        fileSize.textContent = `(${formatFileSize(file.size)})`;
+        fileInfo.style.display = 'flex';
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('btn-secondary');
+        submitBtn.classList.add('btn-success');
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Form validation
+    const form = document.querySelector('.import-form');
+    form.addEventListener('submit', function(e) {
+        const file = fileInput.files[0];
+        if (!file) {
+            e.preventDefault();
+            alert('请选择要导入的CSV文件！');
+            return;
+        }
+        
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            e.preventDefault();
+            alert('请选择CSV格式的文件！');
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在导入...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %} 
