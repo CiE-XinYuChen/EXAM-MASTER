@@ -2357,9 +2357,10 @@ input[type="radio"] {
 /* 移动端优化 */
 @media (max-width: 768px) {
   .question-header {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
-    gap: 0.75rem;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
   
   .question-header .question-info {
@@ -2367,6 +2368,7 @@ input[type="radio"] {
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+    flex: 1;
   }
   
   .answer-status-icon {
@@ -2374,7 +2376,6 @@ input[type="radio"] {
     font-size: 0.75rem;
     gap: 0.3rem;
     margin-left: 0.5rem;
-    order: 1;
   }
   
   .answer-status-icon i {
@@ -2386,12 +2387,22 @@ input[type="radio"] {
   }
   
   .question-header .question-actions-top {
-    width: 100%;
-    justify-content: space-between;
+    flex-shrink: 0;
+    display: flex;
+    gap: 0.5rem;
   }
 }
 
 @media (max-width: 480px) {
+  .question-header {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .question-header .question-info {
+    gap: 0.25rem;
+  }
+  
   .answer-status-icon .status-text {
     display: none;
   }
@@ -2405,5 +2416,9 @@ input[type="radio"] {
   
   .answer-status-icon i {
     font-size: 0.8rem;
+  }
+  
+  .question-header .question-actions-top {
+    gap: 0.25rem;
   }
 }

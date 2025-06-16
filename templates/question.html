@@ -27,7 +27,7 @@
             {% if question.type %}
                 <span class="badge badge-info">{{ question.type }}</span>
             {% endif %}
-            {% if question.difficulty %}
+            {% if question.difficulty and question.difficulty != '无' %}
                 <span class="question-difficulty badge {% if question.difficulty == '简单' %}badge-success{% elif question.difficulty == '中等' %}badge-warning{% else %}badge-danger{% endif %}">
                     {{ question.difficulty }}
                 </span>

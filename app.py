@@ -1232,29 +1232,76 @@ def search():
 @app.route('/wrong')
 @login_required
 def wrong_questions():
-    """Route to view wrong answers."""
+    """Route to view wrong answers with enhanced statistics."""
     user_id = get_user_id()
     bank_id = get_user_current_bank_id()
     
     conn = get_db()
     c = conn.cursor()
-    c.execute('''SELECT DISTINCT h.question_id 
-                 FROM history h 
-                 JOIN questions q ON h.question_id = q.id 
-                 WHERE h.user_id = ? AND h.correct = 0 AND q.bank_id = ?''', 
-              (user_id, bank_id))
+    
+    # Get wrong questions with detailed statistics
+    c.execute('''
+        SELECT 
+            h.question_id,
+            COUNT(*) as wrong_count,
+            MAX(h.timestamp) as last_wrong_time,
+            q.stem, q.answer, q.difficulty, q.qtype, q.category, q.options
+        FROM history h 
+        JOIN questions q ON h.question_id = q.id 
+        WHERE h.user_id = ? AND h.correct = 0 AND q.bank_id = ?
+        GROUP BY h.question_id
+        ORDER BY last_wrong_time DESC
+    ''', (user_id, bank_id))
+    
     rows = c.fetchall()
+    
+    # Get practice statistics for wrong questions
+    wrong_question_ids = [r['question_id'] for r in rows]
+    practiced_count = 0
+    
+    if wrong_question_ids:
+        placeholders = ','.join(['?' for _ in wrong_question_ids])
+        c.execute(f'''
+            SELECT COUNT(DISTINCT question_id) as practiced
+            FROM history 
+            WHERE user_id = ? AND correct = 1 
+            AND question_id IN ({placeholders})
+            AND timestamp > (
+                SELECT MAX(timestamp) 
+                FROM history h2 
+                WHERE h2.user_id = ? AND h2.correct = 0 
+                AND h2.question_id = history.question_id
+            )
+        ''', [user_id] + wrong_question_ids + [user_id])
+        
+        result = c.fetchone()
+        practiced_count = result['practiced'] if result else 0
+    
     conn.close()
     
-    wrong_ids = set(r['question_id'] for r in rows)
     questions_list = []
+    for row in rows:
+        question_data = {
+            'id': row['question_id'],
+            'stem': row['stem'],
+            'answer': row['answer'],
+            'difficulty': row['difficulty'],
+            'type': row['qtype'],
+            'category': row['category'],
+            'options': json.loads(row['options']) if row['options'] else {},
+            'wrong_count': row['wrong_count'],
+            'last_wrong_time': row['last_wrong_time']
+        }
+        questions_list.append(question_data)
     
-    for qid in wrong_ids:
-        q = fetch_question(qid)
-        if q:
-            questions_list.append(q)
+    # Calculate statistics
+    wrong_stats = {
+        'total': len(questions_list),
+        'practiced': practiced_count,
+        'remaining': len(questions_list) - practiced_count
+    }
     
-    return render_template('wrong.html', questions=questions_list)
+    return render_template('wrong.html', questions=questions_list, wrong_stats=wrong_stats)
 
 @app.route('/only_wrong')
 @login_required
@@ -1295,6 +1342,268 @@ def only_wrong_mode():
                           question=q, 
                           is_favorite=is_fav,
                           auto_jump_enabled=auto_jump_enabled)
+
+##############################
+# Wrong Questions Practice Routes #
+##############################
+
+@app.route('/start_wrong_practice', methods=['GET', 'POST'])
+@login_required
+def start_wrong_practice():
+    """Route to start wrong questions practice with options."""
+    user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
+    
+    if request.method == 'POST':
+        practice_mode = request.form.get('practice_mode', 'random')
+        practice_count = request.form.get('practice_count', 'all')
+        only_unpracticed = request.form.get('only_unpracticed') == 'on'
+        
+        # Store practice session in session
+        session['wrong_practice'] = {
+            'mode': practice_mode,
+            'count': practice_count,
+            'only_unpracticed': only_unpracticed,
+            'current_index': 0,
+            'questions': []
+        }
+        
+        return redirect(url_for('wrong_practice_session'))
+    
+    # GET request - redirect to random practice
+    return redirect(url_for('only_wrong_mode'))
+
+@app.route('/wrong_practice_session')
+@login_required
+def wrong_practice_session():
+    """Route to handle wrong questions practice session."""
+    user_id = get_user_id()
+    bank_id = get_user_current_bank_id()
+    
+    # Get practice session from session
+    practice_session = session.get('wrong_practice')
+    if not practice_session:
+        flash("练习会话已过期，请重新开始", "warning")
+        return redirect(url_for('wrong_questions'))
+    
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Get wrong questions based on practice options
+    if practice_session['only_unpracticed']:
+        # Only get questions that haven't been answered correctly after being wrong
+        c.execute('''
+            SELECT DISTINCT h.question_id, q.stem, q.answer, q.difficulty, q.qtype, q.category, q.options
+            FROM history h 
+            JOIN questions q ON h.question_id = q.id 
+            WHERE h.user_id = ? AND h.correct = 0 AND q.bank_id = ?
+            AND h.question_id NOT IN (
+                SELECT h2.question_id 
+                FROM history h2 
+                WHERE h2.user_id = ? AND h2.correct = 1 
+                AND h2.timestamp > (
+                    SELECT MAX(h3.timestamp) 
+                    FROM history h3 
+                    WHERE h3.user_id = ? AND h3.correct = 0 
+                    AND h3.question_id = h2.question_id
+                )
+            )
+        ''', (user_id, bank_id, user_id, user_id))
+    else:
+        # Get all wrong questions
+        c.execute('''
+            SELECT DISTINCT h.question_id, q.stem, q.answer, q.difficulty, q.qtype, q.category, q.options
+            FROM history h 
+            JOIN questions q ON h.question_id = q.id 
+            WHERE h.user_id = ? AND h.correct = 0 AND q.bank_id = ?
+        ''', (user_id, bank_id))
+    
+    rows = c.fetchall()
+    conn.close()
+    
+    if not rows:
+        flash("没有符合条件的错题", "info")
+        return redirect(url_for('wrong_questions'))
+    
+    # Prepare questions list
+    questions_list = []
+    for row in rows:
+        question_data = {
+            'id': row['question_id'],
+            'stem': row['stem'],
+            'answer': row['answer'],
+            'difficulty': row['difficulty'],
+            'type': row['qtype'],
+            'category': row['category'],
+            'options': json.loads(row['options']) if row['options'] else {}
+        }
+        questions_list.append(question_data)
+    
+    # Apply sorting based on practice mode
+    if practice_session['mode'] == 'random':
+        random.shuffle(questions_list)
+    elif practice_session['mode'] == 'sequential':
+        questions_list.sort(key=lambda x: int(x['id']))
+    elif practice_session['mode'] == 'difficulty':
+        # Sort by difficulty: 简单 -> 中等 -> 困难
+        difficulty_order = {'简单': 1, '中等': 2, '困难': 3}
+        questions_list.sort(key=lambda x: difficulty_order.get(x['difficulty'], 4))
+    
+    # Apply count limit
+    if practice_session['count'] != 'all':
+        count_limit = int(practice_session['count'])
+        questions_list = questions_list[:count_limit]
+    
+    # Update session with questions
+    practice_session['questions'] = [q['id'] for q in questions_list]
+    practice_session['total_questions'] = len(questions_list)
+    session['wrong_practice'] = practice_session
+    
+    if not questions_list:
+        flash("没有符合条件的错题", "info")
+        return redirect(url_for('wrong_questions'))
+    
+    # Redirect to first question
+    first_qid = questions_list[0]['id']
+    return redirect(url_for('wrong_practice_question', qid=first_qid))
+
+@app.route('/wrong_practice/<qid>', methods=['GET', 'POST'])
+@login_required
+def wrong_practice_question(qid):
+    """Route to show and handle wrong practice questions."""
+    user_id = get_user_id()
+    practice_session = session.get('wrong_practice')
+    
+    if not practice_session or qid not in practice_session['questions']:
+        flash("练习会话无效", "error")
+        return redirect(url_for('wrong_questions'))
+    
+    q = fetch_question(qid)
+    if q is None:
+        flash("题目不存在", "error")
+        return redirect(url_for('wrong_questions'))
+    
+    current_index = practice_session['questions'].index(qid)
+    total_questions = practice_session['total_questions']
+    
+    result_msg = None
+    user_answer_str = ""
+    next_qid = None
+    
+    # Handle POST request (user submitted an answer)
+    if request.method == 'POST':
+        user_answer = request.form.getlist('answer')
+        user_answer_str = "".join(sorted(user_answer))
+        correct = int(user_answer_str == "".join(sorted(q['answer'])))
+        
+        # Save answer to history
+        conn = get_db()
+        c = conn.cursor()
+        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) '
+                  'VALUES (?,?,?,?)',
+                  (user_id, qid, user_answer_str, correct))
+        conn.commit()
+        conn.close()
+        
+        # Update practice session progress
+        practice_session['current_index'] = current_index + 1
+        session['wrong_practice'] = practice_session
+        
+        # Find next question
+        if current_index + 1 < total_questions:
+            next_qid = practice_session['questions'][current_index + 1]
+        
+        if correct:
+            result_msg = "回答正确！"
+            if next_qid:
+                result_msg += f" 继续下一题 ({current_index + 2}/{total_questions})"
+            else:
+                result_msg += " 错题练习完成！"
+        else:
+            result_msg = f"回答错误，正确答案：{q['answer']}，你的答案：{user_answer_str}"
+            if next_qid:
+                result_msg += f" 继续下一题 ({current_index + 2}/{total_questions})"
+    
+    is_fav = is_favorite(user_id, qid)
+    
+    return render_template('question.html',
+                          question=q,
+                          result_msg=result_msg,
+                          next_qid=next_qid,
+                          wrong_practice_mode=True,
+                          user_answer=user_answer_str,
+                          current_question=current_index + 1,
+                          total_questions=total_questions,
+                          is_favorite=is_fav)
+
+@app.route('/wrong_practice_sequential')
+@login_required
+def wrong_practice_sequential():
+    """Route to start sequential wrong questions practice."""
+    session['wrong_practice'] = {
+        'mode': 'sequential',
+        'count': 'all',
+        'only_unpracticed': False,
+        'current_index': 0,
+        'questions': []
+    }
+    return redirect(url_for('wrong_practice_session'))
+
+@app.route('/practice_single_wrong/<qid>')
+@login_required
+def practice_single_wrong(qid):
+    """Route to practice a single wrong question."""
+    user_id = get_user_id()
+    q = fetch_question(qid)
+    
+    if q is None:
+        flash("题目不存在", "error")
+        return redirect(url_for('wrong_questions'))
+    
+    # Check if this is actually a wrong question for the user
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT 1 FROM history WHERE user_id = ? AND question_id = ? AND correct = 0', 
+              (user_id, qid))
+    if not c.fetchone():
+        flash("这不是您的错题", "warning")
+        conn.close()
+        return redirect(url_for('wrong_questions'))
+    
+    conn.close()
+    is_fav = is_favorite(user_id, qid)
+    
+    return render_template('question.html',
+                          question=q,
+                          single_wrong_practice=True,
+                          is_favorite=is_fav)
+
+@app.route('/mark_wrong_as_mastered/<qid>', methods=['POST'])
+@login_required
+def mark_wrong_as_mastered(qid):
+    """API route to mark a wrong question as mastered."""
+    user_id = get_user_id()
+    
+    try:
+        # Add a correct answer to history to mark as mastered
+        conn = get_db()
+        c = conn.cursor()
+        
+        # Get the correct answer for this question
+        q = fetch_question(qid)
+        if not q:
+            return jsonify({"success": False, "message": "题目不存在"})
+        
+        # Insert a correct answer with a special marker
+        c.execute('''INSERT INTO history (user_id, question_id, user_answer, correct, timestamp) 
+                     VALUES (?,?,?,1,?)''',
+                  (user_id, qid, q['answer'], datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "message": "已标记为掌握"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"操作失败: {str(e)}"})
 
 ##############################
 # Browse Routes #

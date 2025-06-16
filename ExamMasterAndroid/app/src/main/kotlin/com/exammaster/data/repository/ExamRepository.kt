@@ -56,6 +56,8 @@ class ExamRepository(
     
     suspend fun getTotalAnswerCount(): Int = historyDao.getTotalAnswerCount()
     
+    suspend fun getQuestionAttemptCount(questionId: String): Int = historyDao.getQuestionAttemptCount(questionId)
+    
     suspend fun insertHistory(history: History) = historyDao.insertHistory(history)
     
     suspend fun deleteAllHistory() = historyDao.deleteAllHistory()

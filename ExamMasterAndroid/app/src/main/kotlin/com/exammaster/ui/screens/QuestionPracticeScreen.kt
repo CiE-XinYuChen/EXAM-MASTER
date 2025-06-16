@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,12 +35,21 @@ fun QuestionPracticeScreen(
     val isAnswerCorrect by viewModel.isAnswerCorrect.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val currentMode by viewModel.currentMode.collectAsState()
+    val statistics by viewModel.statistics.collectAsState()
 
     /* ---------- 收藏状态 ---------- */
     var isFavorited by remember { mutableStateOf(false) }
+    var attemptCount by remember { mutableStateOf(0) }
+    
     LaunchedEffect(currentQuestion?.id) {
         currentQuestion?.id?.let { id ->
             viewModel.isFavorite(id).collect { fav -> isFavorited = fav }
+        }
+    }
+    
+    LaunchedEffect(currentQuestion?.id) {
+        currentQuestion?.id?.let { id ->
+            viewModel.getQuestionAttemptCount(id).collect { count -> attemptCount = count }
         }
     }
 
@@ -74,89 +84,180 @@ fun QuestionPracticeScreen(
             ) {
 
                 /* ---------------- 顶部栏 ---------------- */
-                Row(
-                    Modifier.fillMaxWidth(),
-                    Arrangement.SpaceBetween,
-                    Alignment.CenterVertically
-                ) {
-                    IconButton({ navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                    Text(
-                        text = when (currentMode) {
-                            ExamViewModel.QuizMode.RANDOM      -> "随机练习"
-                            ExamViewModel.QuizMode.SEQUENTIAL  -> "顺序练习"
-                            ExamViewModel.QuizMode.WRONG_ONLY  -> "错题练习"
-                            else                               -> "练习模式"
-                        },
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    IconButton({ viewModel.toggleFavorite() }) {
-                        Icon(
-                            if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isFavorited) "取消收藏" else "收藏",
-                            tint = if (isFavorited)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                /* ---------------- 题目信息 ---------------- */
-                Row(
-                    Modifier.fillMaxWidth(),
-                    Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "题目 ${question.id}",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row {
-                        question.difficulty?.let {
-                            DifficultyChip(difficulty = it)
-                            Spacer(Modifier.width(8.dp))
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        Arrangement.SpaceBetween,
+                        Alignment.CenterVertically
+                    ) {
+                        IconButton({ navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                         }
-                        question.category?.let { CategoryChip(category = it) }
+                        Text(
+                            text = when (currentMode) {
+                                ExamViewModel.QuizMode.RANDOM      -> "随机练习"
+                                ExamViewModel.QuizMode.SEQUENTIAL  -> "顺序练习"
+                                ExamViewModel.QuizMode.WRONG_ONLY  -> "错题练习"
+                                else                               -> "练习模式"
+                            },
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        IconButton({ viewModel.toggleFavorite() }) {
+                            Icon(
+                                if (isFavorited) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = if (isFavorited) "取消收藏" else "收藏",
+                                tint = if (isFavorited)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    /* ---------------- 进度条 ---------------- */
+                    if (statistics.totalQuestions > 0) {
+                        val progress = statistics.answeredQuestions.toFloat() / statistics.totalQuestions.toFloat()
+                        val percentage = (progress * 100).toInt()
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${statistics.answeredQuestions}/${statistics.totalQuestions}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$percentage%",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(2.dp)
+                                    .padding(horizontal = 16.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(12.dp))
 
                 /* ---------------- 题干 ---------------- */
-                Card(Modifier.fillMaxWidth()) {
-                    Column(
-                        Modifier
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Card(
+                        modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp)
+                            .padding(top = 10.dp) // 为镶嵌标签留出空间，减小一点
                     ) {
-                        Text(
-                            text = "题目",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(text = question.stem, fontSize = 16.sp, lineHeight = 24.sp)
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp)
+                                .padding(top = 20.dp, bottom = 12.dp) // 稍微增加顶部间距，避免标签太近
+                        ) {
+                            Text(text = question.stem, fontSize = 16.sp, lineHeight = 24.sp)
+                        }
+                    }
+                    
+                    /* ---------------- 镶嵌在卡片边缘的标签 ---------------- */
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(5.dp),
+                                shadowElevation = 3.dp
+                            ) {
+                                Text(
+                                    text = "题目 ${question.id}",
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                            
+                            // 作答次数标签
+                            if (attemptCount > 0) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    shadowElevation = 2.dp
+                                ) {
+                                    Text(
+                                        text = "第${attemptCount}次",
+                                        fontSize = 9.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 题型标签
+                            question.qtype?.let { qtype ->
+                                Surface(
+                                    shadowElevation = 2.dp,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    CompactQuestionTypeChip(qtype = qtype)
+                                }
+                            }
+                            // 难度标签 - 过滤掉"无"
+                            question.difficulty?.takeIf { it != "无" && it.isNotBlank() }?.let { difficulty ->
+                                Surface(
+                                    shadowElevation = 2.dp,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    CompactDifficultyChip(difficulty = difficulty)
+                                }
+                            }
+                            // 分类标签 - 过滤掉"未分类"
+                            question.category?.takeIf { it != "未分类" && it.isNotBlank() }?.let { category ->
+                                Surface(
+                                    shadowElevation = 2.dp,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    CompactCategoryChip(category = category)
+                                }
+                            }
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
 
                 /* ---------------- 选项 ---------------- */
                 if (question.getFormattedOptions().isNotEmpty()) {
-                    Text(
-                        text = "选择答案",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(12.dp))
-
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         question.getFormattedOptions().forEach { (key, value) ->
                             val isCorrectOption =
@@ -187,7 +288,7 @@ fun QuestionPracticeScreen(
                     }
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(24.dp))
 
                 /* ---------------- 结果 / 下一题 / 提交 ---------------- */
                 if (showResult) {
@@ -197,7 +298,7 @@ fun QuestionPracticeScreen(
                         userAnswer = selectedAnswers.sorted().joinToString(""),
                         isJudgmentQuestion = question.qtype == "判断题"
                     )
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = { viewModel.nextQuestion() },
                         modifier = Modifier.fillMaxWidth()
@@ -282,7 +383,7 @@ fun OptionCard(
 }
 
 /* -------------------------------------------------------------------------- */
-/*  ResultCard – 答案结果                                                     */
+/*  ResultCard – 精简版答案结果                                               */
 /* -------------------------------------------------------------------------- */
 @Composable
 fun ResultCard(
@@ -301,46 +402,85 @@ fun ResultCard(
         if (userAnswer.isBlank()) "未选择" else userAnswer
     }
 
-    Card(
-        Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isCorrect)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.errorContainer
-        )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = if (isCorrect)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        else
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Column(Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // 左侧：结果图标和状态
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = if (isCorrect) Icons.Default.CheckCircle else Icons.Default.Cancel,
                     contentDescription = if (isCorrect) "正确" else "错误",
                     tint = if (isCorrect) MaterialTheme.colorScheme.primary
                            else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = if (isCorrect) "回答正确！" else "回答错误",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = if (isCorrect) "正确" else "错误",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
                     color = if (isCorrect) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.error
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                Column {
-                    Text("正确答案", fontSize = 14.sp,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(correctAnswer, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            
+            // 右侧：答案对比
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 正确答案
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "正确答案",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = correctAnswer,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-                Column {
-                    Text("您的答案", fontSize = 14.sp,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(displayUserAnswer, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                
+                // 分隔符
+                Text(
+                    text = "vs",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // 用户答案
+                Column(
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Text(
+                        text = "您的答案",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = displayUserAnswer,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isCorrect) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
@@ -374,6 +514,93 @@ fun CategoryChip(category: String) {
     AssistChip(
         onClick = { },
         label = { Text(category, fontSize = 12.sp) }
+    )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  QuestionTypeChip                                                          */
+/* -------------------------------------------------------------------------- */
+@Composable
+fun QuestionTypeChip(qtype: String) {
+    val (chipColor, iconVector) = when (qtype) {
+        "单选题" -> MaterialTheme.colorScheme.primary to Icons.Default.RadioButtonChecked
+        "多选题" -> MaterialTheme.colorScheme.secondary to Icons.Default.CheckBox
+        "判断题" -> MaterialTheme.colorScheme.tertiary to Icons.Default.ToggleOn
+        "填空题" -> MaterialTheme.colorScheme.outline to Icons.Default.Edit
+        else -> MaterialTheme.colorScheme.onSurfaceVariant to Icons.Default.Quiz
+    }
+
+    AssistChip(
+        onClick = { },
+        label = { Text(qtype, fontSize = 12.sp) },
+        leadingIcon = {
+            Icon(
+                imageVector = iconVector,
+                contentDescription = qtype,
+                modifier = Modifier.size(16.dp)
+            )
+        },
+        colors = AssistChipDefaults.assistChipColors(
+            labelColor = chipColor,
+            leadingIconContentColor = chipColor
+        )
+    )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Compact Chip Components                                                   */
+/* -------------------------------------------------------------------------- */
+@Composable
+fun CompactQuestionTypeChip(qtype: String) {
+    val (chipColor, iconVector) = when (qtype) {
+        "单选题" -> MaterialTheme.colorScheme.primary to Icons.Default.RadioButtonChecked
+        "多选题" -> MaterialTheme.colorScheme.secondary to Icons.Default.CheckBox
+        "判断题" -> MaterialTheme.colorScheme.tertiary to Icons.Default.ToggleOn
+        "填空题" -> MaterialTheme.colorScheme.outline to Icons.Default.Edit
+        else -> MaterialTheme.colorScheme.onSurfaceVariant to Icons.Default.Quiz
+    }
+
+    AssistChip(
+        onClick = { },
+        label = { Text(qtype, fontSize = 10.sp) },
+        leadingIcon = {
+            Icon(
+                imageVector = iconVector,
+                contentDescription = qtype,
+                modifier = Modifier.size(12.dp)
+            )
+        },
+        colors = AssistChipDefaults.assistChipColors(
+            labelColor = chipColor,
+            leadingIconContentColor = chipColor
+        ),
+        modifier = Modifier.height(20.dp)
+    )
+}
+
+@Composable
+fun CompactDifficultyChip(difficulty: String) {
+    val chipColor = when (difficulty.lowercase()) {
+        "easy", "简单"   -> MaterialTheme.colorScheme.primary
+        "medium", "中等" -> MaterialTheme.colorScheme.tertiary
+        "hard", "困难"  -> MaterialTheme.colorScheme.error
+        else             -> MaterialTheme.colorScheme.secondary
+    }
+
+    AssistChip(
+        onClick = { },
+        label = { Text(difficulty, fontSize = 10.sp) },
+        colors = AssistChipDefaults.assistChipColors(labelColor = chipColor),
+        modifier = Modifier.height(20.dp)
+    )
+}
+
+@Composable
+fun CompactCategoryChip(category: String) {
+    AssistChip(
+        onClick = { },
+        label = { Text(category, fontSize = 10.sp) },
+        modifier = Modifier.height(20.dp)
     )
 }
 

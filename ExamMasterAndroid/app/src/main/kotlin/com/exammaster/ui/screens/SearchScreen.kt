@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -286,6 +287,7 @@ fun SearchScreen(
                     items(searchResults.value) { question ->
                         SearchResultItem(
                             question = question,
+                            viewModel = viewModel,
                             searchQuery = searchQuery,
                             onQuestionClick = { questionId ->
                                 viewModel.loadQuestionById(questionId)
@@ -303,9 +305,18 @@ fun SearchScreen(
 @Composable
 private fun SearchResultItem(
     question: com.exammaster.data.database.entities.Question,
+    viewModel: ExamViewModel,
     searchQuery: String,
     onQuestionClick: (String) -> Unit
 ) {
+    var attemptCount by remember { mutableStateOf(0) }
+    
+    LaunchedEffect(question.id) {
+        viewModel.getQuestionAttemptCount(question.id).collect { count -> 
+            attemptCount = count 
+        }
+    }
+    
     Card(
         onClick = { onQuestionClick(question.id) },
         modifier = Modifier.fillMaxWidth()
@@ -320,11 +331,32 @@ private fun SearchResultItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "题目 ${question.id}",
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "题目 ${question.id}",
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    // 作答次数标签
+                    if (attemptCount > 0) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "第${attemptCount}次",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
                 
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
