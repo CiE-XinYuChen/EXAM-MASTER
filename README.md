@@ -1,5 +1,5 @@
 # EXAM-MASTER
-
+# 近期项目将完全重构，请开发者不要在当前分支进行开发。
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)
 ![Python](https://img.shields.io/badge/Python-3.6+-blue.svg)
@@ -167,3 +167,4 @@
 ---
 
 欢迎提交Issue或Pull Request，共同完善本系统！
+
