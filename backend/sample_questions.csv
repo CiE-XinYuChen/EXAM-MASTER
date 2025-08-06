@@ -1,0 +1,11 @@
+题号,题干,A,B,C,D,E,答案,难度,题型,解析
+1,Python是什么类型的编程语言？,编译型语言,解释型语言,汇编语言,机器语言,,B,easy,编程基础,Python是一种解释型的高级编程语言
+2,以下哪个是Python的关键字？,def,function,var,let,,A,easy,语法基础,def是Python中定义函数的关键字
+3,Python中创建列表使用什么符号？,(),[],"{}",<>,,B,easy,数据结构,Python中使用方括号[]创建列表
+4,以下哪些是Python的内置数据类型？,list,dict,array,tuple,matrix,ABD,medium,数据类型,list、dict和tuple都是Python的内置数据类型
+5,Python中的缩进有什么作用？,美观,表示代码块,注释,声明变量,,B,easy,语法基础,Python使用缩进来表示代码块的层级关系
+6,如何在Python中导入模块？,include,import,require,using,,B,easy,模块系统,使用import关键字导入Python模块
+7,Python中的字符串可以用哪些引号表示？,单引号,双引号,三引号,反引号,,ABC,medium,字符串,Python支持单引号、双引号和三引号表示字符串
+8,以下哪个函数用于获取列表的长度？,size(),length(),len(),count(),,C,easy,内置函数,len()函数用于获取列表等序列的长度
+9,Python中的None表示什么？,0,空字符串,空值,错误,,C,easy,基础概念,None表示空值或不存在的值
+10,如何在Python中定义一个类？,class,def class,function,struct,,A,easy,面向对象,使用class关键字定义Python类

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}管理控制台{% endblock %} - 考试系统管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <i class="fas fa-graduation-cap"></i> 考试系统管理
+            </div>
+            <nav class="sidebar-menu">
+                <a href="{{ url_for('index') }}" class="menu-item {% if request.endpoint == 'index' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i> 仪表盘
+                </a>
+                <a href="{{ url_for('users.list') }}" class="menu-item {% if 'users' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-users"></i> 用户管理
+                </a>
+                <a href="{{ url_for('users.permissions') }}" class="menu-item {% if 'permissions' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-shield-alt"></i> 权限管理
+                </a>
+                <a href="{{ url_for('qbanks.list') }}" class="menu-item {% if 'qbanks' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-database"></i> 题库管理
+                </a>
+                <a href="{{ url_for('questions.list') }}" class="menu-item {% if 'questions' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-question-circle"></i> 题目管理
+                </a>
+                <a href="{{ url_for('imports.index') }}" class="menu-item {% if 'imports' in request.endpoint %}active{% endif %}">
+                    <i class="fas fa-file-upload"></i> 导入导出
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="btn btn-default btn-sm" onclick="toggleSidebar()" style="display: none;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <nav class="breadcrumb">
+                        {% block breadcrumb %}
+                        <a href="{{ url_for('index') }}">首页</a>
+                        {% endblock %}
+                    </nav>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span>{{ current_user.username }}</span>
+                        <span class="tag tag-blue">{{ current_user.role }}</span>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-default btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> 退出
+                    </a>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                            <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; cursor: pointer;">×</button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+        {% block auth_content %}{% endblock %}
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

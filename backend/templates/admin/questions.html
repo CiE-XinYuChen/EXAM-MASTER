@@ -1,0 +1,240 @@
+{% extends "admin/base.html" %}
+
+{% block title %}题目管理{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+题目管理
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">题目列表</h3>
+        <a href="/admin/questions/create{% if bank_filter %}?bank_id={{ bank_filter }}{% endif %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> 创建题目
+        </a>
+    </div>
+    <div class="card-body">
+        <!-- Filter Bar -->
+        <div class="filter-section">
+            <form method="GET" class="filter-form">
+                <div class="filter-group">
+                    <label class="filter-label">测试</label>
+                    <select name="bank_id" class="form-control filter-select">
+                        <option value="">所有题库</option>
+                        {% for bank in banks %}
+                        <option value="{{ bank.id }}" {% if bank_filter == bank.id %}selected{% endif %}>
+                            {{ bank.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> 筛选
+                </button>
+            </form>
+        </div>
+        
+        <!-- Table -->
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="80">题号</th>
+                        <th width="35%">题干</th>
+                        <th width="80">类型</th>
+                        <th width="80">难度</th>
+                        <th width="120">分类</th>
+                        <th width="120">创建时间</th>
+                        <th width="120" class="text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in questions %}
+                    <tr>
+                        <td class="text-center">
+                            <span class="question-number">{{ question.question_number or '-' }}</span>
+                        </td>
+                        <td>
+                            <div class="question-stem" title="{{ question.stem if question.stem else '' }}">
+                                {{ question.stem[:100] if question.stem else '-' }}
+                                {% if question.stem and question.stem|length > 100 %}
+                                <span class="text-muted">...</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if question.type == 'single' %}
+                                <span class="badge badge-primary">
+                                    <i class="fas fa-check-circle"></i> 单选
+                                </span>
+                            {% elif question.type == 'multiple' %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-check-square"></i> 多选
+                                </span>
+                            {% elif question.type == 'judge' %}
+                                <span class="badge badge-warning">
+                                    <i class="fas fa-gavel"></i> 判断
+                                </span>
+                            {% else %}
+                                <span class="badge badge-secondary">{{ question.type }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if question.difficulty == 'easy' %}
+                                <span class="difficulty-tag easy">
+                                    <i class="fas fa-smile"></i> 简单
+                                </span>
+                            {% elif question.difficulty == 'medium' %}
+                                <span class="difficulty-tag medium">
+                                    <i class="fas fa-meh"></i> 中等
+                                </span>
+                            {% elif question.difficulty == 'hard' %}
+                                <span class="difficulty-tag hard">
+                                    <i class="fas fa-frown"></i> 困难
+                                </span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="category-tag">{{ question.category or '-' }}</span>
+                        </td>
+                        <td class="text-muted">
+                            <i class="fas fa-calendar-alt"></i>
+                            {{ question.created_at.strftime('%Y-%m-%d') if question.created_at else '-' }}
+                        </td>
+                        <td class="text-center">
+                            <div class="action-buttons">
+                                <a href="/admin/questions/{{ question.id }}/edit" class="btn-icon btn-edit" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="/admin/questions/{{ question.id }}/delete" style="display: inline;" onsubmit="return confirm('确定要删除该题目吗？');">
+                                    <button type="submit" class="btn-icon btn-delete" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="fas fa-inbox fa-3x"></i>
+                            <p>暂无题目数据</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Enhanced Pagination -->
+        {% if total_count > 0 %}
+        <div class="pagination-wrapper">
+            <div class="pagination-info">
+                <span>第 <strong>{{ page }}</strong> / {{ total_pages }} 页</span>
+                <span class="text-muted">• 共 {{ total_count }} 条记录</span>
+                {% if questions|length == per_page %}
+                <span class="text-muted">• 显示 {{ per_page }} 条</span>
+                {% else %}
+                <span class="text-muted">• 显示 {{ questions|length }} 条</span>
+                {% endif %}
+            </div>
+            
+            <div class="pagination-controls">
+                {% if page > 1 %}
+                <a href="?page=1&bank_id={{ bank_filter or '' }}" class="pagination-btn" title="第一页">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                <a href="?page={{ page - 1 }}&bank_id={{ bank_filter or '' }}" class="pagination-btn" title="上一页">
+                    <i class="fas fa-angle-left"></i>
+                    <span>上一页</span>
+                </a>
+                {% else %}
+                <span class="pagination-btn disabled">
+                    <i class="fas fa-angle-double-left"></i>
+                </span>
+                <span class="pagination-btn disabled">
+                    <i class="fas fa-angle-left"></i>
+                    <span>上一页</span>
+                </span>
+                {% endif %}
+                
+                <div class="pagination-numbers">
+                    {% if page > 3 and total_pages > 5 %}
+                    <span class="pagination-ellipsis">...</span>
+                    {% endif %}
+                    
+                    {% if page > 2 %}
+                    <a href="?page={{ page - 2 }}&bank_id={{ bank_filter or '' }}" class="pagination-number">{{ page - 2 }}</a>
+                    {% endif %}
+                    {% if page > 1 %}
+                    <a href="?page={{ page - 1 }}&bank_id={{ bank_filter or '' }}" class="pagination-number">{{ page - 1 }}</a>
+                    {% endif %}
+                    
+                    <span class="pagination-number active">{{ page }}</span>
+                    
+                    {% if page < total_pages %}
+                    <a href="?page={{ page + 1 }}&bank_id={{ bank_filter or '' }}" class="pagination-number">{{ page + 1 }}</a>
+                    {% endif %}
+                    {% if page < total_pages - 1 %}
+                    <a href="?page={{ page + 2 }}&bank_id={{ bank_filter or '' }}" class="pagination-number">{{ page + 2 }}</a>
+                    {% endif %}
+                    
+                    {% if page < total_pages - 2 and total_pages > 5 %}
+                    <span class="pagination-ellipsis">...</span>
+                    {% endif %}
+                </div>
+                
+                {% if page < total_pages %}
+                <a href="?page={{ page + 1 }}&bank_id={{ bank_filter or '' }}" class="pagination-btn" title="下一页">
+                    <span>下一页</span>
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="?page={{ total_pages }}&bank_id={{ bank_filter or '' }}" class="pagination-btn" title="最后一页">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+                {% else %}
+                <span class="pagination-btn disabled">
+                    <span>下一页</span>
+                    <i class="fas fa-angle-right"></i>
+                </span>
+                <span class="pagination-btn disabled">
+                    <i class="fas fa-angle-double-right"></i>
+                </span>
+                {% endif %}
+            </div>
+            
+            <div class="pagination-jump">
+                <input type="number" id="page-jump-input" min="1" max="{{ total_pages }}" value="{{ page }}" class="page-input" placeholder="页码">
+                <button onclick="jumpToPage()" class="btn btn-sm btn-primary">跳转</button>
+            </div>
+        </div>
+        
+        <script>
+        function jumpToPage() {
+            const pageInput = document.getElementById('page-jump-input');
+            const page = parseInt(pageInput.value);
+            const totalPages = {{ total_pages }};
+            
+            if (page > 0 && page <= totalPages) {
+                window.location.href = '?page=' + page + '&bank_id={{ bank_filter or '' }}';
+            } else {
+                alert('请输入有效的页码（1 - ' + totalPages + '）');
+                pageInput.value = {{ page }};
+            }
+        }
+        
+        document.getElementById('page-jump-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                jumpToPage();
+            }
+        });
+        </script>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

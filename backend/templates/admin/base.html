@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}管理控制台{% endblock %} - EXAM-MASTER</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if current_user %}
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <i class="fas fa-graduation-cap"></i> EXAM-MASTER
+            </div>
+            <nav class="sidebar-menu">
+                <a href="/admin" class="menu-item {% if request.url.path == '/admin' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i> 仪表盘
+                </a>
+                <a href="/admin/users" class="menu-item {% if '/users' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-users"></i> 用户管理
+                </a>
+                <a href="/admin/qbanks" class="menu-item {% if '/qbanks' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-database"></i> 题库管理
+                </a>
+                <a href="/admin/questions" class="menu-item {% if '/questions' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-question-circle"></i> 题目管理
+                </a>
+                <a href="/admin/imports" class="menu-item {% if '/imports' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-file-upload"></i> 导入导出
+                </a>
+                <a href="/api/docs" class="menu-item" target="_blank">
+                    <i class="fas fa-book"></i> API文档
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="btn btn-default btn-sm" onclick="toggleSidebar()" style="display: none;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <nav class="breadcrumb">
+                        {% block breadcrumb %}
+                        <a href="/admin">首页</a>
+                        {% endblock %}
+                    </nav>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                        <span>{{ current_user.username }}</span>
+                        <span class="tag tag-blue">{{ current_user.role }}</span>
+                    </div>
+                    <a href="/admin/logout" class="btn btn-default btn-sm">
+                        <i class="fas fa-sign-out-alt"></i> 退出
+                    </a>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+        {% block auth_content %}{% endblock %}
+    {% endif %}
+
+    <script src="/static/js/main.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

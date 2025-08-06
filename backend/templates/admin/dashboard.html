@@ -1,0 +1,106 @@
+{% extends "admin/base.html" %}
+
+{% block title %}仪表盘{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 24px;">仪表盘</h1>
+
+<!-- Statistics Cards -->
+<div class="stat-cards">
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">用户总数</span>
+            <div class="stat-card-icon blue">
+                <i class="fas fa-users"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ stats.users }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">题库总数</span>
+            <div class="stat-card-icon green">
+                <i class="fas fa-database"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ stats.banks }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">题目总数</span>
+            <div class="stat-card-icon orange">
+                <i class="fas fa-question-circle"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ stats.questions }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">今日活跃</span>
+            <div class="stat-card-icon blue">
+                <i class="fas fa-chart-line"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ stats.active }}</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">快速操作</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <a href="/admin/users" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> 管理用户
+            </a>
+            <a href="/admin/qbanks" class="btn btn-success">
+                <i class="fas fa-database"></i> 管理题库
+            </a>
+            <a href="/admin/imports" class="btn btn-default">
+                <i class="fas fa-file-upload"></i> 导入题目
+            </a>
+            <a href="/admin/questions" class="btn btn-default">
+                <i class="fas fa-plus-circle"></i> 管理题目
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- System Info -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">系统信息</h3>
+    </div>
+    <div class="card-body">
+        <table>
+            <tbody>
+                <tr>
+                    <td><strong>系统名称：</strong></td>
+                    <td>EXAM-MASTER</td>
+                </tr>
+                <tr>
+                    <td><strong>系统版本：</strong></td>
+                    <td>2.0.0</td>
+                </tr>
+                <tr>
+                    <td><strong>API文档：</strong></td>
+                    <td><a href="/api/docs" target="_blank">/api/docs</a></td>
+                </tr>
+                <tr>
+                    <td><strong>后端状态：</strong></td>
+                    <td><span class="tag tag-green">运行中</span></td>
+                </tr>
+                <tr>
+                    <td><strong>数据库状态：</strong></td>
+                    <td><span class="tag tag-green">已连接</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if action == 'create' %}创建题库{% else %}编辑题库{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+<a href="/admin/qbanks">题库管理</a>
+<span>/</span>
+{% if action == 'create' %}创建题库{% else %}编辑题库{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            {% if action == 'create' %}创建新题库{% else %}编辑题库{% endif %}
+        </h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{% if action == 'create' %}/admin/qbanks/create{% else %}/admin/qbanks/{{ bank.id }}/edit{% endif %}">
+            <div class="form-group">
+                <label class="form-label" for="name">题库名称 *</label>
+                <input type="text" 
+                       id="name" 
+                       name="name" 
+                       class="form-control" 
+                       value="{{ bank.name if bank else '' }}"
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="description">描述</label>
+                <textarea id="description" 
+                          name="description" 
+                          class="form-control" 
+                          rows="4">{{ bank.description if bank else '' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="category">分类</label>
+                <input type="text" 
+                       id="category" 
+                       name="category" 
+                       class="form-control" 
+                       value="{{ bank.category if bank else '' }}"
+                       placeholder="例如：数学、英语、编程等">
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" 
+                           name="is_public" 
+                           {% if bank and bank.is_public %}checked{% endif %}>
+                    设为公开题库
+                </label>
+                <small style="display: block; margin-top: 5px; color: #666;">
+                    公开题库所有用户都可以查看，私有题库需要授权才能访问
+                </small>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+                <a href="/admin/qbanks" class="btn btn-default">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if action == 'edit' and bank %}
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h3 class="card-title">题库信息</h3>
+    </div>
+    <div class="card-body">
+        <table>
+            <tbody>
+                <tr>
+                    <td><strong>题库ID：</strong></td>
+                    <td>{{ bank.id }}</td>
+                </tr>
+                <tr>
+                    <td><strong>题目数量：</strong></td>
+                    <td>{{ bank.question_count|default(0) }} 道</td>
+                </tr>
+                <tr>
+                    <td><strong>创建时间：</strong></td>
+                    <td>{{ bank.created_at.strftime('%Y-%m-%d %H:%M') if bank.created_at else '-' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>更新时间：</strong></td>
+                    <td>{{ bank.updated_at.strftime('%Y-%m-%d %H:%M') if bank.updated_at else '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px;">
+            <a href="/admin/questions?bank_id={{ bank.id }}" class="btn btn-default">
+                <i class="fas fa-list"></i> 查看题目
+            </a>
+            <a href="/admin/questions/create?bank_id={{ bank.id }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 添加题目
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

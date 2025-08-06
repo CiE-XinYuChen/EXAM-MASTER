@@ -1,0 +1,227 @@
+{% extends "admin/base.html" %}
+
+{% block title %}编辑题目{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+<a href="/admin/questions">题目管理</a>
+<span>/</span>
+编辑题目
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">编辑题目</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/admin/questions/{{ question.id }}/edit" id="questionForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="bank_id">所属题库 *</label>
+                    <select id="bank_id" name="bank_id" class="form-control" required>
+                        <option value="">请选择题库</option>
+                        {% for bank in banks %}
+                        <option value="{{ bank.id }}" {% if question.bank_id == bank.id %}selected{% endif %}>
+                            {{ bank.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="question_number">题号</label>
+                    <input type="number" 
+                           id="question_number" 
+                           name="question_number" 
+                           class="form-control" 
+                           value="{{ question.question_number or 0 }}"
+                           min="0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="stem">题干 *</label>
+                <textarea id="stem" 
+                          name="stem" 
+                          class="form-control" 
+                          rows="4"
+                          required>{{ question.stem }}</textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="type">题目类型 *</label>
+                    <select id="type" name="type" class="form-control" required onchange="handleTypeChange()">
+                        <option value="">请选择类型</option>
+                        <option value="single" {% if question.type == 'single' %}selected{% endif %}>单选题</option>
+                        <option value="multiple" {% if question.type == 'multiple' %}selected{% endif %}>多选题</option>
+                        <option value="judge" {% if question.type == 'judge' %}selected{% endif %}>判断题</option>
+                        <option value="fill" {% if question.type == 'fill' %}selected{% endif %}>填空题</option>
+                        <option value="essay" {% if question.type == 'essay' %}selected{% endif %}>问答题</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="difficulty">难度</label>
+                    <select id="difficulty" name="difficulty" class="form-control">
+                        <option value="easy" {% if question.difficulty == 'easy' %}selected{% endif %}>简单</option>
+                        <option value="medium" {% if question.difficulty == 'medium' %}selected{% endif %}>中等</option>
+                        <option value="hard" {% if question.difficulty == 'hard' %}selected{% endif %}>困难</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="category">分类</label>
+                    <input type="text" 
+                           id="category" 
+                           name="category" 
+                           class="form-control" 
+                           value="{{ question.category or '' }}"
+                           placeholder="例如：基础知识、进阶题等">
+                </div>
+            </div>
+            
+            <!-- Options section for choice questions -->
+            <div id="optionsSection" style="display: none;">
+                <div class="card" style="margin: 20px 0;">
+                    <div class="card-header">
+                        <h4 style="font-size: 16px; margin: 0;">选项设置</h4>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="addOption()">
+                            <i class="fas fa-plus"></i> 添加选项
+                        </button>
+                    </div>
+                    <div class="card-body" id="optionsContainer">
+                        <!-- Options will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="explanation">题目解析</label>
+                <textarea id="explanation" 
+                          name="explanation" 
+                          class="form-control" 
+                          rows="3">{{ question.explanation or '' }}</textarea>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存更改
+                </button>
+                <a href="/admin/questions?bank_id={{ question.bank_id }}" class="btn btn-default">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let optionIndex = 0;
+const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+
+// Existing options data from server
+const existingOptions = [
+    {% for option in question.options %}
+    {
+        label: "{{ option.option_label }}",
+        content: "{{ option.option_content|replace('"', '\\"')|replace('\n', '\\n') }}",
+        isCorrect: {{ 'true' if option.is_correct else 'false' }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+function handleTypeChange() {
+    const type = document.getElementById('type').value;
+    const optionsSection = document.getElementById('optionsSection');
+    const optionsContainer = document.getElementById('optionsContainer');
+    
+    if (type === 'single' || type === 'multiple') {
+        optionsSection.style.display = 'block';
+        if (optionsContainer.children.length === 0) {
+            // If we have existing options, load them
+            if (existingOptions.length > 0) {
+                existingOptions.forEach(opt => {
+                    addOption(opt.label, opt.content, opt.isCorrect);
+                });
+            } else {
+                // Add default 4 options for new questions
+                for (let i = 0; i < 4; i++) {
+                    addOption();
+                }
+            }
+        }
+    } else {
+        optionsSection.style.display = 'none';
+    }
+}
+
+function addOption(label = null, content = '', isCorrect = false) {
+    const container = document.getElementById('optionsContainer');
+    const optionLabel = label || optionLabels[optionIndex] || String.fromCharCode(65 + optionIndex);
+    const type = document.getElementById('type').value;
+    
+    const optionDiv = document.createElement('div');
+    optionDiv.className = 'option-item';
+    optionDiv.style.marginBottom = '15px';
+    optionDiv.style.padding = '10px';
+    optionDiv.style.border = '1px solid #e0e0e0';
+    optionDiv.style.borderRadius = '4px';
+    
+    optionDiv.innerHTML = `
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="hidden" name="option_label_${optionIndex}" value="${optionLabel}">
+            <span style="font-weight: bold; min-width: 30px;">${optionLabel}.</span>
+            <input type="text" 
+                   name="option_content_${optionIndex}" 
+                   class="form-control" 
+                   placeholder="选项内容" 
+                   value="${content}"
+                   required
+                   style="flex: 1;">
+            <label style="display: flex; align-items: center; margin: 0;">
+                <input type="${type === 'multiple' ? 'checkbox' : 'radio'}" 
+                       name="option_correct_${type === 'multiple' ? optionIndex : ''}" 
+                       value="${optionIndex}"
+                       ${isCorrect ? 'checked' : ''}
+                       style="margin-right: 5px;">
+                正确答案
+            </label>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeOption(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(optionDiv);
+    optionIndex++;
+}
+
+function removeOption(button) {
+    const optionDiv = button.closest('.option-item');
+    optionDiv.remove();
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const type = document.getElementById('type').value;
+    if (type) {
+        handleTypeChange();
+    }
+});
+</script>
+
+<style>
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.option-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+{% endblock %}

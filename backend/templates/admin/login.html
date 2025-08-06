@@ -1,0 +1,95 @@
+{% extends "admin/base.html" %}
+
+{% block title %}登录{% endblock %}
+
+{% block auth_content %}
+<div class="login-container">
+    <div class="login-box">
+        <div class="login-header">
+            <h1 class="login-title">
+                <i class="fas fa-graduation-cap"></i> EXAM-MASTER
+            </h1>
+            <p class="login-subtitle">请登录您的管理账户</p>
+        </div>
+        
+        {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="POST" action="/admin/login">
+            <div class="form-group">
+                <label class="form-label" for="username">用户名或邮箱</label>
+                <input type="text" 
+                       id="username" 
+                       name="username" 
+                       class="form-control" 
+                       placeholder="请输入用户名或邮箱"
+                       required 
+                       autofocus>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="password">密码</label>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       class="form-control" 
+                       placeholder="请输入密码"
+                       required>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center;">
+                    <input type="checkbox" name="remember" style="margin-right: 8px;">
+                    记住我
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i class="fas fa-sign-in-alt"></i> 登录
+            </button>
+        </form>
+        
+        <div style="margin-top: 20px; text-align: center; color: #666;">
+            <p>默认管理员账户</p>
+            <p style="font-size: 12px;">请使用系统管理员账户登录</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-box {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    padding: 40px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+
+.login-subtitle {
+    color: #666;
+    margin-top: 8px;
+}
+</style>
+{% endblock %}

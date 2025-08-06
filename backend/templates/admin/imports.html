@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+
+{% block title %}导入导出{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+导入导出
+{% endblock %}
+
+{% block content %}
+<!-- Display messages -->
+{% if request.url.query %}
+    {% if 'success' in request.url.query %}
+        <div class="alert alert-success">
+            导入成功！
+            <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; cursor: pointer;">×</button>
+        </div>
+    {% elif 'error' in request.url.query %}
+        <div class="alert alert-error">
+            导入失败，请检查文件格式。
+            <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; cursor: pointer;">×</button>
+        </div>
+    {% endif %}
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">导入题目</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/admin/imports/csv" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="form-label" for="bank_id">选择题库</label>
+                <select name="bank_id" id="bank_id" class="form-control" required>
+                    <option value="">请选择题库</option>
+                    {% for bank in banks %}
+                    <option value="{{ bank.id }}">{{ bank.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="file">选择文件</label>
+                <input type="file" name="file" id="file" class="form-control" accept=".csv,.json" required>
+                <small style="color: #666;">支持格式: CSV, JSON</small>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="merge_duplicates" checked> 合并重复题目
+                </label>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> 开始导入
+                </button>
+                <a href="/admin/imports/template" class="btn btn-default">
+                    <i class="fas fa-download"></i> 下载模板
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">导出题库</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>题库名称</th>
+                        <th>题目数量</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bank in banks %}
+                    <tr>
+                        <td>{{ bank.name }}</td>
+                        <td>{{ bank.question_count }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="/admin/exports/{{ bank.id }}?format=csv" class="btn btn-default btn-sm">
+                                    <i class="fas fa-file-csv"></i> 导出CSV
+                                </a>
+                                <a href="/admin/exports/{{ bank.id }}?format=json" class="btn btn-default btn-sm">
+                                    <i class="fas fa-file-code"></i> 导出JSON
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #999;">暂无题库数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

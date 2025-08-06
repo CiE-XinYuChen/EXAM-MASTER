@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 24px;">仪表盘</h1>
+
+<!-- Statistics Cards -->
+<div class="stat-cards">
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">用户总数</span>
+            <div class="stat-card-icon blue">
+                <i class="fas fa-users"></i>
+            </div>
+        </div>
+        <div class="stat-card-value" id="total-users">-</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">题库总数</span>
+            <div class="stat-card-icon green">
+                <i class="fas fa-database"></i>
+            </div>
+        </div>
+        <div class="stat-card-value" id="total-banks">-</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">题目总数</span>
+            <div class="stat-card-icon orange">
+                <i class="fas fa-question-circle"></i>
+            </div>
+        </div>
+        <div class="stat-card-value" id="total-questions">-</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">今日活跃</span>
+            <div class="stat-card-icon blue">
+                <i class="fas fa-chart-line"></i>
+            </div>
+        </div>
+        <div class="stat-card-value" id="active-today">-</div>
+    </div>
+</div>
+
+<!-- Recent Activities -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">最近活动</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-container">
+            <table id="activities-table">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>用户</th>
+                        <th>操作</th>
+                        <th>详情</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">暂无活动记录</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">快速操作</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <a href="{{ url_for('users.create') }}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> 添加用户
+            </a>
+            <a href="{{ url_for('qbanks.create') }}" class="btn btn-success">
+                <i class="fas fa-database"></i> 创建题库
+            </a>
+            <a href="{{ url_for('imports.index') }}" class="btn btn-default">
+                <i class="fas fa-file-upload"></i> 导入题目
+            </a>
+            <a href="{{ url_for('questions.create') }}" class="btn btn-default">
+                <i class="fas fa-plus-circle"></i> 添加题目
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load dashboard statistics
+async function loadStatistics() {
+    try {
+        // Get users count
+        const usersResponse = await fetch('/api/stats/users');
+        if (usersResponse.ok) {
+            const usersData = await usersResponse.json();
+            document.getElementById('total-users').textContent = usersData.total || '0';
+        }
+        
+        // Get banks count
+        const banksResponse = await fetch('/api/stats/banks');
+        if (banksResponse.ok) {
+            const banksData = await banksResponse.json();
+            document.getElementById('total-banks').textContent = banksData.total || '0';
+        }
+        
+        // Get questions count
+        const questionsResponse = await fetch('/api/stats/questions');
+        if (questionsResponse.ok) {
+            const questionsData = await questionsResponse.json();
+            document.getElementById('total-questions').textContent = questionsData.total || '0';
+        }
+        
+        // Set active today (placeholder)
+        document.getElementById('active-today').textContent = '0';
+        
+    } catch (error) {
+        console.error('Failed to load statistics:', error);
+        // Set default values
+        document.getElementById('total-users').textContent = '0';
+        document.getElementById('total-banks').textContent = '0';
+        document.getElementById('total-questions').textContent = '0';
+        document.getElementById('active-today').textContent = '0';
+    }
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadStatistics);
+</script>
+{% endblock %}

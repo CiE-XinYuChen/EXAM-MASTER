@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+用户管理
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">用户列表</h3>
+    </div>
+    <div class="card-body">
+        <!-- Filter Bar -->
+        <div style="margin-bottom: 20px;">
+            <form method="GET" style="display: flex; gap: 10px;">
+                <select name="role" class="form-control" style="width: 150px;">
+                    <option value="">所有角色</option>
+                    <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>管理员</option>
+                    <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>教师</option>
+                    <option value="student" {% if role_filter == 'student' %}selected{% endif %}>学生</option>
+                </select>
+                <button type="submit" class="btn btn-default">筛选</button>
+            </form>
+        </div>
+        
+        <!-- Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>用户名</th>
+                        <th>邮箱</th>
+                        <th>角色</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.role.value == 'admin' %}
+                                <span class="tag tag-red">管理员</span>
+                            {% elif user.role.value == 'teacher' %}
+                                <span class="tag tag-blue">教师</span>
+                            {% else %}
+                                <span class="tag tag-green">学生</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                                <span class="tag tag-green">激活</span>
+                            {% else %}
+                                <span class="tag tag-orange">禁用</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">暂无用户数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if users %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}&role={{ role_filter or '' }}" class="pagination-item">上一页</a>
+            {% endif %}
+            <span class="pagination-item active">{{ page }}</span>
+            {% if users|length == 20 %}
+            <a href="?page={{ page + 1 }}&role={{ role_filter or '' }}" class="pagination-item">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

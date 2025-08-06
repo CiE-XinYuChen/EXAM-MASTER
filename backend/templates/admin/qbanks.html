@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+
+{% block title %}题库管理{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+题库管理
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">题库列表</h3>
+        <a href="/admin/qbanks/create" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> 创建题库
+        </a>
+    </div>
+    <div class="card-body">
+        <!-- Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>描述</th>
+                        <th>分类</th>
+                        <th>题目数量</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bank in banks %}
+                    <tr>
+                        <td>{{ bank.name }}</td>
+                        <td>{{ bank.description[:50] if bank.description else '-' }}</td>
+                        <td>{{ bank.category or '-' }}</td>
+                        <td>{{ bank.question_count }}</td>
+                        <td>
+                            {% if bank.is_public %}
+                                <span class="tag tag-green">公开</span>
+                            {% else %}
+                                <span class="tag tag-orange">私有</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ bank.created_at.strftime('%Y-%m-%d') if bank.created_at else '-' }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="/admin/qbanks/{{ bank.id }}/edit" class="btn btn-default btn-sm" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="POST" action="/admin/qbanks/{{ bank.id }}/delete" style="display: inline;" onsubmit="return confirm('确定要删除该题库吗？这将删除所有相关题目！');">
+                                    <button type="submit" class="btn btn-danger btn-sm" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">暂无题库数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if banks %}
+        <div class="pagination">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}" class="pagination-item">上一页</a>
+            {% endif %}
+            <span class="pagination-item active">{{ page }}</span>
+            {% if banks|length == 20 %}
+            <a href="?page={{ page + 1 }}" class="pagination-item">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
