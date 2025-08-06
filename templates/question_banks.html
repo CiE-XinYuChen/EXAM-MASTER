@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block title %}题库管理 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="question-banks-container">
+    <div class="page-header">
+        <h1><i class="fas fa-database"></i> 题库管理</h1>
+        <p class="text-muted">管理您的题库，选择不同的题库进行训练</p>
+    </div>
+    
+    <div class="actions-section">
+        <a href="{{ url_for('import_questions') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 导入新题库
+        </a>
+    </div>
+    
+    <div class="banks-grid">
+        {% for bank in banks %}
+        <div class="bank-card {% if bank.id == current_bank_id %}active{% endif %}">
+            <div class="bank-header">
+                <h3>{{ bank.name }}</h3>
+                {% if bank.id == current_bank_id %}
+                <span class="badge badge-success">当前使用</span>
+                {% endif %}
+            </div>
+            
+            <div class="bank-info">
+                <div class="info-item">
+                    <i class="fas fa-file-alt"></i>
+                    <span>{{ bank.actual_question_count }} 题</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ bank.created_at[:10] }}</span>
+                </div>
+                {% if bank.filename %}
+                <div class="info-item">
+                    <i class="fas fa-file"></i>
+                    <span>{{ bank.filename }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if bank.description %}
+            <div class="bank-description">
+                <p>{{ bank.description }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="bank-actions">
+                {% if bank.id != current_bank_id %}
+                <form method="post" action="{{ url_for('select_bank', bank_id=bank.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-check"></i> 选择
+                    </button>
+                </form>
+                {% endif %}
+                
+                {% if bank.id != 1 %}
+                <form method="post" action="{{ url_for('delete_bank', bank_id=bank.id) }}" 
+                      style="display: inline;" 
+                      onsubmit="return confirm('确定要删除题库 {{ bank.name }} 吗？此操作不可恢复！')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not banks %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="fas fa-database"></i>
+        </div>
+        <h3>暂无题库</h3>
+        <p>您还没有创建任何题库，点击上方按钮导入您的第一个题库吧！</p>
+        <a href="{{ url_for('import_questions') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> 导入题库
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .question-banks-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+    
+    .actions-section {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+    }
+    
+    .banks-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .bank-card {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .bank-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .bank-card.active {
+        border-color: var(--success-color);
+        background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+    }
+    
+    .bank-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .bank-header h3 {
+        margin: 0;
+        color: var(--gray-800);
+        font-size: 1.25rem;
+    }
+    
+    .badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-success {
+        background-color: var(--success-color);
+        color: white;
+    }
+    
+    .bank-info {
+        margin-bottom: 1rem;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--gray-600);
+        font-size: 0.9rem;
+    }
+    
+    .info-item i {
+        min-width: 1rem;
+        text-align: center;
+    }
+    
+    .bank-description {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background: rgba(67, 97, 238, 0.05);
+        border-radius: 6px;
+        border-left: 3px solid var(--primary-color);
+    }
+    
+    .bank-description p {
+        margin: 0;
+        color: var(--gray-700);
+        font-size: 0.9rem;
+    }
+    
+    .bank-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .bank-actions .btn {
+        flex: 1;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+    
+    .empty-icon {
+        font-size: 4rem;
+        color: var(--gray-400);
+        margin-bottom: 1rem;
+    }
+    
+    .empty-state h3 {
+        color: var(--gray-600);
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-state p {
+        color: var(--gray-500);
+        margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .banks-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .bank-actions {
+            flex-direction: column;
+        }
+        
+        .bank-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+</style>
+{% endblock %} 

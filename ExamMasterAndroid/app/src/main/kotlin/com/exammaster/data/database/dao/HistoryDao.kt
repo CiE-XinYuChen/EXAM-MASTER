@@ -27,6 +27,9 @@ interface HistoryDao {
     @Query("SELECT COUNT(*) FROM history")
     suspend fun getTotalAnswerCount(): Int
 
+    @Query("SELECT COUNT(*) FROM history WHERE questionId = :questionId")
+    suspend fun getQuestionAttemptCount(questionId: String): Int
+
     @Query("""
         SELECT 
             COUNT(*) as total

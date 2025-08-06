@@ -85,6 +85,7 @@ fun FavoritesScreen(
                 items(favoriteQuestions.value) { question ->
                     FavoriteQuestionItem(
                         question = question,
+                        viewModel = viewModel,
                         onQuestionClick = { questionId ->
                             viewModel.loadQuestionById(questionId)
                             navController.navigate("question")
@@ -100,6 +101,7 @@ fun FavoritesScreen(
 @Composable
 private fun FavoriteQuestionItem(
     question: com.exammaster.data.database.entities.Question,
+    viewModel: ExamViewModel,
     onQuestionClick: (String) -> Unit
 ) {
     Card(
@@ -124,10 +126,40 @@ private fun FavoriteQuestionItem(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = "题目 ${question.id}",
-                    fontWeight = FontWeight.Medium
-                )
+                var attemptCount by remember { mutableStateOf(0) }
+                
+                LaunchedEffect(question.id) {
+                    viewModel.getQuestionAttemptCount(question.id).collect { count -> 
+                        attemptCount = count 
+                    }
+                }
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "题目 ${question.id}",
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    // 作答次数标签
+                    if (attemptCount > 0) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "第${attemptCount}次",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
                 
                 Text(
                     text = question.stem,

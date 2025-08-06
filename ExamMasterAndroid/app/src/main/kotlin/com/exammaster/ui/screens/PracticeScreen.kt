@@ -74,21 +74,20 @@ fun PracticeScreen(
             
             PracticeModeCard(
                 title = "顺序练习",
-                subtitle = "按照题目顺序依次练习",
+                subtitle = "按题目顺序练习，可从上次位置继续",
                 icon = Icons.Default.List,
                 onClick = {
-                    viewModel.startPracticeMode(ExamViewModel.QuizMode.SEQUENTIAL)
+                    viewModel.startSequentialFromLastBrowsed()
                     navController.navigate("question_practice")
                 }
             )
             
             PracticeModeCard(
-                title = "错题本",
-                subtitle = "重新练习答错的题目",
+                title = "错题记录",
+                subtitle = "查看和练习错题",
                 icon = Icons.Default.ErrorOutline,
                 onClick = {
-                    viewModel.startPracticeMode(ExamViewModel.QuizMode.WRONG_ONLY)
-                    navController.navigate("question_practice")
+                    navController.navigate("wrong_answers")
                 }
             )
         }

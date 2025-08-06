@@ -13,10 +13,16 @@
             <p class="lead mb-3">高效的在线刷题系统，助力学习提升</p>
             <p class="current-exam-info mb-4">
                 <span class="badge badge-primary">
-                    <i class="fas fa-bookmark"></i> 当前题库: 毛概2023级(2025-05)
+                    <i class="fas fa-bookmark"></i> 当前题库: {{ current_bank_name }}
                 </span>
+                <span class="badge badge-info">
+                    <i class="fas fa-list"></i> 共 {{ total_questions }} 题
+                </span>
+                <a href="{{ url_for('question_bank_list') }}" class="badge badge-outline-primary" style="text-decoration: none;">
+                    <i class="fas fa-database"></i> 切换题库
+                </a>
                 {% if current_seq_qid %}
-                <span class="badge badge-success mt-2 d-block">
+                <span class="badge badge-success d-block">
                     <i class="fas fa-sync"></i> 顺序答题模式将从第 {{ current_seq_qid }} 题继续
                 </span>
                 {% endif %}
@@ -31,6 +37,9 @@
                 <a href="{{ url_for('wrong_questions') }}" class="btn btn-warning main-action-btn">
                     <i class="fas fa-times-circle"></i> 错题练习
                 </a>
+                <a href="{{ url_for('user_settings') }}" class="btn btn-info main-action-btn">
+                    <i class="fas fa-cog"></i> 设置
+                </a>
                 <a href="{{ url_for('logout') }}" class="btn btn-danger main-action-btn">
                     <i class="fas fa-sign-out-alt"></i> 退出
                 </a>
@@ -39,7 +48,7 @@
     </div>
 </div>
 
-<div class="android-section mb-4">
+<div class="android-section mb-4" style="display: none;">
     <div class="card">
         <div class="android-content">
             <div class="android-header">
@@ -70,7 +79,7 @@
             <div class="android-download">
                 <a href="/ExamMasterAndroid/exammaster-v3-debug.apk" class="btn btn-success download-btn" download>
                     <i class="fas fa-download"></i> 下载 Android 应用
-                    <small class="d-block mt-1">v3.0 • 17MB</small>
+                    <small class="d-block mt-1">v4.0 • 17MB</small>
                 </a>
                 <div class="mt-3">
                     <p class="text-white mb-2">
@@ -298,6 +307,24 @@
     
     .current-exam-info {
         font-size: 1.1rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .badge-outline-primary {
+        background: transparent;
+        color: var(--primary-color);
+        border: 1px solid var(--primary-color);
+        transition: all 0.3s ease;
+    }
+    
+    .badge-outline-primary:hover {
+        background: var(--primary-color);
+        color: white;
+        text-decoration: none;
     }
     
     .main-action-btn {

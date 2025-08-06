@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}智能刷题 - ExamMaster{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- 页面标题 -->
+            <div class="text-center mb-4">
+                <h1 class="h2 text-primary">
+                    <i class="fas fa-brain"></i> 智能刷题系统
+                </h1>
+                <p class="text-muted">选择适合您的刷题策略，提高学习效率</p>
+            </div>
+
+            <!-- 刷题策略卡片 -->
+            <div class="row g-4">
+                <!-- 自适应练习 -->
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm practice-mode-card">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-3">
+                                <div class="practice-icon adaptive-icon">
+                                    <i class="fas fa-chart-line fa-2x"></i>
+                                </div>
+                                <h4 class="card-title mt-3">自适应练习</h4>
+                            </div>
+                            <p class="card-text text-muted">
+                                根据您的答题水平和历史表现，智能推荐合适难度的题目，循序渐进提升能力。
+                            </p>
+                            <ul class="list-unstyled mb-4">
+                                <li><i class="fas fa-check text-success me-2"></i> 智能难度调节</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 个性化推荐</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 高效学习</li>
+                            </ul>
+                            <div class="text-center">
+                                <a href="{{ url_for('adaptive_practice') }}" class="btn btn-primary btn-lg w-100">
+                                    <i class="fas fa-play me-2"></i>开始自适应练习
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 薄弱环节强化 -->
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm practice-mode-card">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-3">
+                                <div class="practice-icon weak-points-icon">
+                                    <i class="fas fa-target fa-2x"></i>
+                                </div>
+                                <h4 class="card-title mt-3">薄弱环节强化</h4>
+                            </div>
+                            <p class="card-text text-muted">
+                                专注于您错误率较高的题型和知识点，针对性提升薄弱环节。
+                            </p>
+                            <ul class="list-unstyled mb-4">
+                                <li><i class="fas fa-check text-success me-2"></i> 错题重点复习</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 针对性训练</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 快速提升</li>
+                            </ul>
+                            <div class="text-center">
+                                <a href="{{ url_for('weak_points_practice') }}" class="btn btn-warning btn-lg w-100">
+                                    <i class="fas fa-bullseye me-2"></i>开始强化练习
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 传统模式 -->
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm practice-mode-card">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-3">
+                                <div class="practice-icon random-icon">
+                                    <i class="fas fa-random fa-2x"></i>
+                                </div>
+                                <h4 class="card-title mt-3">随机练习</h4>
+                            </div>
+                            <p class="card-text text-muted">
+                                随机选择题目进行练习，保持学习的新鲜感和挑战性。
+                            </p>
+                            <ul class="list-unstyled mb-4">
+                                <li><i class="fas fa-check text-success me-2"></i> 题目多样化</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 综合训练</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 随机挑战</li>
+                            </ul>
+                            <div class="text-center">
+                                <a href="{{ url_for('random_question', strategy='random') }}" class="btn btn-info btn-lg w-100">
+                                    <i class="fas fa-dice me-2"></i>开始随机练习
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 顺序练习 -->
+                <div class="col-md-6">
+                    <div class="card h-100 border-0 shadow-sm practice-mode-card">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-3">
+                                <div class="practice-icon sequential-icon">
+                                    <i class="fas fa-list-ol fa-2x"></i>
+                                </div>
+                                <h4 class="card-title mt-3">顺序练习</h4>
+                            </div>
+                            <p class="card-text text-muted">
+                                按照题目编号顺序进行练习，系统化地完成所有题目。
+                            </p>
+                            <ul class="list-unstyled mb-4">
+                                <li><i class="fas fa-check text-success me-2"></i> 系统性学习</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 完整覆盖</li>
+                                <li><i class="fas fa-check text-success me-2"></i> 有序进度</li>
+                            </ul>
+                            <div class="text-center">
+                                <a href="{{ url_for('sequential_start') }}" class="btn btn-success btn-lg w-100">
+                                    <i class="fas fa-sort-numeric-down me-2"></i>开始顺序练习
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 返回按钮 -->
+            <div class="text-center mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>返回首页
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.practice-mode-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.practice-mode-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.practice-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+}
+
+.adaptive-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.weak-points-icon {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.random-icon {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.sequential-icon {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.card-title {
+    color: #333;
+    font-weight: 600;
+}
+
+.btn-lg {
+    padding: 12px 24px;
+    font-weight: 500;
+}
+</style>
+{% endblock %} 

@@ -117,6 +117,13 @@ fun NavGraph(
                 navController = navController
             )
         }
+        
+        composable("wrong_answers") {
+            WrongAnswersScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
     }
 }
 

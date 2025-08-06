@@ -211,6 +211,7 @@ fun BrowseScreen(
                     items(filteredQuestions) { question ->
                         ModernQuestionCard(
                             question = question,
+                            viewModel = viewModel,
                             isExpanded = expandedQuestionId == question.id,
                             onExpandToggle = { 
                                 expandedQuestionId = if (expandedQuestionId == question.id) null else question.id
@@ -306,10 +307,19 @@ private fun SearchEmptyStateView(searchText: String) {
 @Composable
 private fun ModernQuestionCard(
     question: com.exammaster.data.database.entities.Question,
+    viewModel: ExamViewModel,
     isExpanded: Boolean,
     onExpandToggle: () -> Unit,
     onQuestionClick: (String) -> Unit
 ) {
+    var attemptCount by remember { mutableStateOf(0) }
+    
+    LaunchedEffect(question.id) {
+        viewModel.getQuestionAttemptCount(question.id).collect { count -> 
+            attemptCount = count 
+        }
+    }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -377,6 +387,23 @@ private fun ModernQuestionCard(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer
                             )
                         )
+                    }
+                    
+                    // 作答次数标签
+                    if (attemptCount > 0) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "第${attemptCount}次",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
                 

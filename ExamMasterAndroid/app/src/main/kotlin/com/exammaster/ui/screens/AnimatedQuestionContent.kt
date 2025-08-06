@@ -75,28 +75,14 @@ fun <T> AnimatedQuestionContent(
         currentState = targetState
     }
     
-    // 构建进入退出动画
+    // 构建进入退出动画 - 简化以减少闪屏
     val enterTransition = when (direction) {
-        1 -> slideInHorizontally(
-            animationSpec = tween(transitionDuration),
-            initialOffsetX = { width -> width } // 从右向左滑入
-        ) + fadeIn(tween(transitionDuration))
-        -1 -> slideInHorizontally(
-            animationSpec = tween(transitionDuration),
-            initialOffsetX = { width -> -width } // 从左向右滑入
-        ) + fadeIn(tween(transitionDuration))
+        1, -1 -> fadeIn(tween(150)) // 只使用淡入效果，缩短动画时间
         else -> EnterTransition.None // 首次加载无动画
     }
     
     val exitTransition = when (direction) {
-        1 -> slideOutHorizontally(
-            animationSpec = tween(transitionDuration),
-            targetOffsetX = { width -> -width } // 向左滑出
-        ) + fadeOut(tween(transitionDuration))
-        -1 -> slideOutHorizontally(
-            animationSpec = tween(transitionDuration),
-            targetOffsetX = { width -> width } // 向右滑出
-        ) + fadeOut(tween(transitionDuration))
+        1, -1 -> fadeOut(tween(150)) // 只使用淡出效果，缩短动画时间
         else -> ExitTransition.None // 首次加载无动画
     }
     

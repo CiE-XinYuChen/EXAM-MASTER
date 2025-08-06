@@ -75,7 +75,7 @@ fun HomeScreen(
         ) {            item {
                 ModeButton(
                     title = "练习模式",
-                    subtitle = "随机练习、顺序练习、错题本",
+                    subtitle = "随机练习、顺序练习、错题记录",
                     icon = Icons.Default.School,
                     onClick = {
                         navController.navigate(Screen.Practice.route)
@@ -101,28 +101,6 @@ fun HomeScreen(
                     icon = Icons.Default.LibraryBooks,
                     onClick = {
                         navController.navigate(Screen.Browse.route)
-                    }
-                )
-            }
-              item {
-                ModeButton(
-                    title = "顺序答题",
-                    subtitle = "从上次浏览位置开始顺序答题",
-                    icon = Icons.Default.List,
-                    onClick = {
-                        viewModel.startSequentialFromLastBrowsed()
-                        navController.navigate(Screen.QuestionPractice.route)
-                    }
-                )
-            }
-              item {
-                ModeButton(
-                    title = "错题练习",
-                    subtitle = "重新练习答错的题目",
-                    icon = Icons.Default.Report,
-                    onClick = {
-                        viewModel.startPracticeMode(ExamViewModel.QuizMode.WRONG_ONLY)
-                        navController.navigate(Screen.QuestionPractice.route)
                     }
                 )
             }

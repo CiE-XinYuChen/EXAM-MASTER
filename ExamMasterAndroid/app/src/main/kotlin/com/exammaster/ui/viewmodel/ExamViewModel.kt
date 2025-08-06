@@ -315,6 +315,7 @@ class ExamViewModel @Inject constructor(
         when (_currentMode.value) {
             QuizMode.RANDOM -> loadRandomQuestion()
             QuizMode.SEQUENTIAL -> loadSequentialQuestion()
+            QuizMode.WRONG_ONLY -> loadWrongQuestion()
             else -> loadRandomQuestion()
         }
     }
@@ -334,6 +335,10 @@ class ExamViewModel @Inject constructor(
     
     fun isFavorite(questionId: String): Flow<Boolean> = flow {
         emit(repository.isFavorite(questionId))
+    }
+    
+    fun getQuestionAttemptCount(questionId: String): Flow<Int> = flow {
+        emit(repository.getQuestionAttemptCount(questionId))
     }
     
     fun searchQuestions(query: String): Flow<List<Question>> = flow {
@@ -698,7 +703,7 @@ class ExamViewModel @Inject constructor(
         // Implementation would depend on the specific requirements
     }
     
-    private fun loadStatistics() {
+    fun loadStatistics() {
         viewModelScope.launch {
             val totalQuestions = repository.getQuestionCount()
             val answeredQuestions = repository.getAnsweredQuestionCount()

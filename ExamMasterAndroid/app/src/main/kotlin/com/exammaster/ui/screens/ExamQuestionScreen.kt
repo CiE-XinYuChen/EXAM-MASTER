@@ -158,15 +158,6 @@ fun ExamQuestionScreen(
             
             // Options
             if (question.getFormattedOptions().isNotEmpty()) {
-                Text(
-                    text = "选择答案",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
-                
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

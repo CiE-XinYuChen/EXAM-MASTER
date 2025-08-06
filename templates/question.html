@@ -27,17 +27,34 @@
             {% if question.type %}
                 <span class="badge badge-info">{{ question.type }}</span>
             {% endif %}
-            {% if question.difficulty %}
+            {% if question.difficulty and question.difficulty != '无' %}
                 <span class="question-difficulty badge {% if question.difficulty == '简单' %}badge-success{% elif question.difficulty == '中等' %}badge-warning{% else %}badge-danger{% endif %}">
                     {{ question.difficulty }}
                 </span>
             {% endif %}
-            {% if question.category %}
+            {% if question.category and question.category != '未分类' %}
                 <span class="badge badge-primary">{{ question.category }}</span>
+            {% endif %}
+            
+            <!-- 答题状态图标 - 移动端时显示在question-info内 -->
+            {% if auto_jump_success %}
+            <div class="answer-status-icon">
+                <i class="fas fa-check-circle"></i>
+                <span class="status-text">答对了！自动跳转中...</span>
+            </div>
             {% endif %}
         </div>
         
         <div class="question-actions-top">
+            <!-- 自动跳转状态显示和切换 -->
+            <div class="auto-jump-status {% if not auto_jump_enabled %}disabled{% endif %}" 
+                 id="autoJumpToggle" 
+                 onclick="toggleAutoJump()"
+                 title="点击切换自动跳转功能">
+                <i class="fas {% if auto_jump_enabled %}fa-forward{% else %}fa-pause{% endif %}"></i>
+                <span>{% if auto_jump_enabled %}自动跳转已开启{% else %}自动跳转已关闭{% endif %}</span>
+            </div>
+            
             <!-- 收藏按钮 -->
             {% if is_favorite %}
                 <form method="post" action="{{ url_for('unfavorite_question', qid=question.id) }}">
@@ -60,8 +77,8 @@
     
     <!-- 答题结果消息 -->
     {% if result_msg %}
-        <div class="result-message {% if '正确' in result_msg %}result-correct{% else %}result-incorrect{% endif %}">
-            {% if '正确' in result_msg %}
+        <div class="result-message {% if result_msg.startswith('回答正确') %}result-correct{% else %}result-incorrect{% endif %}">
+            {% if result_msg.startswith('回答正确') %}
                 <i class="fas fa-check-circle"></i>
             {% else %}
                 <i class="fas fa-times-circle"></i>
@@ -70,40 +87,97 @@
         </div>
     {% endif %}
     
-    <!-- 选项表单 -->
+    <!-- 答题表单 -->
     <form method="post" action="{{ url_for('show_question', qid=question.id) }}" class="question-form">
-        <ul class="options-list">
-            {% for opt_key, opt_val in question.options.items() %}
-                {% set checked = user_answer is defined and (opt_key in user_answer) %}
-                <li class="option-item">
-                    <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
-                        {% if question.type == '单选题' %}
-                            <input type="radio" 
-                                   class="option-checkbox" 
-                                   name="answer"
-                                   value="{{ opt_key }}"
-                                   {% if checked %}checked{% endif %}
-                                   {% if result_msg %}disabled{% endif %}
-                                   required>
-                        {% else %}
+        {% if question.type in ['单选题', '多选题', '判断题'] %}
+            <!-- 选择题选项 -->
+            <ul class="options-list">
+                {% for opt_key, opt_val in question.options.items() %}
+                    {% set checked = user_answer is defined and (opt_key in user_answer) %}
+                    <li class="option-item">
+                        <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
+                            {% if question.type in ['单选题', '判断题'] %}
+                                <input type="radio" 
+                                       class="option-checkbox" 
+                                       name="answer"
+                                       value="{{ opt_key }}"
+                                       {% if checked %}checked{% endif %}
+                                       {% if result_msg %}disabled{% endif %}
+                                       required>
+                            {% else %}
+                                <input type="checkbox" 
+                                       class="option-checkbox" 
+                                       name="answer"
+                                       value="{{ opt_key }}"
+                                       {% if checked %}checked{% endif %}
+                                       {% if result_msg %}disabled{% endif %}>
+                            {% endif %}
+                            <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% elif question.type == '填空题' %}
+            <!-- 填空题输入框 -->
+            <div class="fill-blank-container">
+                <label for="answer_input" class="form-label">请输入您的答案：</label>
+                <input type="text" 
+                       class="form-control fill-blank-input" 
+                       id="answer_input"
+                       name="answer"
+                       value="{{ user_answer if user_answer is defined else '' }}"
+                       {% if result_msg %}disabled{% endif %}
+                       placeholder="在此输入答案..."
+                       required>
+                {% if result_msg %}
+                    <div class="mt-2">
+                        <small class="text-muted">您的答案：<span class="user-answer">{{ user_answer }}</span></small>
+                    </div>
+                {% endif %}
+            </div>
+        {% elif question.type == '简答题' %}
+            <!-- 简答题文本框 -->
+            <div class="essay-container">
+                <label for="answer_textarea" class="form-label">请详细回答：</label>
+                <textarea class="form-control essay-input" 
+                          id="answer_textarea"
+                          name="answer"
+                          rows="6"
+                          {% if result_msg %}disabled{% endif %}
+                          placeholder="请在此输入您的详细答案..."
+                          required>{{ user_answer if user_answer is defined else '' }}</textarea>
+                {% if result_msg %}
+                    <div class="mt-2">
+                        <small class="text-muted">您的答案：</small>
+                        <div class="user-essay-answer">{{ user_answer }}</div>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <!-- 默认选择题格式 -->
+            <ul class="options-list">
+                {% for opt_key, opt_val in question.options.items() %}
+                    {% set checked = user_answer is defined and (opt_key in user_answer) %}
+                    <li class="option-item">
+                        <label class="option-label {% if checked and result_msg %}{% if opt_key in question.answer %}option-correct{% else %}option-incorrect{% endif %}{% endif %}">
                             <input type="checkbox" 
                                    class="option-checkbox" 
                                    name="answer"
                                    value="{{ opt_key }}"
                                    {% if checked %}checked{% endif %}
                                    {% if result_msg %}disabled{% endif %}>
-                        {% endif %}
-                        <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
-                    </label>
-                </li>
-            {% endfor %}
-        </ul>
+                            <span class="option-text"><strong>{{ opt_key }}.</strong> {{ opt_val }}</span>
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
         
         <!-- 底部操作按钮 -->
         <div class="question-actions">
             {% if not result_msg %}
                 <div class="btn-group">
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success" id="submit-btn">
                         <i class="fas fa-paper-plane"></i> 提交答案
                     </button>
                 </div>
@@ -201,15 +275,170 @@
         padding: 2rem;
     }
     
+    /* 填空题样式 */
+    .fill-blank-container {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+    }
+    
+    .fill-blank-input {
+        font-size: 1.1rem;
+        padding: 12px 16px;
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        transition: border-color 0.2s ease;
+    }
+    
+    .fill-blank-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .user-answer {
+        font-weight: 600;
+        color: #495057;
+        background: #e9ecef;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+    
+    /* 简答题样式 */
+    .essay-container {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #28a745;
+    }
+    
+    .essay-input {
+        font-size: 1rem;
+        line-height: 1.6;
+        padding: 12px 16px;
+        border: 2px solid #dee2e6;
+        border-radius: 6px;
+        resize: vertical;
+        min-height: 150px;
+        transition: border-color 0.2s ease;
+    }
+    
+    .essay-input:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+    
+    .user-essay-answer {
+        background: #e9ecef;
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-top: 8px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        line-height: 1.6;
+        border-left: 3px solid #6c757d;
+    }
+    
+    /* 判断题特殊样式 */
+    .question-form .options-list {
+        list-style: none;
+        padding: 0;
+        margin: 1.5rem 0;
+    }
+    
+    .question-form .option-item {
+        margin-bottom: 0.75rem;
+    }
+    
+    .question-form .option-label {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: white;
+    }
+    
+    .question-form .option-label:hover {
+        border-color: #007bff;
+        background: rgba(0, 123, 255, 0.05);
+    }
+    
+    .question-form .option-checkbox {
+        margin-right: 12px;
+        transform: scale(1.2);
+    }
+    
+    .question-form .option-text {
+        flex: 1;
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+    
+    /* Auto-jump status styles */
+    .auto-jump-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background-color: rgba(40, 167, 69, 0.1);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+        border-radius: 20px;
+        font-size: 0.875rem;
+    }
+    
+    .auto-jump-status i {
+        font-size: 1rem;
+    }
+    
+    /* 大屏幕端确保按钮左右排列 */
+    @media (min-width: 769px) {
+        .question-header .question-actions-top {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+    }
+    
     @media (max-width: 768px) {
         .question-header {
             flex-direction: column;
-            align-items: flex-start;
+            align-items: stretch;
+            padding: 1.125rem;
+            gap: 0.875rem;
         }
         
-        .question-actions-top {
-            margin-top: 1rem;
-            align-self: flex-end;
+        .question-header .question-info {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.625rem;
+            margin-bottom: 0;
+            flex: none;
+        }
+        
+        .question-header .question-actions-top {
+            align-self: stretch;
+            margin-top: 0;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .question-header .auto-jump-status {
+            align-self: flex-start;
+            order: 1;
+        }
+        
+        .question-header .favorite-btn {
+            order: 2;
         }
         
         .btn-group {
@@ -220,6 +449,299 @@
         .btn-group .btn {
             width: 100%;
         }
+        
+        .fill-blank-container,
+        .essay-container {
+            margin: 1rem 0;
+            padding: 1rem;
+        }
+        
+        .fill-blank-input,
+        .essay-input {
+            font-size: 1rem;
+            padding: 10px 12px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .question-header {
+            padding: 1rem;
+            gap: 0.75rem;
+        }
+        
+        .question-header .question-info {
+            gap: 0.5rem;
+        }
+        
+        .question-header .question-actions-top {
+            gap: 0.625rem;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        
+        .question-header .auto-jump-status {
+            order: 0;
+            align-self: stretch;
+        }
+        
+        .question-header .favorite-btn {
+            order: 1;
+            align-self: stretch;
+            text-align: center;
+        }
+    }
+    
+    @media (max-width: 360px) {
+        .question-header .question-actions-top {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.5rem;
+        }
+        
+        .question-header .auto-jump-status,
+        .question-header .favorite-btn {
+            order: unset;
+            align-self: stretch;
+            text-align: center;
+        }
     }
 </style>
+
+<script>
+// 自动跳转切换功能
+function toggleAutoJump() {
+    const toggle = document.getElementById('autoJumpToggle');
+    const icon = toggle.querySelector('i');
+    const span = toggle.querySelector('span');
+    const isEnabled = !toggle.classList.contains('disabled');
+    
+    // 发送AJAX请求切换状态
+    fetch('{{ url_for("toggle_auto_jump") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}'
+        },
+        body: JSON.stringify({
+            'auto_jump': !isEnabled
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 更新UI状态
+            if (data.auto_jump_enabled) {
+                toggle.classList.remove('disabled');
+                icon.className = 'fas fa-forward';
+                span.textContent = '自动跳转已开启';
+            } else {
+                toggle.classList.add('disabled');
+                icon.className = 'fas fa-pause';
+                span.textContent = '自动跳转已关闭';
+            }
+            
+            // 显示提示消息
+            showToast(data.message || '设置已更新', 'success');
+        } else {
+            showToast(data.message || '设置更新失败', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('网络错误，请稍后重试', 'error');
+    });
+}
+
+// 简单的提示消息函数
+function showToast(message, type = 'info') {
+    // 创建提示元素
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} toast-message`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 250px;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // 显示动画
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // 自动隐藏
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 自动跳转成功状态图标显示逻辑
+    {% if auto_jump_success %}
+    const statusIcon = document.querySelector('.answer-status-icon');
+    if (statusIcon) {
+        // 3秒后自动隐藏状态图标
+        setTimeout(() => {
+            statusIcon.style.opacity = '0';
+            statusIcon.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+                statusIcon.style.display = 'none';
+            }, 300);
+        }, 3000);
+    }
+    {% endif %}
+    
+    // 确保单选题和判断题只能选择一个选项
+    {% if question.type in ['单选题', '判断题'] %}
+    const radioButtons = document.querySelectorAll('input[type="radio"][name="answer"]');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    // 验证是否选择了答案
+    function validateSingleChoice() {
+        const selected = document.querySelector('input[type="radio"][name="answer"]:checked');
+        if (submitBtn) {
+            submitBtn.disabled = !selected;
+            if (!selected) {
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 请选择答案';
+                submitBtn.classList.add('btn-secondary');
+                submitBtn.classList.remove('btn-success');
+            } else {
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交答案';
+                submitBtn.classList.add('btn-success');
+                submitBtn.classList.remove('btn-secondary');
+            }
+        }
+    }
+    
+    // 初始验证
+    validateSingleChoice();
+    
+    // 监听选择变化
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', validateSingleChoice);
+    });
+    
+    // 表单提交验证
+    const form = document.querySelector('.question-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const selected = document.querySelector('input[type="radio"][name="answer"]:checked');
+            if (!selected) {
+                e.preventDefault();
+                alert('请选择一个答案！');
+                return false;
+            }
+        });
+    }
+    {% endif %}
+    
+    // 多选题验证（至少选择一个）
+    {% if question.type == '多选题' %}
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][name="answer"]');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    function validateMultipleChoice() {
+        const selected = document.querySelectorAll('input[type="checkbox"][name="answer"]:checked');
+        if (submitBtn) {
+            submitBtn.disabled = selected.length === 0;
+            if (selected.length === 0) {
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 请选择答案';
+                submitBtn.classList.add('btn-secondary');
+                submitBtn.classList.remove('btn-success');
+            } else {
+                submitBtn.innerHTML = `<i class="fas fa-paper-plane"></i> 提交答案 (已选${selected.length}项)`;
+                submitBtn.classList.add('btn-success');
+                submitBtn.classList.remove('btn-secondary');
+            }
+        }
+    }
+    
+    // 初始验证
+    validateMultipleChoice();
+    
+    // 监听选择变化
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', validateMultipleChoice);
+    });
+    
+    // 表单提交验证
+    const form = document.querySelector('.question-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const selected = document.querySelectorAll('input[type="checkbox"][name="answer"]:checked');
+            if (selected.length === 0) {
+                e.preventDefault();
+                alert('请至少选择一个答案！');
+                return false;
+            }
+        });
+    }
+    {% endif %}
+    
+    // 填空题和简答题验证
+    {% if question.type in ['填空题', '简答题'] %}
+    const textInput = document.querySelector('input[name="answer"], textarea[name="answer"]');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    function validateTextInput() {
+        if (submitBtn && textInput) {
+            const hasText = textInput.value.trim().length > 0;
+            submitBtn.disabled = !hasText;
+            if (!hasText) {
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 请输入答案';
+                submitBtn.classList.add('btn-secondary');
+                submitBtn.classList.remove('btn-success');
+            } else {
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交答案';
+                submitBtn.classList.add('btn-success');
+                submitBtn.classList.remove('btn-secondary');
+            }
+        }
+    }
+    
+    // 初始验证
+    validateTextInput();
+    
+    // 监听输入变化
+    if (textInput) {
+        textInput.addEventListener('input', validateTextInput);
+        textInput.addEventListener('blur', validateTextInput);
+    }
+    
+    // 表单提交验证
+    const form = document.querySelector('.question-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!textInput || textInput.value.trim().length === 0) {
+                e.preventDefault();
+                alert('请输入答案！');
+                return false;
+            }
+        });
+    }
+    {% endif %}
+});
+</script>
+
 {% endblock %}
