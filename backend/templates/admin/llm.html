@@ -879,7 +879,7 @@ function saveInterface() {
         is_active: document.getElementById('isActive').checked
     };
     
-    const url = isEdit ? `/api/v1/llm/interfaces/${interfaceId}` : '/api/v1/llm/interfaces';
+    const url = isEdit ? `/api/v2/llm/interfaces/${interfaceId}` : '/api/v2/llm/interfaces';
     const method = isEdit ? 'PUT' : 'POST';
     
     fetch(url, {
@@ -908,7 +908,7 @@ function saveInterface() {
 }
 
 function testInterface(interfaceId) {
-    fetch(`/api/v1/llm/interfaces/${interfaceId}/test`, {
+    fetch(`/api/v2/llm/interfaces/${interfaceId}/test`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -930,7 +930,7 @@ function testInterface(interfaceId) {
 
 function editInterface(interfaceId) {
     // 获取接口详情
-    fetch(`/api/v1/llm/interfaces/${interfaceId}`, {
+    fetch(`/api/v2/llm/interfaces/${interfaceId}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -975,7 +975,7 @@ function deleteInterface(interfaceId) {
         return;
     }
     
-    fetch(`/api/v1/llm/interfaces/${interfaceId}`, {
+    fetch(`/api/v2/llm/interfaces/${interfaceId}`, {
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
@@ -1023,7 +1023,7 @@ function saveTemplate() {
         is_public: document.getElementById('isPublic').checked
     };
     
-    fetch('/api/v1/llm/templates', {
+    fetch('/api/v2/llm/templates', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1064,7 +1064,7 @@ document.getElementById('parseForm').addEventListener('submit', function(e) {
         updateProgress(progressValue, '正在处理中...');
     }, 2000);
     
-    fetch('/api/v1/llm/parse', {
+    fetch('/api/v2/llm/parse', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1156,7 +1156,7 @@ function importParsedQuestions() {
         return;
     }
     
-    fetch('/api/v1/llm/import', {
+    fetch('/api/v2/llm/import', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1220,7 +1220,7 @@ function updateInterfaceFields() {
 
 // 预览模板功能
 function previewTemplate(templateId) {
-    fetch(`/api/v1/llm/templates/${templateId}`, {
+    fetch(`/api/v2/llm/templates/${templateId}`, {
         method: 'GET',
         credentials: 'include'
     })
@@ -1239,7 +1239,7 @@ function previewTemplate(templateId) {
 
 // 编辑模板功能
 function editTemplate(templateId) {
-    fetch(`/api/v1/llm/templates/${templateId}`, {
+    fetch(`/api/v2/llm/templates/${templateId}`, {
         method: 'GET',
         credentials: 'include'
     })
@@ -1286,7 +1286,7 @@ function deleteTemplate(templateId) {
         return;
     }
     
-    fetch(`/api/v1/llm/templates/${templateId}`, {
+    fetch(`/api/v2/llm/templates/${templateId}`, {
         method: 'DELETE',
         credentials: 'include'
     })
@@ -1325,7 +1325,7 @@ function importTemplate() {
                     const templateData = parseMarkdownTemplate(content, file.name);
                     
                     // 发送到后端
-                    fetch('/api/v1/llm/templates', {
+                    fetch('/api/v2/llm/templates', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1475,7 +1475,7 @@ function saveTemplate() {
         is_public: document.getElementById('isPublic').checked
     };
     
-    const url = isEditing ? `/api/v1/llm/templates/${templateId}` : '/api/v1/llm/templates';
+    const url = isEditing ? `/api/v2/llm/templates/${templateId}` : '/api/v2/llm/templates';
     const method = isEditing ? 'PUT' : 'POST';
     
     fetch(url, {

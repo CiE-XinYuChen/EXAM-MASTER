@@ -15,11 +15,12 @@ import secrets
 from app.core.config import settings
 from app.core.database import init_databases, get_main_db, get_qbank_db
 from app.core.security import verify_password, get_password_hash, create_access_token, get_current_user
+from app.api.v1 import api_router
 from app.models.user_models import User, UserBankPermission, UserRole
-from app.models.question_models_v2 import QuestionBankV2, QuestionV2, QuestionOptionV2
+from app.models.question_models import QuestionBank, Question
 from app.models.llm_models import LLMInterface, PromptTemplate, LLMParseLog
+from app.models.question_models_v2 import QuestionBankV2, QuestionV2
 from app.services.question_bank_service import QuestionBankService
-from app.api.v2 import api_router
 
 
 # Session storage for admin panel (in production, use Redis or database)
@@ -61,8 +62,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include V2 API routes only
-app.include_router(api_router, prefix="/api/v2")
+# Include API routes
+app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+# Include V2 API routes
+from app.api.v1 import qbank_v2
+app.include_router(qbank_v2.router)
 
 
 # Admin authentication helper
@@ -92,7 +97,7 @@ async def admin_dashboard(
     qbank_db: Session = Depends(get_qbank_db)
 ):
     """Admin dashboard"""
-    # Get statistics using V2 models only
+    # Get statistics
     total_users = main_db.query(User).count()
     total_banks = qbank_db.query(QuestionBankV2).count()
     total_questions = qbank_db.query(QuestionV2).count()
@@ -383,7 +388,7 @@ async def admin_questions(
     questions = query.offset(skip).limit(per_page).all()
     
     # Get banks for filter
-    banks = qbank_db.query(QuestionBankV2).limit(100).all()
+    banks = qbank_db.query(QuestionBank).limit(100).all()
     
     return templates.TemplateResponse("admin/questions.html", {
         "request": request,
@@ -406,7 +411,7 @@ async def admin_questions_create_form(
     bank_id: Optional[str] = None
 ):
     """Show create question form"""
-    banks = qbank_db.query(QuestionBankV2).limit(100).all()
+    banks = qbank_db.query(QuestionBank).limit(100).all()
     
     return templates.TemplateResponse("admin/question_create.html", {
         "request": request,
@@ -588,7 +593,7 @@ async def admin_questions_edit_form(
         raise HTTPException(status_code=404, detail="题目不存在")
     
     # Get banks for dropdown
-    banks = qbank_db.query(QuestionBankV2).limit(100).all()
+    banks = qbank_db.query(QuestionBank).limit(100).all()
     
     # Get existing options for choice questions
     options = []
@@ -785,7 +790,7 @@ async def admin_llm(
     ).all()
     
     # 获取题库列表
-    question_banks = qbank_db.query(QuestionBankV2).limit(100).all()
+    question_banks = qbank_db.query(QuestionBank).limit(100).all()
     
     return templates.TemplateResponse("admin/llm.html", {
         "request": request,
@@ -803,7 +808,7 @@ async def admin_imports(
     qbank_db: Session = Depends(get_qbank_db)
 ):
     """Import/Export page"""
-    banks = qbank_db.query(QuestionBankV2).limit(100).all()
+    banks = qbank_db.query(QuestionBank).limit(100).all()
     
     for bank in banks:
         bank.question_count = qbank_db.query(QuestionV2).filter(
@@ -937,7 +942,7 @@ async def admin_import_csv(
         return RedirectResponse(url="/admin/imports?error=invalid_file", status_code=303)
     
     # Check bank exists
-    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
+    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
     if not bank:
         return RedirectResponse(url="/admin/imports?error=bank_not_found", status_code=303)
     

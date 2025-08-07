@@ -26,7 +26,7 @@ from app.schemas.qbank_schemas_v2 import (
     QuestionExportRequest
 )
 
-router = APIRouter(prefix="/api/v2/qbank", tags=["Question Bank V2"])
+router = APIRouter(tags=["Question Bank"])
 
 
 # ==================== 题库管理 ====================
@@ -565,3 +565,38 @@ async def search_questions(
         "total": total,
         "questions": questions
     }
+
+
+# ==================== Dashboard统计 ====================
+
+@router.get("/stats/users")
+async def get_users_stats(
+    db: Session = Depends(get_qbank_db)
+):
+    """获取用户统计信息"""
+    from app.core.database import get_main_db
+    from app.models.user_models import User
+    main_db = next(get_main_db())
+    try:
+        total = main_db.query(User).count()
+        return {"total": total}
+    finally:
+        main_db.close()
+
+
+@router.get("/stats/banks") 
+async def get_banks_stats(
+    db: Session = Depends(get_qbank_db)
+):
+    """获取题库统计信息"""
+    total = db.query(QuestionBankV2).count()
+    return {"total": total}
+
+
+@router.get("/stats/questions")
+async def get_questions_stats(
+    db: Session = Depends(get_qbank_db)
+):
+    """获取题目统计信息"""
+    total = db.query(QuestionV2).count()
+    return {"total": total}

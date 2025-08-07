@@ -102,21 +102,21 @@
 async function loadStatistics() {
     try {
         // Get users count
-        const usersResponse = await fetch('/api/stats/users');
+        const usersResponse = await fetch('/api/v2/qbank/stats/users');
         if (usersResponse.ok) {
             const usersData = await usersResponse.json();
             document.getElementById('total-users').textContent = usersData.total || '0';
         }
         
         // Get banks count
-        const banksResponse = await fetch('/api/stats/banks');
+        const banksResponse = await fetch('/api/v2/qbank/stats/banks');
         if (banksResponse.ok) {
             const banksData = await banksResponse.json();
             document.getElementById('total-banks').textContent = banksData.total || '0';
         }
         
         // Get questions count
-        const questionsResponse = await fetch('/api/stats/questions');
+        const questionsResponse = await fetch('/api/v2/qbank/stats/questions');
         if (questionsResponse.ok) {
             const questionsData = await questionsResponse.json();
             document.getElementById('total-questions').textContent = questionsData.total || '0';
