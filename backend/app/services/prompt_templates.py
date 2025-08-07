@@ -35,7 +35,7 @@ PRESET_TEMPLATES = [
 需要解析的文本：
 {input_text}
 
-请直接返回JSON数组，不要包含其他说明文字。""",
+重要：请直接返回JSON数组格式的结果，不要包含任何其他说明文字、思考过程或markdown标记。只返回纯JSON数组。""",
         "variables": ["input_text", "output_format"],
         "example_input": """1. Python中定义函数使用____关键字。（答案：def）
 2. 以下哪个是Python的数据类型？

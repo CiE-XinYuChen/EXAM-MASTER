@@ -257,9 +257,76 @@ LLM配置
                             <button class="btn btn-secondary" onclick="exportParsedQuestions()">
                                 <i class="fas fa-download"></i> 导出JSON
                             </button>
+                            <button class="btn btn-info" onclick="showRawResponse()">
+                                <i class="fas fa-eye"></i> 查看原始响应
+                            </button>
+                            <button class="btn btn-warning" onclick="editParsedQuestions()">
+                                <i class="fas fa-edit"></i> 手动编辑
+                            </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 手动编辑JSON模态框 -->
+<div class="modal fade" id="manualEditModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">手动编辑解析结果</h5>
+                <button type="button" class="btn-close" onclick="closeModal('manualEditModal')"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    LLM解析失败，请手动编辑JSON格式的题目数据
+                </div>
+                <div id="parseErrorDetails" class="alert alert-danger" style="display: none;"></div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>原始响应</h6>
+                        <div id="rawResponseDisplay" class="form-control" style="height: 400px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; background-color: #f8f9fa;"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>编辑JSON <small class="text-muted">(请确保格式正确)</small></h6>
+                        <textarea id="manualEditContent" class="form-control" style="height: 400px; font-family: monospace;" placeholder='[
+  {
+    "type": "single",
+    "stem": "题目内容",
+    "options": [
+      {"label": "A", "content": "选项A", "is_correct": false},
+      {"label": "B", "content": "选项B", "is_correct": true}
+    ],
+    "difficulty": "medium",
+    "explanation": "解析说明"
+  }
+]'></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <button class="btn btn-secondary" onclick="formatJSON()">
+                        <i class="fas fa-magic"></i> 格式化JSON
+                    </button>
+                    <button class="btn btn-info" onclick="validateJSON()">
+                        <i class="fas fa-check"></i> 验证JSON
+                    </button>
+                    <button class="btn btn-warning" onclick="extractJSONFromText()">
+                        <i class="fas fa-filter"></i> 提取JSON
+                    </button>
+                </div>
+                
+                <div id="validationResult" class="mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('manualEditModal')">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveManualEdit()">
+                    <i class="fas fa-save"></i> 保存并导入
+                </button>
             </div>
         </div>
     </div>
@@ -793,6 +860,9 @@ textarea.form-control {
 </style>
 
 <script>
+// 全局变量
+let lastRawResponse = null;  // 保存最后的原始响应
+
 // 标签页切换函数
 function switchTab(tabName, button) {
     // 隐藏所有标签页
@@ -1077,8 +1147,23 @@ document.getElementById('parseForm').addEventListener('submit', function(e) {
         clearInterval(progressInterval);
         hideParseProgress();
         
+        // 保存原始响应
+        if (data.raw_response) {
+            lastRawResponse = data.raw_response;
+        }
+        
         if (data.success) {
             displayParseResults(data.parsed_questions);
+        } else if (data.needs_manual_edit && data.raw_response) {
+            // 确保DOM加载完成后显示手动编辑界面
+            setTimeout(() => {
+                if (typeof showManualEditDialog === 'function') {
+                    showManualEditDialog(data.raw_response, data.parse_errors);
+                } else {
+                    console.error('showManualEditDialog function not found');
+                    alert('手动编辑功能未加载，原始响应:\n' + data.raw_response);
+                }
+            }, 100);
         } else {
             alert('解析失败: ' + JSON.stringify(data.parse_errors));
         }
@@ -1167,15 +1252,26 @@ function importParsedQuestions() {
             questions: window.parsedQuestions
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             alert(`成功导入 ${data.imported_count} 道题目`);
             document.getElementById('parseForm').reset();
             document.getElementById('parseResults').style.display = 'none';
+            // 清空已解析的题目
+            window.parsedQuestions = null;
         } else {
             alert('导入失败: ' + JSON.stringify(data.errors));
         }
+    })
+    .catch(error => {
+        console.error('导入错误:', error);
+        alert('导入失败: ' + error.message);
     });
 }
 
@@ -1514,6 +1610,367 @@ function showAddTemplateModal() {
     backdrop.className = 'modal-backdrop fade show';
     backdrop.id = 'modalBackdrop';
     document.body.appendChild(backdrop);
+}
+
+// ================ 手动编辑功能 ================
+
+let manualEditQuestions = null; // 存储手动编辑的题目
+
+function showManualEditDialog(rawResponse, parseErrors) {
+    console.log('showManualEditDialog called with:', {rawResponse: rawResponse?.substring(0, 100), parseErrors});
+    
+    // 确保DOM元素存在
+    const rawResponseDisplay = document.getElementById('rawResponseDisplay');
+    if (rawResponseDisplay) {
+        rawResponseDisplay.textContent = rawResponse || '无原始响应';
+    } else {
+        console.error('rawResponseDisplay element not found');
+    }
+    
+    // 显示解析错误信息
+    if (parseErrors && parseErrors.length > 0) {
+        const errorDiv = document.getElementById('parseErrorDetails');
+        if (errorDiv) {
+            errorDiv.innerHTML = '<strong>解析错误:</strong><br>' + 
+                parseErrors.map(e => `• ${e.error || e}`).join('<br>');
+            errorDiv.style.display = 'block';
+        } else {
+            console.error('parseErrorDetails element not found');
+        }
+    }
+    
+    // 尝试从原始响应中提取JSON
+    let initialContent = '';
+    if (rawResponse) {
+        // 尝试查找JSON数组或对象
+        const jsonMatch = rawResponse.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+        if (jsonMatch) {
+            try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                initialContent = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                initialContent = jsonMatch[0];
+            }
+        }
+    }
+    
+    const manualEditContent = document.getElementById('manualEditContent');
+    if (manualEditContent) {
+        manualEditContent.value = initialContent;
+    }
+    
+    // 显示模态框
+    const modal = document.getElementById('manualEditModal');
+    if (modal) {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        
+        // 添加背景遮罩
+        const existingBackdrop = document.getElementById('modalBackdrop');
+        if (existingBackdrop) {
+            existingBackdrop.remove();
+        }
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.id = 'modalBackdrop';
+        document.body.appendChild(backdrop);
+    } else {
+        console.error('Manual edit modal not found');
+        alert('手动编辑界面未找到，请刷新页面重试');
+    }
+}
+
+function formatJSON() {
+    const textarea = document.getElementById('manualEditContent');
+    const content = textarea.value.trim();
+    
+    if (!content) {
+        alert('请输入JSON内容');
+        return;
+    }
+    
+    try {
+        const parsed = JSON.parse(content);
+        textarea.value = JSON.stringify(parsed, null, 2);
+        showValidationResult('JSON格式化成功', 'success');
+    } catch (e) {
+        showValidationResult('JSON格式错误: ' + e.message, 'danger');
+    }
+}
+
+function validateJSON() {
+    const content = document.getElementById('manualEditContent').value.trim();
+    
+    if (!content) {
+        showValidationResult('请输入JSON内容', 'warning');
+        return;
+    }
+    
+    try {
+        const parsed = JSON.parse(content);
+        
+        // 确保是数组
+        if (!Array.isArray(parsed)) {
+            showValidationResult('JSON必须是数组格式', 'danger');
+            return;
+        }
+        
+        // 验证每个题目的基本结构
+        const errors = [];
+        parsed.forEach((q, index) => {
+            if (!q.type) errors.push(`题目${index + 1}缺少type字段`);
+            if (!q.stem) errors.push(`题目${index + 1}缺少stem字段`);
+            
+            if (q.type === 'single' || q.type === 'multiple') {
+                if (!q.options || !Array.isArray(q.options)) {
+                    errors.push(`题目${index + 1}缺少options数组`);
+                }
+            } else if (q.type === 'fill') {
+                if (!q.blanks || !Array.isArray(q.blanks)) {
+                    errors.push(`题目${index + 1}缺少blanks数组`);
+                }
+            } else if (q.type === 'judge') {
+                if (q.correct_answer === undefined) {
+                    errors.push(`题目${index + 1}缺少correct_answer字段`);
+                }
+            }
+        });
+        
+        if (errors.length > 0) {
+            showValidationResult('验证失败:<br>' + errors.join('<br>'), 'danger');
+        } else {
+            showValidationResult(`验证成功！共${parsed.length}道题目`, 'success');
+            manualEditQuestions = parsed; // 保存验证通过的题目
+        }
+    } catch (e) {
+        showValidationResult('JSON解析错误: ' + e.message, 'danger');
+    }
+}
+
+function extractJSONFromText() {
+    const rawText = document.getElementById('rawResponseDisplay').textContent;
+    
+    if (!rawText || rawText === '无原始响应') {
+        alert('没有可提取的原始文本');
+        return;
+    }
+    
+    // 尝试多种模式提取JSON
+    const patterns = [
+        /```json\s*([\s\S]*?)```/i,  // Markdown代码块
+        /```\s*([\s\S]*?)```/,        // 普通代码块
+        /(\[[\s\S]*)/,                // JSON数组（可能不完整）
+        /(\{[\s\S]*)/                 // JSON对象（可能不完整）
+    ];
+    
+    let extracted = null;
+    for (const pattern of patterns) {
+        const match = rawText.match(pattern);
+        if (match) {
+            extracted = match[1] || match[0];
+            break;
+        }
+    }
+    
+    if (!extracted) {
+        alert('无法从文本中提取JSON');
+        return;
+    }
+    
+    // 尝试修复不完整的JSON
+    extracted = repairJSON(extracted);
+    
+    document.getElementById('manualEditContent').value = extracted;
+    formatJSON(); // 尝试格式化
+}
+
+function repairJSON(jsonStr) {
+    // 去除首尾空白
+    jsonStr = jsonStr.trim();
+    
+    // 如果不是以[或{开头，尝试找到第一个
+    const arrayStart = jsonStr.indexOf('[');
+    const objStart = jsonStr.indexOf('{');
+    
+    if (arrayStart >= 0 && (objStart < 0 || arrayStart < objStart)) {
+        jsonStr = jsonStr.substring(arrayStart);
+    } else if (objStart >= 0) {
+        jsonStr = jsonStr.substring(objStart);
+    }
+    
+    // 计算需要补全的括号
+    let openBraces = 0;
+    let openBrackets = 0;
+    let inString = false;
+    let escapeNext = false;
+    
+    for (let i = 0; i < jsonStr.length; i++) {
+        const char = jsonStr[i];
+        
+        if (escapeNext) {
+            escapeNext = false;
+            continue;
+        }
+        
+        if (char === '\\') {
+            escapeNext = true;
+            continue;
+        }
+        
+        if (char === '"') {
+            inString = !inString;
+            continue;
+        }
+        
+        if (!inString) {
+            if (char === '{') openBraces++;
+            else if (char === '}') openBraces--;
+            else if (char === '[') openBrackets++;
+            else if (char === ']') openBrackets--;
+        }
+    }
+    
+    // 补全缺失的引号
+    if (inString) {
+        jsonStr += '"';
+    }
+    
+    // 补全缺失的括号
+    for (let i = 0; i < openBraces; i++) {
+        jsonStr += '}';
+    }
+    
+    for (let i = 0; i < openBrackets; i++) {
+        jsonStr += ']';
+    }
+    
+    // 移除尾随逗号
+    jsonStr = jsonStr.replace(/,\s*}/g, '}');
+    jsonStr = jsonStr.replace(/,\s*]/g, ']');
+    
+    console.log('修复后的JSON:', jsonStr);
+    return jsonStr;
+}
+
+function showValidationResult(message, type) {
+    const resultDiv = document.getElementById('validationResult');
+    resultDiv.className = `alert alert-${type} mt-2`;
+    resultDiv.innerHTML = message;
+    resultDiv.style.display = 'block';
+    
+    if (type === 'success') {
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 3000);
+    }
+}
+
+function showRawResponse() {
+    if (!lastRawResponse) {
+        alert('没有可用的原始响应');
+        return;
+    }
+    
+    // 创建一个模态框显示原始响应
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">LLM原始响应</h5>
+                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove(); document.getElementById('modalBackdrop')?.remove();"></button>
+                </div>
+                <div class="modal-body">
+                    <pre style="white-space: pre-wrap; font-family: monospace; background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 600px; overflow-y: auto;">${escapeHtml(lastRawResponse)}</pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove(); document.getElementById('modalBackdrop')?.remove();">关闭</button>
+                    <button type="button" class="btn btn-primary" onclick="copyToClipboard(lastRawResponse)">
+                        <i class="fas fa-copy"></i> 复制
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 添加背景遮罩
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.id = 'modalBackdrop';
+    document.body.appendChild(backdrop);
+}
+
+function editParsedQuestions() {
+    if (!window.parsedQuestions) {
+        alert('没有可编辑的解析结果');
+        return;
+    }
+    
+    // 将解析结果转换为JSON字符串
+    const jsonStr = JSON.stringify(window.parsedQuestions, null, 2);
+    
+    // 显示手动编辑界面
+    showManualEditDialog(lastRawResponse || '无原始响应', []);
+    
+    // 填充当前的JSON到编辑框
+    setTimeout(() => {
+        const editContent = document.getElementById('manualEditContent');
+        if (editContent) {
+            editContent.value = jsonStr;
+        }
+    }, 100);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('已复制到剪贴板');
+    }).catch(err => {
+        alert('复制失败: ' + err);
+    });
+}
+
+function saveManualEdit() {
+    const content = document.getElementById('manualEditContent').value.trim();
+    
+    if (!content) {
+        alert('请输入JSON内容');
+        return;
+    }
+    
+    try {
+        const parsed = JSON.parse(content);
+        
+        if (!Array.isArray(parsed)) {
+            alert('JSON必须是数组格式');
+            return;
+        }
+        
+        // 关闭手动编辑模态框
+        closeModal('manualEditModal');
+        
+        // 显示解析结果
+        window.parsedQuestions = parsed;  // 使用window.parsedQuestions
+        displayParseResults(parsed);
+        
+        // 自动打开导入对话框
+        setTimeout(() => {
+            if (confirm('题目已准备就绪，是否立即导入到题库？')) {
+                importParsedQuestions();
+            }
+        }, 500);
+        
+    } catch (e) {
+        alert('JSON解析错误: ' + e.message);
+    }
 }
 </script>
 {% endblock %}

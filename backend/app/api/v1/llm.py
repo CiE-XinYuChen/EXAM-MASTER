@@ -16,11 +16,11 @@ from app.schemas.llm_schemas import (
 )
 from app.services.llm_service import LLMService
 from app.services.prompt_templates import get_all_preset_templates
-from app.models.question_models import Question, QuestionOption, QuestionBank
+from app.models.question_models_v2 import QuestionV2 as Question, QuestionOptionV2 as QuestionOption, QuestionBankV2 as QuestionBank
 import uuid
 import json
 
-router = APIRouter(prefix="/llm", tags=["LLM"])
+router = APIRouter(tags=["LLM"])
 
 
 # ============ LLM Interface Management ============

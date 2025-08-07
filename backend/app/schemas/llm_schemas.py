@@ -195,6 +195,8 @@ class QuestionParseResponse(BaseModel):
     token_used: Optional[int] = Field(None, description="使用的token数")
     cost: Optional[str] = Field(None, description="费用")
     suggestions: Optional[List[str]] = Field(default=[], description="建议")
+    raw_response: Optional[str] = Field(None, description="原始响应内容，解析失败时返回")
+    needs_manual_edit: Optional[bool] = Field(False, description="是否需要手动编辑")
 
 
 class BatchImportRequest(BaseModel):

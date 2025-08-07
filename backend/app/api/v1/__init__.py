@@ -18,4 +18,4 @@ api_router.include_router(questions.router, prefix="/qbank/questions", tags=["Qu
 api_router.include_router(options.router, prefix="/qbank/options", tags=["Question Options"])
 api_router.include_router(resources.router, prefix="/qbank/resources", tags=["Resources"])
 api_router.include_router(imports.router, prefix="/qbank/import", tags=["Import/Export"])
-api_router.include_router(llm_router, tags=["LLM Management"])
+api_router.include_router(llm_router, prefix="/llm", tags=["LLM Management"])
