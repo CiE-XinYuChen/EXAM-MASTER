@@ -1,0 +1,514 @@
+{% extends "admin/base.html" %}
+
+{% block title %}题目预览{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+<a href="/admin/questions">题目管理</a>
+<span>/</span>
+题目预览
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">题目预览</h3>
+        <div class="card-actions">
+            <a href="/admin/questions/{{ question.id }}/edit" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit"></i> 编辑
+            </a>
+            <button onclick="window.print()" class="btn btn-secondary btn-sm">
+                <i class="fas fa-print"></i> 打印
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 题目信息 -->
+        <div class="question-info">
+            <div class="info-row">
+                <span class="info-label">题库：</span>
+                <span class="info-value">{{ question.bank.name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">题型：</span>
+                <span class="info-value">
+                    {% if question.type == 'single' %}
+                        <span class="badge badge-primary">单选题</span>
+                    {% elif question.type == 'multiple' %}
+                        <span class="badge badge-success">多选题</span>
+                    {% elif question.type == 'judge' %}
+                        <span class="badge badge-warning">判断题</span>
+                    {% elif question.type == 'fill' %}
+                        <span class="badge badge-info">填空题</span>
+                    {% elif question.type == 'essay' %}
+                        <span class="badge badge-secondary">问答题</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">难度：</span>
+                <span class="info-value">
+                    {% if question.difficulty == 'easy' %}
+                        <span class="difficulty-badge easy">简单</span>
+                    {% elif question.difficulty == 'medium' %}
+                        <span class="difficulty-badge medium">中等</span>
+                    {% elif question.difficulty == 'hard' %}
+                        <span class="difficulty-badge hard">困难</span>
+                    {% endif %}
+                </span>
+            </div>
+            {% if question.category %}
+            <div class="info-row">
+                <span class="info-label">分类：</span>
+                <span class="info-value">{{ question.category }}</span>
+            </div>
+            {% endif %}
+            {% if question.tags %}
+            <div class="info-row">
+                <span class="info-label">标签：</span>
+                <span class="info-value">
+                    {% for tag in question.tags %}
+                    <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <hr class="divider">
+
+        <!-- 题目内容 -->
+        <div class="question-content">
+            <div class="question-stem">
+                <h4>题目：</h4>
+                <div class="stem-content" id="stemContent">
+                    {{ question.stem }}
+                </div>
+            </div>
+
+            <!-- 根据题型显示不同内容 -->
+            {% if question.type in ['single', 'multiple'] %}
+                <!-- 选择题选项 -->
+                <div class="question-options">
+                    <h4>选项：</h4>
+                    {% for option in question.options %}
+                    <div class="option-item {% if option.is_correct %}correct-option{% endif %}">
+                        <span class="option-indicator">
+                            {% if question.type == 'single' %}
+                                <i class="far fa-circle"></i>
+                            {% else %}
+                                <i class="far fa-square"></i>
+                            {% endif %}
+                        </span>
+                        <span class="option-label">{{ option.option_label }}.</span>
+                        <span class="option-content">{{ option.option_content }}</span>
+                        {% if option.is_correct %}
+                        <span class="correct-mark">
+                            <i class="fas fa-check"></i>
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="answer-section">
+                    <h4>正确答案：</h4>
+                    <div class="answer-content">
+                        {% for option in question.options if option.is_correct %}
+                            {{ option.option_label }}{% if not loop.last %}、{% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+            {% elif question.type == 'judge' %}
+                <!-- 判断题答案 -->
+                <div class="answer-section">
+                    <h4>正确答案：</h4>
+                    <div class="judge-answer">
+                        {% if question.meta_data and question.meta_data.answer %}
+                            <span class="judge-true">
+                                <i class="fas fa-check-circle"></i> 正确
+                            </span>
+                        {% else %}
+                            <span class="judge-false">
+                                <i class="fas fa-times-circle"></i> 错误
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% elif question.type == 'fill' %}
+                <!-- 填空题答案 -->
+                <div class="answer-section">
+                    <h4>填空答案：</h4>
+                    {% if question.meta_data and question.meta_data.blanks %}
+                        {% for blank in question.meta_data.blanks %}
+                        <div class="blank-answer">
+                            <span class="blank-number">第 {{ blank.position + 1 }} 空：</span>
+                            <span class="blank-value">{{ blank.answer }}</span>
+                            {% if blank.alternatives %}
+                            <span class="blank-alternatives">
+                                （备选：{% for alt in blank.alternatives %}{{ alt }}{% if not loop.last %}、{% endif %}{% endfor %}）
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+
+            {% elif question.type == 'essay' %}
+                <!-- 问答题参考答案 -->
+                <div class="answer-section">
+                    <h4>参考答案：</h4>
+                    <div class="essay-answer">
+                        {% if question.meta_data and question.meta_data.reference_answer %}
+                            {{ question.meta_data.reference_answer }}
+                        {% else %}
+                            <span class="text-muted">无参考答案</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if question.meta_data and question.meta_data.keywords %}
+                    <div class="keywords-section">
+                        <h5>关键词：</h5>
+                        <div class="keywords">
+                            {% for keyword in question.meta_data.keywords %}
+                            <span class="keyword-tag">{{ keyword }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <!-- 题目解析 -->
+            {% if question.explanation %}
+            <div class="explanation-section">
+                <h4>解析：</h4>
+                <div class="explanation-content">
+                    {{ question.explanation }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.question-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+    margin-right: 10px;
+    min-width: 80px;
+}
+
+.info-value {
+    color: #212529;
+}
+
+.tag {
+    display: inline-block;
+    padding: 3px 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    margin-right: 5px;
+    font-size: 13px;
+}
+
+.difficulty-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.difficulty-badge.easy {
+    background: #d4edda;
+    color: #155724;
+}
+
+.difficulty-badge.medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.difficulty-badge.hard {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.divider {
+    margin: 30px 0;
+    border-color: #dee2e6;
+}
+
+.question-content h4 {
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.stem-content {
+    font-size: 16px;
+    line-height: 1.8;
+    color: #212529;
+    padding: 15px;
+    background: #fff;
+    border-left: 4px solid #007bff;
+    margin-bottom: 30px;
+}
+
+/* 选择题样式 */
+.question-options {
+    margin-bottom: 30px;
+}
+
+.option-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    position: relative;
+    transition: background 0.3s;
+}
+
+.option-item:hover {
+    background: #e9ecef;
+}
+
+.option-item.correct-option {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.option-indicator {
+    color: #6c757d;
+    margin-right: 10px;
+    font-size: 18px;
+}
+
+.option-label {
+    font-weight: 600;
+    margin-right: 10px;
+    color: #495057;
+}
+
+.option-content {
+    flex: 1;
+    color: #212529;
+}
+
+.correct-mark {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #28a745;
+    font-size: 18px;
+}
+
+/* 答案区域 */
+.answer-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f0f8ff;
+    border-radius: 8px;
+}
+
+.answer-content {
+    font-size: 16px;
+    font-weight: 600;
+    color: #007bff;
+}
+
+/* 判断题样式 */
+.judge-answer {
+    display: flex;
+    gap: 20px;
+}
+
+.judge-true, .judge-false {
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.judge-true {
+    background: #d4edda;
+    color: #155724;
+}
+
+.judge-false {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* 填空题样式 */
+.blank-answer {
+    margin-bottom: 10px;
+    padding: 10px;
+    background: white;
+    border-radius: 5px;
+}
+
+.blank-number {
+    font-weight: 600;
+    color: #495057;
+    margin-right: 10px;
+}
+
+.blank-value {
+    color: #007bff;
+    font-weight: 600;
+}
+
+.blank-alternatives {
+    color: #6c757d;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+/* 问答题样式 */
+.essay-answer {
+    padding: 15px;
+    background: white;
+    border-radius: 5px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+}
+
+.keywords-section {
+    margin-top: 20px;
+}
+
+.keywords-section h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 10px;
+}
+
+.keyword-tag {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #007bff;
+    color: white;
+    border-radius: 4px;
+    margin-right: 8px;
+    font-size: 13px;
+}
+
+/* 解析区域 */
+.explanation-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #fffbf0;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+}
+
+.explanation-content {
+    line-height: 1.8;
+    color: #495057;
+}
+
+/* 打印样式 */
+@media print {
+    .card-header,
+    .navbar,
+    .sidebar {
+        display: none !important;
+    }
+    
+    .content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}
+
+/* Markdown渲染支持 */
+.stem-content code,
+.explanation-content code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.stem-content pre,
+.explanation-content pre {
+    background: #f4f4f4;
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+}
+
+.stem-content strong,
+.explanation-content strong {
+    font-weight: 600;
+    color: #212529;
+}
+
+.stem-content em,
+.explanation-content em {
+    font-style: italic;
+}
+</style>
+
+<script>
+// 渲染Markdown内容（如果需要）
+document.addEventListener('DOMContentLoaded', function() {
+    const stemContent = document.getElementById('stemContent');
+    // 处理填空题的下划线
+    if ('{{ question.type }}' === 'fill') {
+        let stem = stemContent.innerHTML;
+        let blankIndex = 0;
+        stem = stem.replace(/____+/g, function(match) {
+            blankIndex++;
+            return `<span class="fill-blank">[${blankIndex}]________</span>`;
+        });
+        stemContent.innerHTML = stem;
+    }
+});
+</script>
+
+<style>
+.fill-blank {
+    color: #007bff;
+    font-weight: 600;
+    border-bottom: 2px solid #007bff;
+    padding: 0 5px;
+}
+</style>
+{% endblock %}

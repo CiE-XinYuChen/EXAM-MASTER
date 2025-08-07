@@ -70,15 +70,94 @@
         
         <!-- Pagination -->
         {% if banks %}
-        <div class="pagination">
-            {% if page > 1 %}
-            <a href="?page={{ page - 1 }}" class="pagination-item">上一页</a>
-            {% endif %}
-            <span class="pagination-item active">{{ page }}</span>
-            {% if banks|length == 20 %}
-            <a href="?page={{ page + 1 }}" class="pagination-item">下一页</a>
-            {% endif %}
+        <div class="pagination-wrapper">
+            <div class="pagination-info">
+                <span>第 <strong>{{ page }}</strong> / {{ total_pages }} 页</span>
+                <span class="text-muted">• 共 {{ total_count }} 条记录</span>
+            </div>
+            <div class="pagination-controls">
+                {% if page > 1 %}
+                <a href="?page=1" class="pagination-btn" title="第一页">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                <a href="?page={{ page - 1 }}" class="pagination-btn" title="上一页">
+                    <i class="fas fa-angle-left"></i>
+                    <span>上一页</span>
+                </a>
+                {% else %}
+                <span class="pagination-btn disabled">
+                    <i class="fas fa-angle-double-left"></i>
+                </span>
+                <span class="pagination-btn disabled">
+                    <i class="fas fa-angle-left"></i>
+                    <span>上一页</span>
+                </span>
+                {% endif %}
+                
+                <div class="pagination-numbers">
+                    {% if page > 2 %}
+                    <a href="?page=1" class="pagination-number">1</a>
+                    {% endif %}
+                    
+                    {% if page > 3 and total_pages > 5 %}
+                    <span class="pagination-ellipsis">...</span>
+                    {% endif %}
+                    
+                    {% if page > 1 %}
+                    <a href="?page={{ page - 1 }}" class="pagination-number">{{ page - 1 }}</a>
+                    {% endif %}
+                    <a href="?page={{ page }}" class="pagination-number active">{{ page }}</a>
+                    {% if page < total_pages %}
+                    <a href="?page={{ page + 1 }}" class="pagination-number">{{ page + 1 }}</a>
+                    {% endif %}
+                    {% if page < total_pages - 1 %}
+                    <a href="?page={{ page + 2 }}" class="pagination-number">{{ page + 2 }}</a>
+                    {% endif %}
+                    
+                    {% if page < total_pages - 2 and total_pages > 5 %}
+                    <span class="pagination-ellipsis">...</span>
+                    {% endif %}
+                </div>
+                
+                {% if page < total_pages %}
+                <a href="?page={{ page + 1 }}" class="pagination-btn" title="下一页">
+                    <span>下一页</span>
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="?page={{ total_pages }}" class="pagination-btn" title="最后一页">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+                {% else %}
+                <span class="pagination-btn disabled">
+                    <span>下一页</span>
+                    <i class="fas fa-angle-right"></i>
+                </span>
+                <span class="pagination-btn disabled">
+                    <i class="fas fa-angle-double-right"></i>
+                </span>
+                {% endif %}
+            </div>
+            
+            <div class="pagination-jump">
+                <input type="number" id="page-jump-input" min="1" max="{{ total_pages }}" value="{{ page }}" class="page-input" placeholder="页码">
+                <button onclick="jumpToPage()" class="btn btn-sm btn-primary">跳转</button>
+            </div>
         </div>
+        
+        <script>
+        function jumpToPage() {
+            const pageInput = document.getElementById('page-jump-input');
+            const page = parseInt(pageInput.value);
+            const totalPages = {{ total_pages }};
+            
+            if (page > 0 && page <= totalPages) {
+                window.location.href = '?page=' + page;
+            } else {
+                alert('请输入有效的页码（1 - ' + totalPages + '）');
+                pageInput.value = {{ page }};
+            }
+        }
+        </script>
         {% endif %}
     </div>
 </div>

@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}管理控制台{% endblock %} - EXAM-MASTER</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome 图标库 (本地) -->
+    <link rel="stylesheet" href="/static/css/fontawesome-all.min.css">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -31,6 +32,9 @@
                 </a>
                 <a href="/admin/imports" class="menu-item {% if '/imports' in request.url.path %}active{% endif %}">
                     <i class="fas fa-file-upload"></i> 导入导出
+                </a>
+                <a href="/admin/llm" class="menu-item {% if '/llm' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-robot"></i> LLM配置
                 </a>
                 <a href="/api/docs" class="menu-item" target="_blank">
                     <i class="fas fa-book"></i> API文档

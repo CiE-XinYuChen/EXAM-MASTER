@@ -5,7 +5,7 @@ Main FastAPI application with integrated admin panel
 from fastapi import FastAPI, Request, Depends, HTTPException, Form, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
@@ -18,6 +18,9 @@ from app.core.security import verify_password, get_password_hash, create_access_
 from app.api.v1 import api_router
 from app.models.user_models import User, UserBankPermission, UserRole
 from app.models.question_models import QuestionBank, Question
+from app.models.llm_models import LLMInterface, PromptTemplate, LLMParseLog
+from app.models.question_models_v2 import QuestionBankV2, QuestionV2
+from app.services.question_bank_service import QuestionBankService
 
 
 # Session storage for admin panel (in production, use Redis or database)
@@ -62,6 +65,10 @@ app.add_middleware(
 # Include API routes
 app.include_router(api_router, prefix=settings.api_v1_prefix)
 
+# Include V2 API routes
+from app.api.v1 import qbank_v2
+app.include_router(qbank_v2.router)
+
 
 # Admin authentication helper
 def get_admin_user(request: Request) -> Optional[dict]:
@@ -92,8 +99,8 @@ async def admin_dashboard(
     """Admin dashboard"""
     # Get statistics
     total_users = main_db.query(User).count()
-    total_banks = qbank_db.query(QuestionBank).count()
-    total_questions = qbank_db.query(Question).count()
+    total_banks = qbank_db.query(QuestionBankV2).count()
+    total_questions = qbank_db.query(QuestionV2).count()
     
     return templates.TemplateResponse("admin/dashboard.html", {
         "request": request,
@@ -200,23 +207,31 @@ async def admin_qbanks(
     qbank_db: Session = Depends(get_qbank_db),
     page: int = 1
 ):
-    """Question banks management page"""
+    """Question banks management page using V2 API"""
     per_page = 20
     skip = (page - 1) * per_page
     
-    banks = qbank_db.query(QuestionBank).offset(skip).limit(per_page).all()
+    # Get total count from V2 models
+    total_count = qbank_db.query(QuestionBankV2).count()
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
     
-    # Add question count
+    # Ensure page is within valid range
+    page = max(1, min(page, total_pages))
+    skip = (page - 1) * per_page
+    
+    banks = qbank_db.query(QuestionBankV2).offset(skip).limit(per_page).all()
+    
+    # Add question count using V2
     for bank in banks:
-        bank.question_count = qbank_db.query(Question).filter(
-            Question.bank_id == bank.id
-        ).count()
+        bank.question_count = bank.total_questions
     
     return templates.TemplateResponse("admin/qbanks.html", {
         "request": request,
         "current_user": current_admin,
         "banks": banks,
-        "page": page
+        "page": page,
+        "total_pages": total_pages,
+        "total_count": total_count
     })
 
 
@@ -245,28 +260,22 @@ async def admin_qbanks_create(
     qbank_db: Session = Depends(get_qbank_db),
     main_db: Session = Depends(get_main_db)
 ):
-    """Create new question bank"""
-    import uuid
+    """Create new question bank using V2 service"""
+    service = QuestionBankService(qbank_db)
     
-    # Create question bank
-    bank_id = str(uuid.uuid4())
-    bank = QuestionBank(
-        id=bank_id,
+    # Create question bank using service
+    bank = service.create_question_bank(
         name=name,
         description=description,
         category=category,
         is_public=is_public,
-        creator_id=current_admin["id"],
-        version="1.0.0"
+        creator_id=current_admin["id"]
     )
-    
-    qbank_db.add(bank)
-    qbank_db.commit()
     
     # Grant admin permission to creator
     permission = UserBankPermission(
         user_id=current_admin["id"],
-        bank_id=bank_id,
+        bank_id=bank.id,
         permission="admin",
         granted_by=current_admin["id"]
     )
@@ -284,8 +293,8 @@ async def admin_qbanks_edit_form(
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Show edit question bank form"""
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    """Show edit question bank form using V2"""
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
     
     if not bank:
         raise HTTPException(status_code=404, detail="题库不存在")
@@ -309,18 +318,19 @@ async def admin_qbanks_edit(
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Update question bank"""
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    """Update question bank using V2"""
+    service = QuestionBankService(qbank_db)
+    
+    bank = service.update_question_bank(
+        bank_id=bank_id,
+        name=name,
+        description=description,
+        category=category,
+        is_public=is_public
+    )
     
     if not bank:
         raise HTTPException(status_code=404, detail="题库不存在")
-    
-    bank.name = name
-    bank.description = description
-    bank.category = category
-    bank.is_public = is_public
-    
-    qbank_db.commit()
     
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
@@ -332,15 +342,14 @@ async def admin_qbanks_delete(
     qbank_db: Session = Depends(get_qbank_db),
     main_db: Session = Depends(get_main_db)
 ):
-    """Delete question bank"""
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    """Delete question bank using V2 service"""
+    service = QuestionBankService(qbank_db)
     
-    if not bank:
+    # Delete bank using service (handles folder cleanup)
+    success = service.delete_question_bank(bank_id)
+    
+    if not success:
         raise HTTPException(status_code=404, detail="题库不存在")
-    
-    # Delete bank (cascades to questions, options, resources)
-    qbank_db.delete(bank)
-    qbank_db.commit()
     
     # Delete all permissions for this bank
     main_db.query(UserBankPermission).filter(
@@ -362,10 +371,10 @@ async def admin_questions(
     """Questions management page"""
     import math
     
-    query = qbank_db.query(Question)
+    query = qbank_db.query(QuestionV2)
     
     if bank_id:
-        query = query.filter(Question.bank_id == bank_id)
+        query = query.filter(QuestionV2.bank_id == bank_id)
     
     # Get total count for pagination
     total_count = query.count()
@@ -404,12 +413,12 @@ async def admin_questions_create_form(
     """Show create question form"""
     banks = qbank_db.query(QuestionBank).limit(100).all()
     
-    return templates.TemplateResponse("admin/question_form.html", {
+    return templates.TemplateResponse("admin/question_create.html", {
         "request": request,
         "current_user": current_admin,
         "question": None,
         "banks": banks,
-        "selected_bank_id": bank_id,
+        "bank_id": bank_id,
         "action": "create"
     })
 
@@ -417,78 +426,156 @@ async def admin_questions_create_form(
 @app.post("/admin/questions/create")
 async def admin_questions_create(
     request: Request,
-    bank_id: str = Form(...),
-    question_number: int = Form(0),
-    stem: str = Form(...),
-    type: str = Form(...),
-    difficulty: str = Form("medium"),
-    category: str = Form(""),
-    explanation: str = Form(""),
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Create new question"""
+    """Create new question - supports all question types"""
     import uuid
-    from app.models.question_models import QuestionOption
+    import json
+    
+    # Get JSON data from request
+    try:
+        data = await request.json()
+    except:
+        # Fallback to form data for backward compatibility
+        form_data = await request.form()
+        data = {
+            "bank_id": form_data.get("bank_id"),
+            "type": form_data.get("type"),
+            "stem": form_data.get("stem"),
+            "difficulty": form_data.get("difficulty", "medium"),
+            "category": form_data.get("category", ""),
+            "tags": form_data.get("tags", "").split(",") if form_data.get("tags") else [],
+            "explanation": form_data.get("explanation", ""),
+            "meta_data": {}
+        }
     
     # Create question
     question_id = str(uuid.uuid4())
-    question = Question(
+    question = QuestionV2(
         id=question_id,
-        bank_id=bank_id,
-        question_number=question_number,
-        stem=stem,
-        type=type,
-        difficulty=difficulty,
-        category=category,
-        explanation=explanation,
+        bank_id=data["bank_id"],
+        question_number=data.get("question_number", 0),
+        stem=data["stem"],
+        type=data["type"],
+        difficulty=data.get("difficulty", "medium"),
+        category=data.get("category", ""),
+        tags=data.get("tags", []),
+        explanation=data.get("explanation", ""),
         stem_format="text",
-        explanation_format="text"
+        explanation_format="text",
+        meta_data=data.get("meta_data", {})
     )
     
     qbank_db.add(question)
     
-    # Handle options for choice questions
-    if type in ["single", "multiple"]:
-        # Get form data for options
-        form_data = await request.form()
-        option_labels = []
-        option_contents = []
-        correct_options = []
-        
-        # Extract options from form
-        for key in form_data:
-            if key.startswith("option_label_"):
-                idx = key.replace("option_label_", "")
-                option_labels.append((idx, form_data[key]))
-            elif key.startswith("option_content_"):
-                idx = key.replace("option_content_", "")
-                option_contents.append((idx, form_data[key]))
-            elif key.startswith("option_correct_"):
-                idx = key.replace("option_correct_", "")
-                correct_options.append(idx)
-        
-        # Sort and create options
-        option_labels.sort(key=lambda x: x[0])
-        option_contents.sort(key=lambda x: x[0])
-        
-        for i, (idx, label) in enumerate(option_labels):
-            content = next((c for _, c in option_contents if _ == idx), "")
-            if content:
-                option = QuestionOption(
+    # Handle different question types
+    if data["type"] in ["single", "multiple"]:
+        # Choice questions with options
+        if "options" in data:
+            for i, opt_data in enumerate(data["options"]):
+                option = QuestionOptionV2(
                     id=str(uuid.uuid4()),
                     question_id=question_id,
-                    option_label=label,
-                    option_content=content,
+                    option_label=opt_data["label"],
+                    option_content=opt_data["content"],
                     option_format="text",
-                    is_correct=(idx in correct_options),
+                    is_correct=opt_data.get("is_correct", False),
                     sort_order=i
                 )
                 qbank_db.add(option)
+        else:
+            # Legacy form data handling
+            form_data = await request.form()
+            for key in form_data:
+                if key.startswith("option_content_"):
+                    idx = int(key.replace("option_content_", ""))
+                    label = String.fromCharCode(65 + idx)
+                    is_correct = False
+                    
+                    if data["type"] == "single":
+                        correct_option = form_data.get("correct_option")
+                        is_correct = (str(idx) == correct_option)
+                    else:  # multiple
+                        correct_options = form_data.getlist("correct_options")
+                        is_correct = (str(idx) in correct_options)
+                    
+                    option = QuestionOptionV2(
+                        id=str(uuid.uuid4()),
+                        question_id=question_id,
+                        option_label=chr(65 + idx),
+                        option_content=form_data[key],
+                        option_format="text",
+                        is_correct=is_correct,
+                        sort_order=idx
+                    )
+                    qbank_db.add(option)
+    
+    elif data["type"] == "judge":
+        # Judge questions store answer in meta_data
+        form_data = await request.form() if not data.get("meta_data") else None
+        if form_data:
+            judge_answer = form_data.get("judge_answer")
+            question.meta_data = {"answer": judge_answer == "true"}
+    
+    elif data["type"] == "fill":
+        # Fill questions store blanks in meta_data
+        form_data = await request.form() if not data.get("meta_data") else None
+        if form_data:
+            blanks = []
+            i = 0
+            while f"blank_answer_{i}" in form_data:
+                blanks.append({
+                    "position": i,
+                    "answer": form_data.get(f"blank_answer_{i}"),
+                    "alternatives": [form_data.get(f"blank_alt_{i}")] if form_data.get(f"blank_alt_{i}") else []
+                })
+                i += 1
+            question.meta_data = {"blanks": blanks}
+    
+    elif data["type"] == "essay":
+        # Essay questions store reference answer in meta_data
+        form_data = await request.form() if not data.get("meta_data") else None
+        if form_data:
+            question.meta_data = {
+                "reference_answer": form_data.get("reference_answer", ""),
+                "keywords": form_data.get("keywords", "").split(",") if form_data.get("keywords") else []
+            }
     
     qbank_db.commit()
     
-    return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
+    # Check if this is an AJAX request or should continue adding
+    if "continue" in data or (await request.form()).get("continue"):
+        return JSONResponse({"success": True, "question_id": question_id})
+    
+    return RedirectResponse(url=f"/admin/questions?bank_id={data['bank_id']}", status_code=303)
+
+
+@app.get("/admin/questions/{question_id}/preview", response_class=HTMLResponse)
+async def admin_questions_preview(
+    request: Request,
+    question_id: str,
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """Preview question with all details"""
+    
+    question = qbank_db.query(QuestionV2).filter(QuestionV2.id == question_id).first()
+    
+    if not question:
+        raise HTTPException(status_code=404, detail="题目不存在")
+    
+    # Get options for choice questions
+    if question.type in ["single", "multiple"]:
+        question.options = qbank_db.query(QuestionOptionV2).filter(
+            QuestionOptionV2.question_id == question_id
+        ).order_by(QuestionOptionV2.sort_order).all()
+    
+    return templates.TemplateResponse("admin/question_preview.html", {
+        "request": request,
+        "current_user": current_admin,
+        "question": question
+    })
 
 
 @app.get("/admin/questions/{question_id}/edit", response_class=HTMLResponse)
@@ -499,9 +586,8 @@ async def admin_questions_edit_form(
     qbank_db: Session = Depends(get_qbank_db)
 ):
     """Show edit question form"""
-    from app.models.question_models import QuestionOption
     
-    question = qbank_db.query(Question).filter(Question.id == question_id).first()
+    question = qbank_db.query(QuestionV2).filter(QuestionV2.id == question_id).first()
     
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -509,10 +595,12 @@ async def admin_questions_edit_form(
     # Get banks for dropdown
     banks = qbank_db.query(QuestionBank).limit(100).all()
     
-    # Get existing options
-    options = qbank_db.query(QuestionOption).filter(
-        QuestionOption.question_id == question_id
-    ).order_by(QuestionOption.sort_order).all()
+    # Get existing options for choice questions
+    options = []
+    if question.type in ["single", "multiple"]:
+        options = qbank_db.query(QuestionOptionV2).filter(
+            QuestionOptionV2.question_id == question_id
+        ).order_by(QuestionOptionV2.sort_order).all()
     
     # Add options to question object for template
     question.options = options
@@ -530,80 +618,136 @@ async def admin_questions_edit_form(
 async def admin_questions_edit(
     request: Request,
     question_id: str,
-    bank_id: str = Form(...),
-    question_number: int = Form(0),
-    stem: str = Form(...),
-    type: str = Form(...),
-    difficulty: str = Form("medium"),
-    category: str = Form(""),
-    explanation: str = Form(""),
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Update question"""
-    from app.models.question_models import QuestionOption
+    """Update question - supports all question types"""
     import uuid
+    import json
     
-    question = qbank_db.query(Question).filter(Question.id == question_id).first()
+    question = qbank_db.query(QuestionV2).filter(QuestionV2.id == question_id).first()
     
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
     
-    # Update question fields
-    question.bank_id = bank_id
-    question.question_number = question_number
-    question.stem = stem
-    question.type = type
-    question.difficulty = difficulty
-    question.category = category
-    question.explanation = explanation
-    
-    # Delete existing options
-    qbank_db.query(QuestionOption).filter(
-        QuestionOption.question_id == question_id
-    ).delete()
-    
-    # Handle options for choice questions
-    if type in ["single", "multiple"]:
-        # Get form data for options
+    # Get JSON or form data
+    try:
+        data = await request.json()
+    except:
+        # Fallback to form data
         form_data = await request.form()
-        option_labels = []
-        option_contents = []
-        correct_options = []
+        data = {
+            "bank_id": form_data.get("bank_id"),
+            "type": form_data.get("type"),
+            "stem": form_data.get("stem"),
+            "difficulty": form_data.get("difficulty", "medium"),
+            "category": form_data.get("category", ""),
+            "tags": form_data.get("tags", "").split(",") if form_data.get("tags") else [],
+            "explanation": form_data.get("explanation", ""),
+            "meta_data": {}
+        }
+    
+    # Update question fields
+    question.bank_id = data.get("bank_id", question.bank_id)
+    question.stem = data.get("stem", question.stem)
+    question.type = data.get("type", question.type)
+    question.difficulty = data.get("difficulty", question.difficulty)
+    question.category = data.get("category", question.category)
+    question.tags = data.get("tags", question.tags)
+    question.explanation = data.get("explanation", question.explanation)
+    
+    # Update meta_data based on question type
+    if data.get("meta_data"):
+        question.meta_data = data["meta_data"]
+    
+    # Handle different question types
+    if question.type in ["single", "multiple"]:
+        # Delete existing options
+        qbank_db.query(QuestionOptionV2).filter(
+            QuestionOptionV2.question_id == question_id
+        ).delete()
         
-        # Extract options from form
-        for key in form_data:
-            if key.startswith("option_label_"):
-                idx = key.replace("option_label_", "")
-                option_labels.append((idx, form_data[key]))
-            elif key.startswith("option_content_"):
-                idx = key.replace("option_content_", "")
-                option_contents.append((idx, form_data[key]))
-            elif key.startswith("option_correct_"):
-                idx = key.replace("option_correct_", "")
-                correct_options.append(idx)
-        
-        # Sort and create options
-        option_labels.sort(key=lambda x: x[0])
-        option_contents.sort(key=lambda x: x[0])
-        
-        for i, (idx, label) in enumerate(option_labels):
-            content = next((c for _, c in option_contents if _ == idx), "")
-            if content:
-                option = QuestionOption(
+        # Add new options
+        if "options" in data:
+            for i, opt_data in enumerate(data["options"]):
+                option = QuestionOptionV2(
                     id=str(uuid.uuid4()),
                     question_id=question_id,
-                    option_label=label,
-                    option_content=content,
+                    option_label=opt_data["label"],
+                    option_content=opt_data["content"],
                     option_format="text",
-                    is_correct=(idx in correct_options),
+                    is_correct=opt_data.get("is_correct", False),
                     sort_order=i
                 )
                 qbank_db.add(option)
+        else:
+            # Legacy form data handling
+            form_data = await request.form()
+            option_contents = []
+            correct_options = []
+            
+            for key in form_data:
+                if key.startswith("option_content_"):
+                    idx = int(key.replace("option_content_", ""))
+                    option_contents.append((idx, form_data[key]))
+                elif key == "correct_option":
+                    correct_options = [int(form_data[key])]
+                elif key == "correct_options":
+                    correct_options = [int(x) for x in form_data.getlist(key)]
+            
+            option_contents.sort(key=lambda x: x[0])
+            
+            for i, (idx, content) in enumerate(option_contents):
+                if content:
+                    option = QuestionOptionV2(
+                        id=str(uuid.uuid4()),
+                        question_id=question_id,
+                        option_label=chr(65 + i),
+                        option_content=content,
+                        option_format="text",
+                        is_correct=(idx in correct_options),
+                        sort_order=i
+                    )
+                    qbank_db.add(option)
+    
+    elif question.type == "judge":
+        # Handle judge questions
+        if not data.get("meta_data"):
+            form_data = await request.form()
+            judge_answer = form_data.get("judge_answer")
+            question.meta_data = {"answer": judge_answer == "true"}
+    
+    elif question.type == "fill":
+        # Handle fill questions
+        if not data.get("meta_data"):
+            form_data = await request.form()
+            blanks = []
+            i = 0
+            while f"blank_answer_{i}" in form_data:
+                blanks.append({
+                    "position": i,
+                    "answer": form_data.get(f"blank_answer_{i}"),
+                    "alternatives": [form_data.get(f"blank_alt_{i}")] if form_data.get(f"blank_alt_{i}") else []
+                })
+                i += 1
+            question.meta_data = {"blanks": blanks}
+    
+    elif question.type == "essay":
+        # Handle essay questions
+        if not data.get("meta_data"):
+            form_data = await request.form()
+            question.meta_data = {
+                "reference_answer": form_data.get("reference_answer", ""),
+                "keywords": form_data.get("keywords", "").split(",") if form_data.get("keywords") else []
+            }
     
     qbank_db.commit()
     
-    return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
+    # Return appropriate response
+    if "application/json" in request.headers.get("content-type", ""):
+        return JSONResponse({"success": True, "question_id": question_id})
+    
+    return RedirectResponse(url=f"/admin/questions?bank_id={question.bank_id}", status_code=303)
 
 
 @app.post("/admin/questions/{question_id}/delete")
@@ -613,7 +757,7 @@ async def admin_questions_delete(
     qbank_db: Session = Depends(get_qbank_db)
 ):
     """Delete question"""
-    question = qbank_db.query(Question).filter(Question.id == question_id).first()
+    question = qbank_db.query(QuestionV2).filter(QuestionV2.id == question_id).first()
     
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
@@ -627,6 +771,36 @@ async def admin_questions_delete(
     return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
 
 
+@app.get("/admin/llm", response_class=HTMLResponse)
+async def admin_llm(
+    request: Request,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """LLM Configuration page"""
+    # 获取接口配置
+    interfaces = qbank_db.query(LLMInterface).filter_by(user_id=current_admin['id']).all()
+    
+    # 获取模板
+    prompt_templates = qbank_db.query(PromptTemplate).filter(
+        (PromptTemplate.user_id == current_admin['id']) | 
+        (PromptTemplate.is_public == True) |
+        (PromptTemplate.is_system == True)
+    ).all()
+    
+    # 获取题库列表
+    question_banks = qbank_db.query(QuestionBank).limit(100).all()
+    
+    return templates.TemplateResponse("admin/llm.html", {
+        "request": request,
+        "current_user": current_admin,
+        "interfaces": interfaces,
+        "templates": prompt_templates,
+        "question_banks": question_banks
+    })
+
+
 @app.get("/admin/imports", response_class=HTMLResponse)
 async def admin_imports(
     request: Request,
@@ -637,8 +811,8 @@ async def admin_imports(
     banks = qbank_db.query(QuestionBank).limit(100).all()
     
     for bank in banks:
-        bank.question_count = qbank_db.query(Question).filter(
-            Question.bank_id == bank.id
+        bank.question_count = qbank_db.query(QuestionV2).filter(
+            QuestionV2.bank_id == bank.id
         ).count()
     
     return templates.TemplateResponse("admin/imports.html", {
@@ -657,14 +831,114 @@ async def admin_import_csv(
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Import questions from CSV file"""
+    """Import questions from CSV or JSON file"""
     import csv
     import io
+    import json
     import uuid
-    from app.models.question_models import QuestionOption
     
-    # Check file type
-    if not file.filename.endswith('.csv'):
+    # Check file type and handle accordingly
+    filename = file.filename.lower()
+    if filename.endswith('.json'):
+        # Handle JSON import
+        try:
+            content = await file.read()
+            data = json.loads(content.decode('utf-8'))
+            
+            # Check if bank_id matches or create new bank
+            if 'bank_info' in data:
+                # If JSON contains bank info, use it
+                json_bank_id = data['bank_info'].get('id')
+                if json_bank_id and json_bank_id != bank_id:
+                    # Check if we should use the JSON bank or the selected one
+                    pass  # For now, use the selected bank_id
+            
+            imported_count = 0
+            
+            for q_data in data.get('questions', []):
+                question_id = str(uuid.uuid4())
+                
+                # Determine question type
+                q_type = q_data.get('type', 'single')
+                
+                # Create meta_data for special question types
+                meta_data = {}
+                if q_type == 'fill':
+                    # Extract blanks from stem
+                    import re
+                    blanks = re.findall(r'____+', q_data.get('stem', ''))
+                    meta_data['blanks'] = [
+                        {'position': i, 'answer': '', 'alternatives': []}
+                        for i in range(len(blanks))
+                    ]
+                elif q_type == 'judge':
+                    # Try to determine answer from various possible fields
+                    # Check for 'answer' field directly
+                    if 'answer' in q_data:
+                        meta_data['answer'] = q_data['answer']
+                    # Check if answer is in meta_data
+                    elif 'meta_data' in q_data and 'answer' in q_data['meta_data']:
+                        meta_data['answer'] = q_data['meta_data']['answer']
+                    # Check explanation for hints (if contains "正确" or "错误")
+                    elif '正确' in q_data.get('explanation', ''):
+                        meta_data['answer'] = True
+                    elif '错误' in q_data.get('explanation', ''):
+                        meta_data['answer'] = False
+                    else:
+                        # Default to False if can't determine
+                        meta_data['answer'] = False
+                elif q_type == 'essay':
+                    # Handle essay questions
+                    if 'meta_data' in q_data:
+                        meta_data = q_data['meta_data']
+                    else:
+                        meta_data['reference_answer'] = q_data.get('explanation', '')
+                
+                question = QuestionV2(
+                    id=question_id,
+                    bank_id=bank_id,
+                    question_number=q_data.get('number'),
+                    stem=q_data.get('stem', ''),
+                    stem_format='text',
+                    type=q_type,
+                    difficulty=q_data.get('difficulty', 'medium'),
+                    category=q_data.get('category', ''),
+                    explanation=q_data.get('explanation', ''),
+                    meta_data=meta_data if meta_data else None
+                )
+                qbank_db.add(question)
+                
+                # Add options for choice questions
+                if q_type in ['single', 'multiple']:
+                    for i, opt_data in enumerate(q_data.get('options', [])):
+                        option = QuestionOptionV2(
+                            id=str(uuid.uuid4()),
+                            question_id=question_id,
+                            option_label=opt_data.get('label', chr(65 + i)),
+                            option_content=opt_data.get('content', ''),
+                            option_format='text',
+                            is_correct=opt_data.get('is_correct', False),
+                            sort_order=i
+                        )
+                        qbank_db.add(option)
+                
+                imported_count += 1
+            
+            qbank_db.commit()
+            
+            return RedirectResponse(
+                url=f"/admin/imports?success=imported_{imported_count}_questions",
+                status_code=303
+            )
+            
+        except Exception as e:
+            qbank_db.rollback()
+            return RedirectResponse(
+                url=f"/admin/imports?error={str(e)}",
+                status_code=303
+            )
+    
+    elif not filename.endswith('.csv'):
         return RedirectResponse(url="/admin/imports?error=invalid_file", status_code=303)
     
     # Check bank exists
@@ -687,7 +961,7 @@ async def admin_import_csv(
             
             # Create question
             question_id = str(uuid.uuid4())
-            question = Question(
+            question = QuestionV2(
                 id=question_id,
                 bank_id=bank_id,
                 question_number=int(row.get('题号', 0)),
@@ -716,7 +990,7 @@ async def admin_import_csv(
             # Create options for all detected labels
             for label in option_labels:
                 if row.get(label):  # Only create if option content exists
-                    option = QuestionOption(
+                    option = QuestionOptionV2(
                         id=str(uuid.uuid4()),
                         question_id=question_id,
                         option_label=label,
@@ -785,27 +1059,26 @@ async def admin_export_bank(
     import io
     import json
     
-    # Get bank
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    # Get bank using V2
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
     if not bank:
         raise HTTPException(status_code=404, detail="题库不存在")
     
     # Get questions with options
-    questions = qbank_db.query(Question).filter(
-        Question.bank_id == bank_id
-    ).order_by(Question.question_number).all()
+    questions = qbank_db.query(QuestionV2).filter(
+        QuestionV2.bank_id == bank_id
+    ).order_by(QuestionV2.question_number).all()
     
     if format == "csv":
-        from app.models.question_models import QuestionOption
-        
+            
         # First pass: determine the maximum number of options in the bank
         max_options = 0
         all_question_options = []
         
         for question in questions:
-            options = qbank_db.query(QuestionOption).filter(
-                QuestionOption.question_id == question.id
-            ).order_by(QuestionOption.sort_order).all()
+            options = qbank_db.query(QuestionOptionV2).filter(
+                QuestionOptionV2.question_id == question.id
+            ).order_by(QuestionOptionV2.sort_order).all()
             all_question_options.append(options)
             max_options = max(max_options, len(options))
         
@@ -877,10 +1150,9 @@ async def admin_export_bank(
         }
         
         for question in questions:
-            from app.models.question_models import QuestionOption
-            options = qbank_db.query(QuestionOption).filter(
-                QuestionOption.question_id == question.id
-            ).order_by(QuestionOption.sort_order).all()
+            options = qbank_db.query(QuestionOptionV2).filter(
+                QuestionOptionV2.question_id == question.id
+            ).order_by(QuestionOptionV2.sort_order).all()
             
             q_data = {
                 "number": question.question_number,
@@ -925,6 +1197,66 @@ async def root():
         "admin_panel": "/admin",
         "status": "running"
     }
+
+
+# V2 Import/Export Routes
+@app.post("/admin/v2/imports/{bank_id}")
+async def admin_import_v2(
+    bank_id: str,
+    file: UploadFile = File(...),
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """Import questions using V2 service"""
+    service = QuestionBankService(qbank_db)
+    
+    # Save uploaded file temporarily
+    import tempfile
+    import os
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+    
+    try:
+        # Import using service
+        imported_count = service.import_questions(bank_id, tmp_path)
+        return {"success": True, "imported_count": imported_count}
+    finally:
+        # Clean up temp file
+        os.unlink(tmp_path)
+
+
+@app.get("/admin/v2/exports/{bank_id}")
+async def admin_export_v2(
+    bank_id: str,
+    format: str = "json",
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """Export question bank using V2 service"""
+    from fastapi.responses import FileResponse
+    import tempfile
+    import os
+    
+    service = QuestionBankService(qbank_db)
+    
+    # Export using service
+    export_path = service.export_question_bank(bank_id, format)
+    
+    if not export_path or not os.path.exists(export_path):
+        raise HTTPException(status_code=500, detail="Export failed")
+    
+    # Get bank name for filename
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
+    filename = f"{bank.name}_export.{format}"
+    
+    return FileResponse(
+        path=export_path,
+        filename=filename,
+        media_type='application/json' if format == 'json' else 'text/csv'
+    )
 
 
 @app.get("/health")

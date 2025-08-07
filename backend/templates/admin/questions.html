@@ -78,6 +78,14 @@
                                 <span class="badge badge-warning">
                                     <i class="fas fa-gavel"></i> 判断
                                 </span>
+                            {% elif question.type == 'fill' %}
+                                <span class="badge badge-info">
+                                    <i class="fas fa-edit"></i> 填空
+                                </span>
+                            {% elif question.type == 'essay' %}
+                                <span class="badge badge-secondary">
+                                    <i class="fas fa-file-alt"></i> 问答
+                                </span>
                             {% else %}
                                 <span class="badge badge-secondary">{{ question.type }}</span>
                             {% endif %}
@@ -108,6 +116,9 @@
                         </td>
                         <td class="text-center">
                             <div class="action-buttons">
+                                <a href="/admin/questions/{{ question.id }}/preview" class="btn-icon btn-preview" title="预览">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                                 <a href="/admin/questions/{{ question.id }}/edit" class="btn-icon btn-edit" title="编辑">
                                     <i class="fas fa-edit"></i>
                                 </a>

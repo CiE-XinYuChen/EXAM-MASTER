@@ -1,0 +1,1519 @@
+{% extends "admin/base.html" %}
+
+{% block title %}LLM配置管理{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+LLM配置
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 标签页导航 -->
+    <div class="tab-nav mb-4">
+        <button class="tab-nav-item active" onclick="switchTab('interfaces', this)">
+            <i class="fas fa-plug"></i> 接口配置
+        </button>
+        <button class="tab-nav-item" onclick="switchTab('templates', this)">
+            <i class="fas fa-file-alt"></i> 提示词模板
+        </button>
+        <button class="tab-nav-item" onclick="switchTab('parser', this)">
+            <i class="fas fa-magic"></i> 智能解析
+        </button>
+    </div>
+
+    <!-- 标签页内容 -->
+    <div class="tab-content" id="llmTabContent">
+        <!-- 接口配置标签页 -->
+        <div class="tab-pane active" id="interfaces">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">LLM接口配置</h3>
+                    <button class="btn btn-primary btn-sm" onclick="showAddInterfaceModal()">
+                        <i class="fas fa-plus"></i> 添加接口
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>接口名称</th>
+                                    <th>类型</th>
+                                    <th>模型</th>
+                                    <th>状态</th>
+                                    <th>使用次数</th>
+                                    <th>最后使用</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="interfacesList">
+                                {% for interface in interfaces %}
+                                <tr>
+                                    <td>
+                                        {{ interface.name }}
+                                        {% if interface.is_default %}
+                                        <span class="badge bg-primary">默认</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ interface.type }}</td>
+                                    <td>{{ interface.config.model if interface.config else '-' }}</td>
+                                    <td>
+                                        {% if interface.is_active %}
+                                        <span class="badge bg-success">启用</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">停用</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ interface.usage_count }}</td>
+                                    <td>{{ interface.last_used_at.strftime('%Y-%m-%d %H:%M') if interface.last_used_at else '从未' }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-info" onclick="testInterface('{{ interface.id }}')">
+                                                <i class="fas fa-vial"></i> 测试
+                                            </button>
+                                            <button class="btn btn-sm btn-warning" onclick="editInterface('{{ interface.id }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteInterface('{{ interface.id }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">暂无接口配置</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示词模板标签页 -->
+        <div class="tab-pane" id="templates" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">提示词模板管理</h3>
+                    <div class="btn-group">
+                        <button class="btn btn-primary btn-sm" onclick="showAddTemplateModal()">
+                            <i class="fas fa-plus"></i> 创建模板
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="importTemplate()">
+                            <i class="fas fa-file-import"></i> 导入模板
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for template in templates %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card template-card">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        {{ template.name }}
+                                        {% if template.is_system %}
+                                        <span class="badge bg-info">系统</span>
+                                        {% endif %}
+                                        {% if template.is_public %}
+                                        <span class="badge bg-success">公开</span>
+                                        {% endif %}
+                                    </h5>
+                                    <p class="card-text text-muted small">
+                                        类型: {{ template.type }}<br>
+                                        分类: {{ template.category or '默认' }}<br>
+                                        使用次数: {{ template.usage_count }}
+                                    </p>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="previewTemplate('{{ template.id }}')">
+                                            <i class="fas fa-eye"></i> 预览
+                                        </button>
+                                        {% if not template.is_system %}
+                                        <button class="btn btn-sm btn-outline-warning" onclick="editTemplate('{{ template.id }}')">
+                                            <i class="fas fa-edit"></i> 编辑
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteTemplate('{{ template.id }}')">
+                                            <i class="fas fa-trash"></i> 删除
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-12">
+                            <p class="text-center text-muted">暂无模板</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 智能解析标签页 -->
+        <div class="tab-pane" id="parser" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">智能题目解析</h3>
+                </div>
+                <div class="card-body">
+                    <form id="parseForm" class="parse-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-plug"></i> 选择LLM接口
+                                    </label>
+                                    <select class="form-control" id="parseInterface" required>
+                                        <option value="">请选择接口</option>
+                                        {% for interface in interfaces %}
+                                        {% if interface.is_active %}
+                                        <option value="{{ interface.id }}">{{ interface.name }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-file-alt"></i> 选择提示词模板
+                                    </label>
+                                    <select class="form-control" id="parseTemplate">
+                                        <option value="">使用默认模板</option>
+                                        {% for template in templates %}
+                                        <option value="{{ template.id }}">{{ template.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-edit"></i> 题目文本
+                            </label>
+                            <textarea class="form-control" id="parseText" rows="8" placeholder="粘贴或输入题目文本，支持批量输入多道题目..." required></textarea>
+                            <small class="text-muted">
+                                支持的格式：单选题、多选题、填空题、判断题、问答题
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-database"></i> 目标题库
+                            </label>
+                            <select class="form-control" id="targetBank">
+                                <option value="">选择题库（可选）</option>
+                                {% for bank in question_banks %}
+                                <option value="{{ bank.id }}">{{ bank.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline-secondary" onclick="loadExample()">
+                                <i class="fas fa-file-alt"></i> 加载示例
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-parse">
+                                <i class="fas fa-magic"></i> 开始解析
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- 解析进度 -->
+                    <div id="parseProgress" class="mt-4" style="display: none;">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                                <h5 class="mt-3 text-primary">正在使用AI智能解析题目...</h5>
+                                <p class="text-muted">
+                                    <small id="progressText">正在连接大语言模型，请耐心等待...</small>
+                                </p>
+                                <div class="progress mt-3" style="height: 6px;">
+                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 30%" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <small class="text-muted d-block mt-2">预计需要30-60秒，请勿关闭页面</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 解析结果 -->
+                    <div id="parseResults" class="mt-4" style="display: none;">
+                        <h4>解析结果</h4>
+                        <div id="resultsContent"></div>
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="importParsedQuestions()">
+                                <i class="fas fa-save"></i> 导入到题库
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportParsedQuestions()">
+                                <i class="fas fa-download"></i> 导出JSON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑接口模态框 -->
+<div class="modal fade" id="interfaceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="interfaceModalLabel">配置LLM接口</h5>
+                <button type="button" class="btn-close" onclick="closeModal('interfaceModal')"></button>
+            </div>
+            <div class="modal-body">
+                <form id="interfaceForm">
+                    <div class="mb-3">
+                        <label class="form-label">接口名称</label>
+                        <input type="text" class="form-control" id="interfaceName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">接口类型</label>
+                        <select class="form-select" id="interfaceType" onchange="updateInterfaceFields()">
+                            <option value="openai-compatible">OpenAI兼容</option>
+                            <option value="anthropic">Anthropic Claude</option>
+                            <option value="zhipu-ai">智谱AI (Zhipu)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">API基础URL</label>
+                        <input type="url" class="form-control" id="baseUrl" placeholder="https://api.openai.com/v1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">API密钥</label>
+                        <input type="password" class="form-control" id="apiKey" placeholder="sk-...">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">模型</label>
+                        <input type="text" class="form-control" id="model" placeholder="gpt-3.5-turbo">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Temperature</label>
+                                <input type="number" class="form-control" id="temperature" min="0" max="2" step="0.1" value="0.3">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Max Tokens</label>
+                                <input type="number" class="form-control" id="maxTokens" value="2000">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="isDefault">
+                        <label class="form-check-label" for="isDefault">设为默认接口</label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="isActive" checked>
+                        <label class="form-check-label" for="isActive">启用接口</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('interfaceModal')">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveInterface()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模板编辑器模态框 -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="templateModalLabel">编辑提示词模板</h5>
+                <button type="button" class="btn-close" onclick="closeModal('templateModal')"></button>
+            </div>
+            <div class="modal-body">
+                <form id="templateForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">模板名称</label>
+                                <input type="text" class="form-control" id="templateName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">类型</label>
+                                <select class="form-select" id="templateType">
+                                    <option value="question_parser">题目解析</option>
+                                    <option value="batch_parser">批量解析</option>
+                                    <option value="formatter">格式化</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">分类</label>
+                                <input type="text" class="form-control" id="templateCategory" placeholder="默认">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">模板内容（支持Markdown）</label>
+                        <textarea class="form-control font-monospace" id="templateContent" rows="15" required></textarea>
+                        <small class="text-muted">使用 {{变量名}} 定义变量</small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">示例输入（可选）</label>
+                                <textarea class="form-control" id="exampleInput" rows="4"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">示例输出（可选）</label>
+                                <textarea class="form-control" id="exampleOutput" rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="isPublic">
+                        <label class="form-check-label" for="isPublic">公开模板（其他用户可见）</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('templateModal')">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveTemplate()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.tab-nav {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.tab-nav-item {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-nav-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.tab-nav-item.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.template-card {
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.template-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.25rem;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.modal-xl {
+    max-width: 90%;
+}
+
+.font-monospace {
+    font-family: 'Courier New', monospace;
+}
+
+/* 表单美化 */
+.parse-form {
+    background: #f8f9fa;
+    padding: 24px;
+    border-radius: 8px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-label i {
+    margin-right: 6px;
+    color: #667eea;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+textarea.form-control {
+    resize: vertical;
+    font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-parse {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 10px 24px;
+    font-weight: 500;
+}
+
+.btn-parse:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #e9ecef;
+    background: white;
+    color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+    background: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* 解析结果样式 */
+#parseResults {
+    margin-top: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+#parseResults h4 {
+    color: #495057;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.list-group-item {
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+
+/* 卡片优化 */
+.card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+    border-bottom: 1px solid #e9ecef;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.card-body {
+    padding: 24px;
+}
+
+/* 按钮组样式 */
+.btn-group {
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* 表格优化 */
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table thead th {
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+    border-bottom: 2px solid #e9ecef;
+    padding: 12px;
+    font-weight: 600;
+    color: #495057;
+    text-align: left;
+}
+
+.table tbody td {
+    padding: 12px;
+    border-bottom: 1px solid #f1f3f4;
+    color: #6c757d;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal.show {
+    display: block;
+}
+
+.modal-dialog {
+    position: relative;
+    width: auto;
+    max-width: 800px;
+    margin: 50px auto;
+}
+
+.modal-dialog.modal-lg {
+    max-width: 900px;
+}
+
+.modal-dialog.modal-xl {
+    max-width: 1200px;
+}
+
+.modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #fff;
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1040;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 20px 24px;
+}
+
+.modal-title {
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 16px 24px;
+}
+
+/* Bootstrap 覆盖 */
+.btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.row {
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.col-md-6 {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+/* 进度指示器样式 */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.5rem;
+}
+
+.progress-bar {
+    transition: width 0.5s ease;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+}
+
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% {
+        background-position: 1rem 0;
+    }
+    100% {
+        background-position: 0 0;
+    }
+}
+
+.card.border-info {
+    border-color: #17a2b8 !important;
+}
+
+.text-primary {
+    color: #667eea !important;
+}
+
+/* 动画效果 */
+#parseProgress {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<script>
+// 标签页切换函数
+function switchTab(tabName, button) {
+    // 隐藏所有标签页
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.style.display = 'none';
+    });
+    
+    // 显示选中的标签页
+    document.getElementById(tabName).style.display = 'block';
+    
+    // 更新按钮状态
+    document.querySelectorAll('.tab-nav-item').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    button.classList.add('active');
+}
+
+// 接口管理函数
+function showAddInterfaceModal() {
+    const form = document.getElementById('interfaceForm');
+    form.reset();
+    
+    // 清除编辑模式
+    delete form.dataset.interfaceId;
+    document.getElementById('interfaceModalLabel').textContent = '添加接口';
+    
+    const modal = document.getElementById('interfaceModal');
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    
+    // 添加背景遮罩
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.id = 'modalBackdrop';
+    document.body.appendChild(backdrop);
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+    
+    // 移除背景遮罩
+    const backdrop = document.getElementById('modalBackdrop');
+    if (backdrop) {
+        backdrop.remove();
+    }
+}
+
+// 点击模态框外部关闭
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        const modals = document.querySelectorAll('.modal.show');
+        modals.forEach(modal => {
+            closeModal(modal.id);
+        });
+    }
+}
+
+function saveInterface() {
+    const form = document.getElementById('interfaceForm');
+    const interfaceId = form.dataset.interfaceId;
+    const isEdit = !!interfaceId;
+    
+    const data = {
+        name: document.getElementById('interfaceName').value,
+        type: document.getElementById('interfaceType').value,
+        config: {
+            base_url: document.getElementById('baseUrl').value,
+            api_key: document.getElementById('apiKey').value,
+            model: document.getElementById('model').value,
+            headers: {},
+            timeout: 120,
+            max_retries: 3
+        },
+        request_format: {
+            temperature: parseFloat(document.getElementById('temperature').value) || 0.3,
+            max_tokens: parseInt(document.getElementById('maxTokens').value) || 2000,
+            top_p: 1.0,
+            stop: []
+        },
+        response_parser: "openai_standard",
+        is_default: document.getElementById('isDefault').checked,
+        is_active: document.getElementById('isActive').checked
+    };
+    
+    const url = isEdit ? `/api/v1/llm/interfaces/${interfaceId}` : '/api/v1/llm/interfaces';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(isEdit ? '接口配置已更新' : '接口配置已保存');
+        closeModal('interfaceModal');
+        location.reload();
+    })
+    .catch(error => {
+        console.error('保存失败:', error);
+        alert('保存失败: ' + error.message);
+    });
+}
+
+function testInterface(interfaceId) {
+    fetch(`/api/v1/llm/interfaces/${interfaceId}/test`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+            test_prompt: "Hello, please respond with 'OK' if you can hear me."
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('接口测试成功！响应时间: ' + data.response_time + 'ms');
+        } else {
+            alert('接口测试失败: ' + data.error);
+        }
+    });
+}
+
+function editInterface(interfaceId) {
+    // 获取接口详情
+    fetch(`/api/v1/llm/interfaces/${interfaceId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(interface => {
+        // 填充表单数据
+        document.getElementById('interfaceName').value = interface.name;
+        document.getElementById('interfaceType').value = interface.type;
+        document.getElementById('baseUrl').value = interface.config.base_url;
+        document.getElementById('apiKey').value = interface.config.api_key || '';
+        document.getElementById('model').value = interface.config.model;
+        document.getElementById('temperature').value = interface.request_format?.temperature || 0.3;
+        document.getElementById('maxTokens').value = interface.request_format?.max_tokens || 2000;
+        document.getElementById('isDefault').checked = interface.is_default;
+        document.getElementById('isActive').checked = interface.is_active;
+        
+        // 设置为编辑模式
+        document.getElementById('interfaceForm').dataset.interfaceId = interfaceId;
+        document.getElementById('interfaceModalLabel').textContent = '编辑接口';
+        
+        // 显示模态框（不使用showAddInterfaceModal因为会重置标题）
+        const modal = document.getElementById('interfaceModal');
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        
+        // 添加背景遮罩
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.id = 'modalBackdrop';
+        document.body.appendChild(backdrop);
+    })
+    .catch(error => {
+        alert('获取接口信息失败: ' + error.message);
+    });
+}
+
+function deleteInterface(interfaceId) {
+    if (!confirm('确定要删除这个接口吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    fetch(`/api/v1/llm/interfaces/${interfaceId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert('接口已删除');
+        location.reload();
+    })
+    .catch(error => {
+        console.error('删除失败:', error);
+        alert('删除失败: ' + error.message);
+    });
+}
+
+// 模板管理函数
+function showAddTemplateModal() {
+    document.getElementById('templateForm').reset();
+    const modal = document.getElementById('templateModal');
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    
+    // 添加背景遮罩
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.id = 'modalBackdrop';
+    document.body.appendChild(backdrop);
+}
+
+function saveTemplate() {
+    const data = {
+        name: document.getElementById('templateName').value,
+        type: document.getElementById('templateType').value,
+        category: document.getElementById('templateCategory').value || 'default',
+        content: document.getElementById('templateContent').value,
+        example_input: document.getElementById('exampleInput').value,
+        example_output: document.getElementById('exampleOutput').value,
+        is_public: document.getElementById('isPublic').checked
+    };
+    
+    fetch('/api/v1/llm/templates', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('模板已保存');
+        closeModal('templateModal');
+        location.reload();
+    })
+    .catch(error => {
+        alert('保存失败: ' + error);
+    });
+}
+
+// 智能解析函数
+document.getElementById('parseForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // 显示进度指示器
+    showParseProgress();
+    
+    const data = {
+        interface_id: document.getElementById('parseInterface').value,
+        prompt_template_id: document.getElementById('parseTemplate').value,
+        raw_text: document.getElementById('parseText').value,
+        bank_id: document.getElementById('targetBank').value
+    };
+    
+    // 开始进度动画
+    let progressValue = 10;
+    const progressInterval = setInterval(() => {
+        progressValue += Math.random() * 5;
+        if (progressValue > 90) progressValue = 90;
+        updateProgress(progressValue, '正在处理中...');
+    }, 2000);
+    
+    fetch('/api/v1/llm/parse', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        hideParseProgress();
+        
+        if (data.success) {
+            displayParseResults(data.parsed_questions);
+        } else {
+            alert('解析失败: ' + JSON.stringify(data.parse_errors));
+        }
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        hideParseProgress();
+        alert('解析错误: ' + error);
+    });
+});
+
+// 进度管理函数
+function showParseProgress() {
+    document.getElementById('parseResults').style.display = 'none';
+    document.getElementById('parseProgress').style.display = 'block';
+    updateProgress(10, '正在连接大语言模型...');
+}
+
+function hideParseProgress() {
+    document.getElementById('parseProgress').style.display = 'none';
+}
+
+function updateProgress(percentage, text) {
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    progressBar.style.width = percentage + '%';
+    progressBar.setAttribute('aria-valuenow', percentage);
+    progressText.textContent = text;
+    
+    // 根据进度更新文本
+    if (percentage < 30) {
+        progressText.textContent = '正在连接大语言模型...';
+    } else if (percentage < 60) {
+        progressText.textContent = '正在分析题目结构...';
+    } else if (percentage < 90) {
+        progressText.textContent = '正在生成标准格式...';
+    } else {
+        progressText.textContent = '即将完成...';
+    }
+}
+
+function displayParseResults(questions) {
+    const resultsDiv = document.getElementById('parseResults');
+    const contentDiv = document.getElementById('resultsContent');
+    
+    let html = `<div class="alert alert-success">成功解析 ${questions.length} 道题目</div>`;
+    html += '<div class="list-group">';
+    
+    questions.forEach((q, index) => {
+        html += `
+            <div class="list-group-item">
+                <h6>题目 ${index + 1} - ${q.type}</h6>
+                <p>${q.stem}</p>
+                ${q.options ? `<ul>${q.options.map(o => `<li>${o.label}. ${o.content} ${o.is_correct ? '✓' : ''}</li>`).join('')}</ul>` : ''}
+                ${q.blanks ? `<p>答案: ${q.blanks.map(b => b.answer).join(', ')}</p>` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    contentDiv.innerHTML = html;
+    resultsDiv.style.display = 'block';
+    
+    // 保存解析结果供导入使用
+    window.parsedQuestions = questions;
+}
+
+function importParsedQuestions() {
+    if (!window.parsedQuestions) return;
+    
+    const bankId = document.getElementById('targetBank').value;
+    if (!bankId) {
+        alert('请选择目标题库');
+        return;
+    }
+    
+    fetch('/api/v1/llm/import', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+            bank_id: bankId,
+            questions: window.parsedQuestions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`成功导入 ${data.imported_count} 道题目`);
+            document.getElementById('parseForm').reset();
+            document.getElementById('parseResults').style.display = 'none';
+        } else {
+            alert('导入失败: ' + JSON.stringify(data.errors));
+        }
+    });
+}
+
+function loadExample() {
+    document.getElementById('parseText').value = `1. Python中定义函数使用____关键字。（答案：def）
+
+2. 以下哪个是Python的数据类型？
+   A. integer
+   B. string  
+   C. list（正确）
+   D. array
+
+3. Python是解释型语言。（对）
+
+4. 请简述Python的特点。`;
+}
+
+function updateInterfaceFields() {
+    const interfaceType = document.getElementById('interfaceType').value;
+    const baseUrlInput = document.getElementById('baseUrl');
+    const modelInput = document.getElementById('model');
+    
+    // 根据接口类型设置默认值
+    switch(interfaceType) {
+        case 'openai-compatible':
+            baseUrlInput.placeholder = 'https://api.openai.com/v1';
+            modelInput.placeholder = 'gpt-3.5-turbo';
+            break;
+        case 'anthropic':
+            baseUrlInput.placeholder = 'https://api.anthropic.com/v1';
+            modelInput.placeholder = 'claude-3-sonnet-20240229';
+            break;
+        case 'zhipu-ai':
+            baseUrlInput.placeholder = 'https://open.bigmodel.cn/api/paas/v4';
+            baseUrlInput.value = 'https://open.bigmodel.cn/api/paas/v4';
+            modelInput.placeholder = 'glm-4';
+            break;
+    }
+}
+
+// ================ 模板管理功能 ================
+
+// 预览模板功能
+function previewTemplate(templateId) {
+    fetch(`/api/v1/llm/templates/${templateId}`, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data) {
+            showTemplatePreviewModal(data);
+        } else {
+            alert('获取模板失败');
+        }
+    })
+    .catch(error => {
+        alert('获取模板失败: ' + error);
+    });
+}
+
+// 编辑模板功能
+function editTemplate(templateId) {
+    fetch(`/api/v1/llm/templates/${templateId}`, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data) {
+            // 填充表单数据
+            document.getElementById('templateName').value = data.name || '';
+            document.getElementById('templateType').value = data.type || 'question_parser';
+            document.getElementById('templateCategory').value = data.category || '';
+            document.getElementById('templateContent').value = data.content || '';
+            document.getElementById('exampleInput').value = data.example_input || '';
+            document.getElementById('exampleOutput').value = data.example_output || '';
+            document.getElementById('isPublic').checked = data.is_public || false;
+            
+            // 更新模态框标题
+            document.getElementById('templateModalLabel').textContent = '编辑提示词模板';
+            
+            // 存储模板ID用于更新
+            document.getElementById('templateForm').setAttribute('data-template-id', templateId);
+            
+            // 显示模态框
+            const modal = document.getElementById('templateModal');
+            modal.style.display = 'block';
+            modal.classList.add('show');
+            
+            // 添加背景遮罩
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = 'modalBackdrop';
+            document.body.appendChild(backdrop);
+        } else {
+            alert('获取模板数据失败');
+        }
+    })
+    .catch(error => {
+        alert('获取模板数据失败: ' + error);
+    });
+}
+
+// 删除模板功能
+function deleteTemplate(templateId) {
+    if (!confirm('确定要删除这个模板吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    fetch(`/api/v1/llm/templates/${templateId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success !== false) {
+            alert('模板已删除');
+            location.reload();
+        } else {
+            alert('删除失败: ' + (data.detail || '未知错误'));
+        }
+    })
+    .catch(error => {
+        alert('删除失败: ' + error);
+    });
+}
+
+// 导入模板功能
+function importTemplate() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.md,.txt';
+    input.multiple = true;
+    input.onchange = function(e) {
+        const files = e.target.files;
+        if (files.length === 0) return;
+        
+        let importedCount = 0;
+        let failedCount = 0;
+        
+        for (let file of files) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    const templateData = parseMarkdownTemplate(content, file.name);
+                    
+                    // 发送到后端
+                    fetch('/api/v1/llm/templates', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify(templateData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        importedCount++;
+                        checkImportComplete();
+                    })
+                    .catch(error => {
+                        failedCount++;
+                        checkImportComplete();
+                    });
+                } catch (error) {
+                    failedCount++;
+                    checkImportComplete();
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function checkImportComplete() {
+            if (importedCount + failedCount === files.length) {
+                alert(`导入完成！成功: ${importedCount}, 失败: ${failedCount}`);
+                if (importedCount > 0) {
+                    location.reload();
+                }
+            }
+        }
+    };
+    input.click();
+}
+
+// 解析Markdown模板
+function parseMarkdownTemplate(content, filename) {
+    const lines = content.split('\n');
+    let metadata = {};
+    let templateContent = '';
+    let inMetadata = false;
+    
+    // 解析YAML前置元数据
+    if (lines[0] === '---') {
+        inMetadata = true;
+        let metadataLines = [];
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i] === '---') {
+                inMetadata = false;
+                templateContent = lines.slice(i + 1).join('\n');
+                break;
+            }
+            metadataLines.push(lines[i]);
+        }
+        
+        // 简单解析YAML格式
+        metadataLines.forEach(line => {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > -1) {
+                const key = line.substring(0, colonIndex).trim();
+                const value = line.substring(colonIndex + 1).trim().replace(/['"]/g, '');
+                metadata[key] = value;
+            }
+        });
+    } else {
+        templateContent = content;
+    }
+    
+    return {
+        name: metadata.name || filename.replace(/\.[^/.]+$/, ''),
+        type: metadata.type || 'question_parser',
+        category: metadata.category || 'imported',
+        content: templateContent.trim(),
+        description: metadata.description || `从文件 ${filename} 导入`,
+        example_input: metadata.example_input || '',
+        example_output: metadata.example_output || '',
+        is_public: metadata.is_public === 'true' || false
+    };
+}
+
+// 显示模板预览模态框
+function showTemplatePreviewModal(template) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">模板预览 - ${template.name}</h5>
+                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove(); document.getElementById('modalBackdrop')?.remove()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>类型:</strong> ${template.type}<br>
+                        <strong>分类:</strong> ${template.category || '默认'}<br>
+                        <strong>创建时间:</strong> ${new Date(template.created_at).toLocaleString()}<br>
+                        <strong>使用次数:</strong> ${template.usage_count}
+                        ${template.description ? '<br><strong>描述:</strong> ' + template.description : ''}
+                    </div>
+                    <div class="mb-3">
+                        <strong>模板内容:</strong>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-size: 14px;">${template.content}</pre>
+                    </div>
+                    ${template.example_input ? `
+                    <div class="mb-3">
+                        <strong>示例输入:</strong>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-size: 14px;">${template.example_input}</pre>
+                    </div>
+                    ` : ''}
+                    ${template.example_output ? `
+                    <div class="mb-3">
+                        <strong>示例输出:</strong>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-size: 14px;">${template.example_output}</pre>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove(); document.getElementById('modalBackdrop')?.remove()">关闭</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 添加背景遮罩
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.id = 'modalBackdrop';
+    document.body.appendChild(backdrop);
+}
+
+// 更新保存模板功能以支持编辑
+function saveTemplate() {
+    const templateId = document.getElementById('templateForm').getAttribute('data-template-id');
+    const isEditing = !!templateId;
+    
+    const data = {
+        name: document.getElementById('templateName').value,
+        type: document.getElementById('templateType').value,
+        category: document.getElementById('templateCategory').value || 'default',
+        content: document.getElementById('templateContent').value,
+        example_input: document.getElementById('exampleInput').value,
+        example_output: document.getElementById('exampleOutput').value,
+        is_public: document.getElementById('isPublic').checked
+    };
+    
+    const url = isEditing ? `/api/v1/llm/templates/${templateId}` : '/api/v1/llm/templates';
+    const method = isEditing ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(isEditing ? '模板已更新' : '模板已保存');
+        closeModal('templateModal');
+        // 清除编辑状态
+        document.getElementById('templateForm').removeAttribute('data-template-id');
+        location.reload();
+    })
+    .catch(error => {
+        alert((isEditing ? '更新' : '保存') + '失败: ' + error);
+    });
+}
+
+// 重写 showAddTemplateModal 函数以支持创建新模板
+function showAddTemplateModal() {
+    document.getElementById('templateForm').reset();
+    document.getElementById('templateForm').removeAttribute('data-template-id');
+    document.getElementById('templateModalLabel').textContent = '创建提示词模板';
+    
+    const modal = document.getElementById('templateModal');
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    
+    // 添加背景遮罩
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.id = 'modalBackdrop';
+    document.body.appendChild(backdrop);
+}
+</script>
+{% endblock %}

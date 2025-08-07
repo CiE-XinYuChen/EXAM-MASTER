@@ -1,0 +1,718 @@
+{% extends "admin/base.html" %}
+
+{% block title %}创建题目{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+<a href="/admin/questions">题目管理</a>
+<span>/</span>
+创建题目
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">创建新题目</h3>
+    </div>
+    <div class="card-body">
+        <form id="questionForm" method="POST" action="/admin/questions/create">
+            <!-- 基础信息 -->
+            <div class="form-section">
+                <h4 class="section-title">基础信息</h4>
+                
+                <div class="form-group">
+                    <label class="required">题库</label>
+                    <select name="bank_id" class="form-control" required>
+                        <option value="">请选择题库</option>
+                        {% for bank in banks %}
+                        <option value="{{ bank.id }}" {% if bank_id == bank.id %}selected{% endif %}>
+                            {{ bank.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label class="required">题目类型</label>
+                        <select name="type" id="questionType" class="form-control" required onchange="updateQuestionForm()">
+                            <option value="">请选择题型</option>
+                            <option value="single">单选题</option>
+                            <option value="multiple">多选题</option>
+                            <option value="judge">判断题</option>
+                            <option value="fill">填空题</option>
+                            <option value="essay">问答题</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group col-md-4">
+                        <label>难度</label>
+                        <select name="difficulty" class="form-control">
+                            <option value="medium">中等</option>
+                            <option value="easy">简单</option>
+                            <option value="hard">困难</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group col-md-4">
+                        <label>分类</label>
+                        <input type="text" name="category" class="form-control" placeholder="如：Python基础">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>标签</label>
+                    <input type="text" name="tags" class="form-control" placeholder="用逗号分隔，如：函数,变量,语法">
+                </div>
+            </div>
+
+            <!-- 题目内容 -->
+            <div class="form-section">
+                <h4 class="section-title">题目内容</h4>
+                
+                <div class="form-group">
+                    <label class="required">题干</label>
+                    <div class="editor-toolbar">
+                        <button type="button" class="btn btn-sm" onclick="insertMarkdown('**', '**')" title="粗体">
+                            <i class="fas fa-bold"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm" onclick="insertMarkdown('*', '*')" title="斜体">
+                            <i class="fas fa-italic"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm" onclick="insertMarkdown('`', '`')" title="代码">
+                            <i class="fas fa-code"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm" onclick="insertMarkdown('```\n', '\n```')" title="代码块">
+                            <i class="fas fa-file-code"></i>
+                        </button>
+                        <span class="text-muted ml-2">支持 Markdown 格式</span>
+                    </div>
+                    <textarea name="stem" id="stemInput" class="form-control" rows="5" required 
+                              placeholder="请输入题目内容..."></textarea>
+                </div>
+
+                <!-- 题型特定内容 -->
+                <!-- 选择题选项 -->
+                <div id="optionsSection" class="question-specific" style="display: none;">
+                    <label class="required">选项</label>
+                    <div id="optionsList">
+                        <!-- 动态添加选项 -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addOption()">
+                        <i class="fas fa-plus"></i> 添加选项
+                    </button>
+                </div>
+
+                <!-- 判断题答案 -->
+                <div id="judgeSection" class="question-specific" style="display: none;">
+                    <label class="required">正确答案</label>
+                    <div class="judge-options">
+                        <label class="judge-option">
+                            <input type="radio" name="judge_answer" value="true">
+                            <span class="judge-label true">
+                                <i class="fas fa-check"></i> 正确
+                            </span>
+                        </label>
+                        <label class="judge-option">
+                            <input type="radio" name="judge_answer" value="false">
+                            <span class="judge-label false">
+                                <i class="fas fa-times"></i> 错误
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 填空题答案 -->
+                <div id="fillSection" class="question-specific" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        在题干中使用连续的下划线 ____ 表示空位，系统会自动识别
+                    </div>
+                    <label>填空答案</label>
+                    <div id="blanksList">
+                        <!-- 动态显示空位答案输入 -->
+                    </div>
+                </div>
+
+                <!-- 问答题参考答案 -->
+                <div id="essaySection" class="question-specific" style="display: none;">
+                    <label>参考答案</label>
+                    <textarea name="reference_answer" class="form-control" rows="5" 
+                              placeholder="请输入参考答案..."></textarea>
+                    
+                    <label class="mt-3">关键词（可选）</label>
+                    <input type="text" name="keywords" class="form-control" 
+                           placeholder="用逗号分隔关键词，如：循环,条件,函数">
+                </div>
+
+                <!-- 题目解析 -->
+                <div class="form-group mt-3">
+                    <label>题目解析（可选）</label>
+                    <textarea name="explanation" class="form-control" rows="3" 
+                              placeholder="解题思路或答案解释..."></textarea>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存题目
+                </button>
+                <button type="button" class="btn btn-success" onclick="saveAndContinue()">
+                    <i class="fas fa-plus"></i> 保存并继续添加
+                </button>
+                <a href="/admin/questions" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.required::after {
+    content: ' *';
+    color: #dc3545;
+}
+
+.editor-toolbar {
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-bottom: none;
+    background: #f8f9fa;
+    border-radius: 4px 4px 0 0;
+}
+
+.editor-toolbar .btn {
+    padding: 4px 8px;
+    margin-right: 2px;
+    background: white;
+    border: 1px solid #ddd;
+}
+
+.editor-toolbar .btn:hover {
+    background: #e9ecef;
+}
+
+#stemInput {
+    border-radius: 0 0 4px 4px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 14px;
+}
+
+/* 选项样式 */
+.option-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    position: relative;
+}
+
+.option-label {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    background: #007bff;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.option-content {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.option-correct {
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+}
+
+.option-correct input[type="radio"],
+.option-correct input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+.option-remove {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.option-remove:hover {
+    background: #c82333;
+}
+
+/* 判断题样式 */
+.judge-options {
+    display: flex;
+    gap: 20px;
+}
+
+.judge-option {
+    cursor: pointer;
+}
+
+.judge-option input[type="radio"] {
+    display: none;
+}
+
+.judge-label {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.judge-label.true {
+    color: #28a745;
+    border-color: #28a745;
+}
+
+.judge-label.false {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+.judge-option input[type="radio"]:checked + .judge-label {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* 填空题样式 */
+.blank-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.blank-label {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.blank-answers {
+    display: flex;
+    gap: 10px;
+}
+
+.blank-answers input {
+    flex: 1;
+}
+
+/* 操作按钮 */
+.form-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    gap: 10px;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+</style>
+
+<script>
+let optionCount = 0;
+let currentQuestionType = '';
+
+function updateQuestionForm() {
+    const type = document.getElementById('questionType').value;
+    currentQuestionType = type;
+    
+    // 隐藏所有题型特定区域
+    document.querySelectorAll('.question-specific').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // 根据题型显示对应区域
+    switch(type) {
+        case 'single':
+        case 'multiple':
+            document.getElementById('optionsSection').style.display = 'block';
+            if (optionCount === 0) {
+                // 默认添加4个选项
+                for (let i = 0; i < 4; i++) {
+                    addOption();
+                }
+            }
+            break;
+        case 'judge':
+            document.getElementById('judgeSection').style.display = 'block';
+            break;
+        case 'fill':
+            document.getElementById('fillSection').style.display = 'block';
+            updateBlanks();
+            break;
+        case 'essay':
+            document.getElementById('essaySection').style.display = 'block';
+            break;
+    }
+}
+
+function addOption() {
+    const optionLabel = String.fromCharCode(65 + optionCount); // A, B, C, D...
+    const isMultiple = currentQuestionType === 'multiple';
+    
+    const optionHtml = `
+        <div class="option-item" id="option-${optionCount}">
+            <span class="option-label">${optionLabel}</span>
+            <div class="option-content">
+                <input type="text" name="option_content_${optionCount}" class="form-control" 
+                       placeholder="选项内容" required>
+            </div>
+            <div class="option-correct">
+                <label>
+                    <input type="${isMultiple ? 'checkbox' : 'radio'}" 
+                           name="${isMultiple ? 'correct_options' : 'correct_option'}" 
+                           value="${optionCount}">
+                    正确答案
+                </label>
+            </div>
+            <button type="button" class="option-remove" onclick="removeOption(${optionCount})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('optionsList').insertAdjacentHTML('beforeend', optionHtml);
+    optionCount++;
+}
+
+function removeOption(index) {
+    document.getElementById(`option-${index}`).remove();
+    // 重新编号
+    updateOptionLabels();
+}
+
+function updateOptionLabels() {
+    const options = document.querySelectorAll('.option-item');
+    options.forEach((option, index) => {
+        const label = option.querySelector('.option-label');
+        if (label) {
+            label.textContent = String.fromCharCode(65 + index);
+        }
+    });
+}
+
+// 监听题干变化，更新填空题空位
+document.getElementById('stemInput').addEventListener('input', function() {
+    if (currentQuestionType === 'fill') {
+        updateBlanks();
+    }
+});
+
+function updateBlanks() {
+    const stem = document.getElementById('stemInput').value;
+    const blanks = stem.match(/____+/g) || [];
+    const blanksList = document.getElementById('blanksList');
+    
+    if (blanks.length === 0) {
+        blanksList.innerHTML = '<p class="text-muted">请在题干中使用 ____ 标记空位</p>';
+        return;
+    }
+    
+    let html = '';
+    blanks.forEach((blank, index) => {
+        html += `
+            <div class="blank-item">
+                <span class="blank-label">第 ${index + 1} 空答案：</span>
+                <div class="blank-answers">
+                    <input type="text" name="blank_answer_${index}" class="form-control" 
+                           placeholder="正确答案" required>
+                    <input type="text" name="blank_alt_${index}" class="form-control" 
+                           placeholder="备选答案（可选）">
+                </div>
+            </div>
+        `;
+    });
+    
+    blanksList.innerHTML = html;
+}
+
+function insertMarkdown(prefix, suffix) {
+    const textarea = document.getElementById('stemInput');
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selected = text.substring(start, end);
+    
+    textarea.value = text.substring(0, start) + prefix + selected + suffix + text.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+}
+
+function validateForm() {
+    const questionType = document.getElementById('questionType').value;
+    
+    // Validate judge questions
+    if (questionType === 'judge') {
+        const judgeAnswers = document.querySelectorAll('input[name="judge_answer"]');
+        let hasAnswer = false;
+        for (let radio of judgeAnswers) {
+            if (radio.checked) {
+                hasAnswer = true;
+                break;
+            }
+        }
+        if (!hasAnswer) {
+            alert('请选择判断题的正确答案！');
+            return false;
+        }
+    }
+    
+    // Validate choice questions
+    if (questionType === 'single' || questionType === 'multiple') {
+        const options = document.querySelectorAll('.option-item');
+        if (options.length < 2) {
+            alert('选择题至少需要2个选项！');
+            return false;
+        }
+        
+        const correctOptions = document.querySelectorAll('.option-correct input:checked');
+        if (correctOptions.length === 0) {
+            alert('请至少选择一个正确答案！');
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+function saveAndContinue() {
+    const form = document.getElementById('questionForm');
+    const submitEvent = new Event('submit', { cancelable: true });
+    
+    // Add a flag to indicate continue mode
+    const continueInput = document.createElement('input');
+    continueInput.type = 'hidden';
+    continueInput.name = 'continue';
+    continueInput.value = 'true';
+    form.appendChild(continueInput);
+    
+    // Trigger the form submit
+    form.dispatchEvent(submitEvent);
+    
+    // Remove the flag after submission
+    setTimeout(() => {
+        continueInput.remove();
+    }, 100);
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} notification`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+        ${message}
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// 表单提交处理
+document.getElementById('questionForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const type = formData.get('type');
+    
+    // Validation for judge questions
+    if (type === 'judge') {
+        const judgeAnswer = formData.get('judge_answer');
+        if (!judgeAnswer) {
+            alert('请选择判断题的正确答案！');
+            return false;
+        }
+    }
+    
+    // 构建题目数据
+    const questionData = {
+        bank_id: formData.get('bank_id'),
+        type: type,
+        stem: formData.get('stem'),
+        difficulty: formData.get('difficulty'),
+        category: formData.get('category'),
+        tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()) : [],
+        explanation: formData.get('explanation'),
+        meta_data: {}
+    };
+    
+    // 处理不同题型的特定数据
+    switch(type) {
+        case 'single':
+            const correctOption = formData.get('correct_option');
+            questionData.meta_data.answer = String.fromCharCode(65 + parseInt(correctOption));
+            questionData.options = [];
+            for (let i = 0; i < optionCount; i++) {
+                const content = formData.get(`option_content_${i}`);
+                if (content) {
+                    questionData.options.push({
+                        label: String.fromCharCode(65 + i),
+                        content: content,
+                        is_correct: i == correctOption
+                    });
+                }
+            }
+            break;
+            
+        case 'multiple':
+            const correctOptions = formData.getAll('correct_options');
+            questionData.meta_data.answers = correctOptions.map(i => String.fromCharCode(65 + parseInt(i)));
+            questionData.options = [];
+            for (let i = 0; i < optionCount; i++) {
+                const content = formData.get(`option_content_${i}`);
+                if (content) {
+                    questionData.options.push({
+                        label: String.fromCharCode(65 + i),
+                        content: content,
+                        is_correct: correctOptions.includes(String(i))
+                    });
+                }
+            }
+            break;
+            
+        case 'judge':
+            questionData.meta_data.answer = formData.get('judge_answer') === 'true';
+            break;
+            
+        case 'fill':
+            const blanks = [];
+            const stem = formData.get('stem');
+            const blankMatches = stem.match(/____+/g) || [];
+            blankMatches.forEach((blank, index) => {
+                blanks.push({
+                    position: index,
+                    answer: formData.get(`blank_answer_${index}`),
+                    alternatives: formData.get(`blank_alt_${index}`) ? 
+                                  [formData.get(`blank_alt_${index}`)] : []
+                });
+            });
+            questionData.meta_data.blanks = blanks;
+            break;
+            
+        case 'essay':
+            questionData.meta_data.reference_answer = formData.get('reference_answer');
+            const keywords = formData.get('keywords');
+            if (keywords) {
+                questionData.meta_data.keywords = keywords.split(',').map(k => k.trim());
+            }
+            break;
+    }
+    
+    // 发送请求
+    fetch('/admin/questions/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(questionData)
+    }).then(response => {
+        if (response.ok || response.status === 303) {
+            if (formData.get('continue')) {
+                showNotification('题目已保存，请继续添加', 'success');
+                // 清空表单但保留题库
+                const bankId = formData.get('bank_id');
+                document.getElementById('questionForm').reset();
+                document.querySelector('[name="bank_id"]').value = bankId;
+                optionCount = 0;
+                document.getElementById('optionsList').innerHTML = '';
+                document.querySelectorAll('.question-specific').forEach(el => {
+                    el.style.display = 'none';
+                });
+                updateQuestionForm(); // Reset form display
+            } else {
+                window.location.href = '/admin/questions';
+            }
+        } else {
+            showNotification('保存失败，请检查输入', 'error');
+        }
+    });
+});
+</script>
+
+<style>
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+</style>
+{% endblock %}

@@ -83,6 +83,34 @@
                 </div>
             </div>
             
+            <!-- Resource Upload Section -->
+            <div class="card" style="margin: 20px 0;">
+                <div class="card-header">
+                    <h4 style="font-size: 16px; margin: 0;">
+                        <i class="fas fa-image"></i> 资源管理
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div id="resourceUploadSection">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="showResourceUpload()">
+                            <i class="fas fa-upload"></i> 上传图片/音频
+                        </button>
+                        <div id="uploadArea" style="display: none; margin-top: 15px;">
+                            <input type="file" id="resourceFile" accept="image/*,audio/*" multiple>
+                            <button type="button" class="btn btn-sm btn-success" onclick="uploadResources()">
+                                <i class="fas fa-cloud-upload-alt"></i> 上传
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="hideResourceUpload()">
+                                取消
+                            </button>
+                        </div>
+                        <div id="resourceList" style="margin-top: 15px;">
+                            <!-- Uploaded resources will be listed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Options section for choice questions -->
             <div id="optionsSection" style="display: none;">
                 <div class="card" style="margin: 20px 0;">
@@ -98,6 +126,72 @@
                 </div>
             </div>
             
+            <!-- Judge section for true/false questions -->
+            <div id="judgeSection" style="display: none;">
+                <div class="card" style="margin: 20px 0;">
+                    <div class="card-header">
+                        <h4 style="font-size: 16px; margin: 0;">正确答案</h4>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; gap: 20px;">
+                            <label class="judge-option-label" style="display: flex; align-items: center; cursor: pointer; padding: 10px 20px; border: 2px solid #28a745; border-radius: 5px; transition: all 0.3s;">
+                                <input type="radio" name="judge_answer" value="true"
+                                       {% if question.type == 'judge' and question.meta_data and question.meta_data.get('answer') == True %}checked{% endif %}
+                                       style="margin-right: 8px;">
+                                <span style="color: #28a745; font-weight: 600;">
+                                    <i class="fas fa-check"></i> 正确
+                                </span>
+                            </label>
+                            <label class="judge-option-label" style="display: flex; align-items: center; cursor: pointer; padding: 10px 20px; border: 2px solid #dc3545; border-radius: 5px; transition: all 0.3s;">
+                                <input type="radio" name="judge_answer" value="false"
+                                       {% if question.type == 'judge' and question.meta_data and question.meta_data.get('answer') == False %}checked{% endif %}
+                                       style="margin-right: 8px;">
+                                <span style="color: #dc3545; font-weight: 600;">
+                                    <i class="fas fa-times"></i> 错误
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Fill section for fill-in-the-blank questions -->
+            <div id="fillSection" style="display: none;">
+                <div class="card" style="margin: 20px 0;">
+                    <div class="card-header">
+                        <h4 style="font-size: 16px; margin: 0;">填空答案</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info" style="margin-bottom: 15px;">
+                            <i class="fas fa-info-circle"></i>
+                            在题干中使用连续的下划线 ____ 表示空位，系统会自动识别
+                        </div>
+                        <div id="blanksContainer">
+                            <!-- Blanks will be added here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Essay section for essay questions -->
+            <div id="essaySection" style="display: none;">
+                <div class="card" style="margin: 20px 0;">
+                    <div class="card-header">
+                        <h4 style="font-size: 16px; margin: 0;">参考答案</h4>
+                    </div>
+                    <div class="card-body">
+                        <textarea name="reference_answer" class="form-control" rows="5" 
+                                  placeholder="请输入参考答案...">{{ question.meta_data.reference_answer if question.meta_data and question.meta_data.reference_answer else '' }}</textarea>
+                        <div style="margin-top: 15px;">
+                            <label class="form-label">关键词（可选）</label>
+                            <input type="text" name="keywords" class="form-control" 
+                                   value="{{ ','.join(question.meta_data.keywords) if question.meta_data and question.meta_data.keywords else '' }}"
+                                   placeholder="用逗号分隔关键词，如：循环,条件,函数">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="form-group">
                 <label class="form-label" for="explanation">题目解析</label>
                 <textarea id="explanation" 
@@ -107,7 +201,7 @@
             </div>
             
             <div class="btn-group">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" onclick="return validateAndSubmit()">
                     <i class="fas fa-save"></i> 保存更改
                 </button>
                 <a href="/admin/questions?bank_id={{ question.bank_id }}" class="btn btn-default">
@@ -136,7 +230,16 @@ const existingOptions = [
 function handleTypeChange() {
     const type = document.getElementById('type').value;
     const optionsSection = document.getElementById('optionsSection');
+    const judgeSection = document.getElementById('judgeSection');
+    const fillSection = document.getElementById('fillSection');
+    const essaySection = document.getElementById('essaySection');
     const optionsContainer = document.getElementById('optionsContainer');
+    
+    // Hide all sections first
+    optionsSection.style.display = 'none';
+    judgeSection.style.display = 'none';
+    fillSection.style.display = 'none';
+    essaySection.style.display = 'none';
     
     if (type === 'single' || type === 'multiple') {
         optionsSection.style.display = 'block';
@@ -153,8 +256,16 @@ function handleTypeChange() {
                 }
             }
         }
-    } else {
-        optionsSection.style.display = 'none';
+    } else if (type === 'judge') {
+        judgeSection.style.display = 'block';
+    } else if (type === 'fill') {
+        fillSection.style.display = 'block';
+        // Add a small delay to ensure the section is visible
+        setTimeout(function() {
+            updateBlanks();
+        }, 10);
+    } else if (type === 'essay') {
+        essaySection.style.display = 'block';
     }
 }
 
@@ -204,13 +315,252 @@ function removeOption(button) {
     optionDiv.remove();
 }
 
+// Function to update blanks for fill-in-the-blank questions
+function updateBlanks() {
+    const stem = document.getElementById('stem').value;
+    const blanks = stem.match(/____+/g) || [];
+    const blanksContainer = document.getElementById('blanksContainer');
+    
+    if (blanks.length === 0) {
+        blanksContainer.innerHTML = '<p class="text-muted">请在题干中使用 ____ 标记空位</p>';
+        return;
+    }
+    
+    let html = '';
+    blanks.forEach((blank, index) => {
+        // Try to get existing values
+        const existingAnswer = document.querySelector(`input[name="blank_answer_${index}"]`)?.value || '';
+        const existingAlt = document.querySelector(`input[name="blank_alt_${index}"]`)?.value || '';
+        
+        html += `
+            <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                <label style="font-weight: 600; color: #495057; margin-bottom: 5px; display: block;">
+                    第 ${index + 1} 空答案：
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" name="blank_answer_${index}" class="form-control" 
+                           value="${existingAnswer}" placeholder="正确答案" required style="flex: 1;">
+                    <input type="text" name="blank_alt_${index}" class="form-control" 
+                           value="${existingAlt}" placeholder="备选答案（可选）" style="flex: 1;">
+                </div>
+            </div>
+        `;
+    });
+    
+    blanksContainer.innerHTML = html;
+}
+
+// Listen for stem changes for fill-in-the-blank questions
+document.getElementById('stem').addEventListener('input', function() {
+    const type = document.getElementById('type').value;
+    if (type === 'fill') {
+        updateBlanks();
+    }
+});
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     const type = document.getElementById('type').value;
     if (type) {
         handleTypeChange();
+        
+        // For fill questions, update blanks after type change
+        if (type === 'fill') {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(updateBlanks, 100);
+        }
     }
+    
+    // Load existing blank data for fill questions
+    {% if question.type == 'fill' and question.meta_data and question.meta_data.blanks %}
+    // Wait a bit to ensure the fillSection is visible
+    setTimeout(function() {
+        const blanksContainer = document.getElementById('blanksContainer');
+        if (blanksContainer) {
+            let blanksHtml = '';
+            {% for blank in question.meta_data.blanks %}
+            blanksHtml += `
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 5px; display: block;">
+                        第 {{ blank.position + 1 }} 空答案：
+                    </label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" name="blank_answer_{{ blank.position }}" class="form-control" 
+                               value="{{ blank.answer }}" placeholder="正确答案" required style="flex: 1;">
+                        <input type="text" name="blank_alt_{{ blank.position }}" class="form-control" 
+                               value="{{ blank.alternatives[0] if blank.alternatives else '' }}" placeholder="备选答案（可选）" style="flex: 1;">
+                    </div>
+                </div>
+            `;
+            {% endfor %}
+            blanksContainer.innerHTML = blanksHtml;
+        }
+    }, 200);
+    {% endif %}
 });
+
+// Form validation and submission
+function validateAndSubmit() {
+    const form = document.getElementById('questionForm');
+    const type = document.getElementById('type').value;
+    
+    // Validate required fields
+    if (!form.bank_id.value) {
+        alert('请选择题库！');
+        return false;
+    }
+    
+    if (!form.stem.value.trim()) {
+        alert('请输入题干！');
+        return false;
+    }
+    
+    // Validate based on question type
+    if (type === 'single' || type === 'multiple') {
+        const options = document.querySelectorAll('[name^="option_content_"]');
+        if (options.length < 2) {
+            alert('选择题至少需要2个选项！');
+            return false;
+        }
+        
+        // Check for correct answers
+        if (type === 'single') {
+            const hasCorrect = document.querySelector('input[name="option_correct_"]:checked');
+            if (!hasCorrect) {
+                alert('请选择一个正确答案！');
+                return false;
+            }
+        } else if (type === 'multiple') {
+            const hasCorrect = document.querySelectorAll('input[type="checkbox"][name^="option_correct_"]:checked').length > 0;
+            if (!hasCorrect) {
+                alert('请选择至少一个正确答案！');
+                return false;
+            }
+        }
+    }
+    
+    if (type === 'judge') {
+        const hasAnswer = document.querySelector('input[name="judge_answer"]:checked');
+        if (!hasAnswer) {
+            alert('请选择判断题的答案！');
+            return false;
+        }
+    }
+    
+    if (type === 'fill') {
+        const blanks = document.querySelectorAll('[name^="blank_answer_"]');
+        if (blanks.length === 0) {
+            alert('填空题请在题干中使用 ____ 标记空位！');
+            return false;
+        }
+    }
+    
+    // All validation passed
+    return true;
+}
+
+// Resource upload functions
+function showResourceUpload() {
+    document.getElementById('uploadArea').style.display = 'block';
+}
+
+function hideResourceUpload() {
+    document.getElementById('uploadArea').style.display = 'none';
+    document.getElementById('resourceFile').value = '';
+}
+
+async function uploadResources() {
+    const fileInput = document.getElementById('resourceFile');
+    const files = fileInput.files;
+    
+    if (files.length === 0) {
+        alert('请选择要上传的文件');
+        return;
+    }
+    
+    const bankId = document.getElementById('bank_id').value;
+    const questionId = '{{ question.id if question else "" }}';
+    
+    for (let file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch(`/api/v2/qbank/banks/${bankId}/resources/upload?question_id=${questionId}`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                displayResource(result);
+            } else {
+                alert(`上传失败: ${file.name}`);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(`上传出错: ${file.name}`);
+        }
+    }
+    
+    hideResourceUpload();
+}
+
+function displayResource(resource) {
+    const resourceList = document.getElementById('resourceList');
+    const resourceItem = document.createElement('div');
+    resourceItem.className = 'resource-item';
+    resourceItem.style.cssText = 'padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px;';
+    
+    if (resource.type === 'image') {
+        resourceItem.innerHTML = `
+            <img src="${resource.url}" style="max-width: 100px; max-height: 100px; margin-right: 10px;">
+            <span>${resource.filename}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteResource('${resource.id}', this)">
+                <i class="fas fa-trash"></i>
+            </button>
+            <button class="btn btn-sm btn-info" onclick="insertResourceToStem('${resource.url}')">
+                插入题干
+            </button>
+        `;
+    } else {
+        resourceItem.innerHTML = `
+            <i class="fas fa-file-audio"></i>
+            <span>${resource.filename}</span>
+            <button class="btn btn-sm btn-danger" onclick="deleteResource('${resource.id}', this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+    }
+    
+    resourceList.appendChild(resourceItem);
+}
+
+function insertResourceToStem(url) {
+    const stemField = document.getElementById('stem');
+    stemField.value += `\n![图片](${url})`;
+}
+
+async function deleteResource(resourceId, button) {
+    if (!confirm('确定要删除这个资源吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/v2/qbank/resources/${resourceId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            button.parentElement.remove();
+        } else {
+            alert('删除失败');
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('删除出错');
+    }
+}
 </script>
 
 <style>
@@ -222,6 +572,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .option-item:hover {
     background-color: #f8f9fa;
+}
+
+.judge-option-label:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.judge-option-label:has(input:checked) {
+    background-color: #f0f8ff;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 </style>
 {% endblock %}
