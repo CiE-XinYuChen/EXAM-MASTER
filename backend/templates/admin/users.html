@@ -12,6 +12,9 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">用户列表</h3>
+        <a href="/admin/users/create" class="btn btn-primary btn-sm">
+            <i class="fas fa-user-plus"></i> 创建用户
+        </a>
     </div>
     <div class="card-body">
         <!-- Filter Bar -->
@@ -38,6 +41,7 @@
                         <th>角色</th>
                         <th>状态</th>
                         <th>创建时间</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,10 +67,27 @@
                             {% endif %}
                         </td>
                         <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="/admin/users/{{ user.id }}/edit" class="btn btn-default btn-sm" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="/admin/users/{{ user.id }}/password" class="btn btn-warning btn-sm" title="修改密码">
+                                    <i class="fas fa-key"></i>
+                                </a>
+                                {% if user.id != current_user.id %}
+                                <form method="POST" action="/admin/users/{{ user.id }}/delete" style="display: inline;" onsubmit="return confirm('确定要删除用户 {{ user.username }} 吗？');">
+                                    <button type="submit" class="btn btn-danger btn-sm" title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #999;">暂无用户数据</td>
+                        <td colspan="7" style="text-align: center; color: #999;">暂无用户数据</td>
                     </tr>
                     {% endfor %}
                 </tbody>

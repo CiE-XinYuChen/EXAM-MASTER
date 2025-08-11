@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import init_databases, get_main_db, get_qbank_db
 from app.core.security import verify_password, get_password_hash, create_access_token, get_current_user
 from app.models.user_models import User, UserBankPermission, UserRole
+from datetime import datetime as datetime
 from app.models.question_models_v2 import QuestionBankV2, QuestionV2, QuestionOptionV2
 from app.models.llm_models import LLMInterface, PromptTemplate, LLMParseLog
 from app.services.question_bank_service import QuestionBankService
@@ -193,6 +194,240 @@ async def admin_users(
         "page": page,
         "role_filter": role
     })
+
+
+@app.get("/admin/users/create", response_class=HTMLResponse)
+async def admin_users_create_form(
+    request: Request,
+    current_admin = Depends(admin_required)
+):
+    """Show create user form"""
+    return templates.TemplateResponse("admin/user_form.html", {
+        "request": request,
+        "current_user": current_admin,
+        "user": None,
+        "action": "create"
+    })
+
+
+@app.post("/admin/users/create")
+async def admin_users_create(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    role: str = Form(...),
+    is_active: bool = Form(False),
+    current_admin = Depends(admin_required),
+    db: Session = Depends(get_main_db)
+):
+    """Create new user"""
+    # Validate passwords match
+    if password != confirm_password:
+        return templates.TemplateResponse("admin/user_form.html", {
+            "request": request,
+            "current_user": current_admin,
+            "user": None,
+            "action": "create",
+            "error": "密码不匹配"
+        })
+    
+    # Check if username exists
+    if db.query(User).filter(User.username == username).first():
+        return templates.TemplateResponse("admin/user_form.html", {
+            "request": request,
+            "current_user": current_admin,
+            "user": None,
+            "action": "create",
+            "error": "用户名已存在"
+        })
+    
+    # Check if email exists
+    if db.query(User).filter(User.email == email).first():
+        return templates.TemplateResponse("admin/user_form.html", {
+            "request": request,
+            "current_user": current_admin,
+            "user": None,
+            "action": "create",
+            "error": "邮箱已被注册"
+        })
+    
+    # Create new user
+    user = User(
+        username=username,
+        email=email,
+        password_hash=get_password_hash(password),
+        role=role,
+        is_active=is_active
+    )
+    
+    db.add(user)
+    db.commit()
+    
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+
+@app.get("/admin/users/{user_id}/edit", response_class=HTMLResponse)
+async def admin_users_edit_form(
+    request: Request,
+    user_id: int,
+    current_admin = Depends(admin_required),
+    db: Session = Depends(get_main_db)
+):
+    """Show edit user form"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    return templates.TemplateResponse("admin/user_form.html", {
+        "request": request,
+        "current_user": current_admin,
+        "user": user,
+        "action": "edit"
+    })
+
+
+@app.post("/admin/users/{user_id}/edit")
+async def admin_users_edit(
+    request: Request,
+    user_id: int,
+    email: str = Form(...),
+    role: str = Form(...),
+    is_active: bool = Form(False),
+    current_admin = Depends(admin_required),
+    db: Session = Depends(get_main_db)
+):
+    """Update user information"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # Check if email is taken by another user
+    existing_user = db.query(User).filter(
+        User.email == email,
+        User.id != user_id
+    ).first()
+    
+    if existing_user:
+        return templates.TemplateResponse("admin/user_form.html", {
+            "request": request,
+            "current_user": current_admin,
+            "user": user,
+            "action": "edit",
+            "error": "邮箱已被其他用户使用"
+        })
+    
+    # Prevent removing the last admin
+    if user.role == UserRole.admin and role != "admin":
+        admin_count = db.query(User).filter(User.role == UserRole.admin).count()
+        if admin_count == 1:
+            return templates.TemplateResponse("admin/user_form.html", {
+                "request": request,
+                "current_user": current_admin,
+                "user": user,
+                "action": "edit",
+                "error": "不能移除最后一个管理员"
+            })
+    
+    # Update user
+    user.email = email
+    user.role = role
+    user.is_active = is_active
+    user.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+
+@app.get("/admin/users/{user_id}/password", response_class=HTMLResponse)
+async def admin_users_password_form(
+    request: Request,
+    user_id: int,
+    current_admin = Depends(admin_required),
+    db: Session = Depends(get_main_db)
+):
+    """Show change password form"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    return templates.TemplateResponse("admin/user_password.html", {
+        "request": request,
+        "current_user": current_admin,
+        "user": user
+    })
+
+
+@app.post("/admin/users/{user_id}/password")
+async def admin_users_change_password(
+    request: Request,
+    user_id: int,
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    current_admin = Depends(admin_required),
+    db: Session = Depends(get_main_db)
+):
+    """Change user password"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # Validate passwords match
+    if new_password != confirm_password:
+        return templates.TemplateResponse("admin/user_password.html", {
+            "request": request,
+            "current_user": current_admin,
+            "user": user,
+            "error": "两次输入的密码不一致"
+        })
+    
+    # Update password
+    user.password_hash = get_password_hash(new_password)
+    user.updated_at = datetime.utcnow()
+    
+    db.commit()
+    
+    return templates.TemplateResponse("admin/user_password.html", {
+        "request": request,
+        "current_user": current_admin,
+        "user": user,
+        "success": "密码修改成功"
+    })
+
+
+@app.post("/admin/users/{user_id}/delete")
+async def admin_users_delete(
+    user_id: int,
+    current_admin = Depends(admin_required),
+    db: Session = Depends(get_main_db)
+):
+    """Delete user"""
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # Prevent deleting yourself
+    if user.id == current_admin["id"]:
+        raise HTTPException(status_code=400, detail="不能删除自己的账户")
+    
+    # Prevent deleting the last admin
+    if user.role == UserRole.admin:
+        admin_count = db.query(User).filter(User.role == UserRole.admin).count()
+        if admin_count == 1:
+            raise HTTPException(status_code=400, detail="不能删除最后一个管理员账户")
+    
+    # Delete user (cascades to related records)
+    db.delete(user)
+    db.commit()
+    
+    return RedirectResponse(url="/admin/users", status_code=303)
 
 
 @app.get("/admin/qbanks", response_class=HTMLResponse)

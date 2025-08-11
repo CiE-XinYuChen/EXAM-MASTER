@@ -1,0 +1,175 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if action == 'create' %}创建用户{% else %}编辑用户{% endif %}{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+<a href="/admin/users">用户管理</a>
+<span>/</span>
+{% if action == 'create' %}创建用户{% else %}编辑用户{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            {% if action == 'create' %}创建新用户{% else %}编辑用户{% endif %}
+        </h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{% if action == 'create' %}/admin/users/create{% else %}/admin/users/{{ user.id }}/edit{% endif %}">
+            <div class="form-group">
+                <label class="form-label" for="username">用户名 *</label>
+                <input type="text" 
+                       id="username" 
+                       name="username" 
+                       class="form-control" 
+                       value="{{ user.username if user else '' }}"
+                       {% if action == 'edit' %}readonly{% endif %}
+                       required>
+                {% if action == 'edit' %}
+                <small style="display: block; margin-top: 5px; color: #666;">
+                    用户名创建后不可修改
+                </small>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="email">邮箱 *</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       class="form-control" 
+                       value="{{ user.email if user else '' }}"
+                       required>
+            </div>
+            
+            {% if action == 'create' %}
+            <div class="form-group">
+                <label class="form-label" for="password">初始密码 *</label>
+                <input type="password" 
+                       id="password" 
+                       name="password" 
+                       class="form-control"
+                       minlength="6"
+                       required>
+                <small style="display: block; margin-top: 5px; color: #666;">
+                    密码至少6个字符
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">确认密码 *</label>
+                <input type="password" 
+                       id="confirm_password" 
+                       name="confirm_password" 
+                       class="form-control"
+                       minlength="6"
+                       required>
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label class="form-label" for="role">角色 *</label>
+                <select id="role" name="role" class="form-control" required>
+                    <option value="student" {% if user and user.role.value == 'student' %}selected{% endif %}>学生</option>
+                    <option value="teacher" {% if user and user.role.value == 'teacher' %}selected{% endif %}>教师</option>
+                    <option value="admin" {% if user and user.role.value == 'admin' %}selected{% endif %}>管理员</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" 
+                           name="is_active" 
+                           {% if not user or user.is_active %}checked{% endif %}>
+                    激活账户
+                </label>
+                <small style="display: block; margin-top: 5px; color: #666;">
+                    未激活的账户将无法登录系统
+                </small>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+                <a href="/admin/users" class="btn btn-default">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if action == 'edit' and user %}
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h3 class="card-title">用户信息</h3>
+    </div>
+    <div class="card-body">
+        <table>
+            <tbody>
+                <tr>
+                    <td><strong>用户ID：</strong></td>
+                    <td>{{ user.id }}</td>
+                </tr>
+                <tr>
+                    <td><strong>当前角色：</strong></td>
+                    <td>
+                        {% if user.role.value == 'admin' %}
+                            <span class="tag tag-red">管理员</span>
+                        {% elif user.role.value == 'teacher' %}
+                            <span class="tag tag-blue">教师</span>
+                        {% else %}
+                            <span class="tag tag-green">学生</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>账户状态：</strong></td>
+                    <td>
+                        {% if user.is_active %}
+                            <span class="tag tag-green">激活</span>
+                        {% else %}
+                            <span class="tag tag-orange">禁用</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>创建时间：</strong></td>
+                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>更新时间：</strong></td>
+                    <td>{{ user.updated_at.strftime('%Y-%m-%d %H:%M') if user.updated_at else '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px;">
+            <a href="/admin/users/{{ user.id }}/password" class="btn btn-warning">
+                <i class="fas fa-key"></i> 修改密码
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+{% if action == 'create' %}
+// 密码确认验证
+document.querySelector('form').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('两次输入的密码不一致！');
+        return false;
+    }
+});
+{% endif %}
+</script>
+{% endblock %}
