@@ -1,5 +1,5 @@
 # EXAM-MASTER
-# 近期项目将完全重构，请开发者不要在当前分支进行开发。
+# 近期项目将完全重构，针对AI与MCP服务在dev_2.0分支进行开发，main分支不再维护。欢迎体验与提供建议！
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)
 ![Python](https://img.shields.io/badge/Python-3.6+-blue.svg)
@@ -167,4 +167,5 @@
 ---
 
 欢迎提交Issue或Pull Request，共同完善本系统！
+
 
