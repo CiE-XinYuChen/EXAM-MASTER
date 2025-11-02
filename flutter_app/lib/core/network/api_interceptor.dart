@@ -9,13 +9,16 @@ import '../constants/storage_keys.dart';
 class ApiInterceptor extends Interceptor {
   final Logger _logger;
 
+  ApiInterceptor(this._logger);
+
   @override
   void onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
     // 自动注入Token
-    final token = await _localStorage.getString(StorageKeys.accessToken);
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(StorageKeys.accessToken);
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -109,8 +112,10 @@ class ApiInterceptor extends Interceptor {
 
       case 401:
         // Token过期或无效，清除本地Token
-        _localStorage.remove(StorageKeys.accessToken);
-        _localStorage.remove(StorageKeys.refreshToken);
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.remove(StorageKeys.accessToken);
+          prefs.remove(StorageKeys.refreshToken);
+        });
         return AuthenticationException(
           message: message,
           statusCode: statusCode,

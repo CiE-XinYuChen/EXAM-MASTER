@@ -65,6 +65,7 @@ dependencies:
   equatable: ^2.0.5
   logger: ^2.0.2+1
   connectivity_plus: ^5.0.2
+  dartz: ^0.10.1
 
   # Local Database
   sqflite: ^2.3.0

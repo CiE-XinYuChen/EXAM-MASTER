@@ -1,12 +1,15 @@
 /// API Constants
 /// 定义所有API端点和配置
 class ApiConstants {
-  // Base URL - 根据环境切换
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  // Environment configuration
+  static const bool useProduction = true; // 切换为 false 使用本地开发环境
 
-  // 生产环境使用局域网IP或域名
-  // static const String baseUrl = 'http://192.168.1.100:8000';
-  // static const String baseUrl = 'https://api.exam-master.com';
+  // Base URLs
+  static const String productionUrl = 'https://exam.shaynechen.tech';
+  static const String developmentUrl = 'http://127.0.0.1:8000';
+
+  // Base URL - 根据环境切换
+  static String get baseUrl => useProduction ? productionUrl : developmentUrl;
 
   // API版本
   static const String apiVersion = '/api/v1';

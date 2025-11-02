@@ -4,6 +4,8 @@ Security utilities for authentication and authorization
 
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import hashlib
+import base64
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Request
@@ -13,21 +15,35 @@ from app.core.config import settings
 from app.core.database import get_main_db
 
 
-# Password hashing
+# Password hashing - use SHA256 pre-hash to handle bcrypt's 72-byte limit
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v2/auth/login")
 
 
+def _prehash_password(password: str) -> str:
+    """
+    Pre-hash password with SHA256 to handle bcrypt's 72-byte limit.
+    This allows passwords of any length while maintaining security.
+    """
+    # Hash with SHA256 and encode to base64 for a consistent length
+    hash_digest = hashlib.sha256(password.encode('utf-8')).digest()
+    return base64.b64encode(hash_digest).decode('ascii')
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hashed password"""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Pre-hash to handle passwords longer than 72 bytes
+    prehashed = _prehash_password(plain_password)
+    return pwd_context.verify(prehashed, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password"""
-    return pwd_context.hash(password)
+    # Pre-hash to handle passwords longer than 72 bytes
+    prehashed = _prehash_password(password)
+    return pwd_context.hash(prehashed)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
