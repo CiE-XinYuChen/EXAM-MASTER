@@ -1,5 +1,6 @@
 LICENSE
-database.db
+# Ignore database files to prevent accidental commits
+*.db
 
 # Android build artifacts
 ExamMasterAndroid/app/build/
