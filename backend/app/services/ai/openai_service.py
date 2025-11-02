@@ -162,7 +162,22 @@ class OpenAIService(BaseAIService):
 
             # 添加工具调用（如果有）
             if msg.tool_calls:
-                message_dict["tool_calls"] = msg.tool_calls
+                # 确保arguments是字符串格式
+                formatted_tool_calls = []
+                for call in msg.tool_calls:
+                    formatted_call = {
+                        "id": call["id"],
+                        "type": call["type"],
+                        "function": {
+                            "name": call["function"]["name"],
+                            # 如果arguments是对象，转换为JSON字符串
+                            "arguments": json.dumps(call["function"]["arguments"])
+                                if isinstance(call["function"]["arguments"], dict)
+                                else call["function"]["arguments"]
+                        }
+                    }
+                    formatted_tool_calls.append(formatted_call)
+                message_dict["tool_calls"] = formatted_tool_calls
 
             # 添加工具调用ID（如果有）
             if msg.tool_call_id:

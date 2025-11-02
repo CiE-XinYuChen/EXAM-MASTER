@@ -160,6 +160,50 @@ class QuestionV2(BaseQBank):
     options = relationship("QuestionOptionV2", back_populates="question", cascade="all, delete-orphan")
     resources = relationship("QuestionResourceV2", back_populates="question", cascade="all, delete-orphan")
 
+    @property
+    def correct_answer(self):
+        """
+        获取正确答案
+        根据题型返回不同格式的答案
+        """
+        if self.type == QuestionType.single:
+            # 单选题：返回正确选项的label
+            for opt in self.options:
+                if opt.is_correct:
+                    return {"answer": opt.option_label}
+            return {"answer": None}
+
+        elif self.type == QuestionType.multiple:
+            # 多选题：返回所有正确选项的label列表
+            correct_labels = [opt.option_label for opt in self.options if opt.is_correct]
+            return {"answers": correct_labels}
+
+        elif self.type == QuestionType.judge:
+            # 判断题：从meta_data获取答案
+            if self.meta_data and "answer" in self.meta_data:
+                answer_value = self.meta_data["answer"]
+                # 转换为字符串表示（"true"或"false"）
+                return {"answer": str(answer_value).lower()}
+            return {"answer": None}
+
+        elif self.type == QuestionType.fill:
+            # 填空题：从meta_data获取答案
+            if self.meta_data and "blanks" in self.meta_data:
+                answers = [blank.get("answer", "") for blank in self.meta_data["blanks"]]
+                return {"fill_answers": answers}
+            return {"fill_answers": []}
+
+        elif self.type == QuestionType.essay:
+            # 问答题：从meta_data获取参考答案
+            if self.meta_data and "reference_answer" in self.meta_data:
+                return {
+                    "essay_answer": self.meta_data["reference_answer"],
+                    "keywords": self.meta_data.get("keywords", [])
+                }
+            return {"essay_answer": ""}
+
+        return {}
+
 
 class QuestionOptionV2(BaseQBank):
     """选项表 - 增强版"""

@@ -63,12 +63,19 @@ def format_question_for_practice(question: QuestionV2, include_answer: bool = Fa
         "bank_id": question.bank_id,
         "type": question.type.value,
         "stem": question.stem,
-        "options": question.options,
+        "options": [
+            {
+                "label": opt.option_label,
+                "content": opt.option_content,
+                "is_correct": opt.is_correct if include_answer else None
+            }
+            for opt in sorted(question.options, key=lambda x: x.sort_order)
+        ] if question.type in [QuestionType.single, QuestionType.multiple] else [],
         "difficulty": question.difficulty.value if question.difficulty else None,
-        "tags": question.tags,
-        "has_image": question.has_image,
-        "has_video": question.has_video,
-        "has_audio": question.has_audio
+        "tags": question.tags or [],
+        "has_image": question.has_images if hasattr(question, 'has_images') else False,
+        "has_video": question.has_video if hasattr(question, 'has_video') else False,
+        "has_audio": question.has_audio if hasattr(question, 'has_audio') else False
     }
 
     if include_answer:
@@ -355,7 +362,14 @@ async def handle_submit_answer(params: Dict[str, Any], qbank_db: Session) -> Dic
         question_snapshot={
             "type": question.type.value,
             "stem": question.stem,
-            "options": question.options
+            "options": [
+                {
+                    "label": opt.option_label,
+                    "content": opt.option_content,
+                    "is_correct": opt.is_correct
+                }
+                for opt in sorted(question.options, key=lambda x: x.sort_order)
+            ] if question.type in [QuestionType.single, QuestionType.multiple] else []
         },
         correct_answer=correct_answer,
         created_at=datetime.utcnow()

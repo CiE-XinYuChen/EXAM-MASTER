@@ -2507,7 +2507,7 @@ async def admin_agent_test(
     
     return templates.TemplateResponse("admin/agent_test.html", {
         "request": request,
-        "current_admin": current_admin,
+        "current_user": current_admin,
         "configs": configs
     })
 
