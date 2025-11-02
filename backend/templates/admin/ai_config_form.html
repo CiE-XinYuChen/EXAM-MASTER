@@ -1,0 +1,552 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ '编辑AI配置' if config else '新建AI配置' }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a> / <a href="/admin/ai-configs">AI配置管理</a> / {{ '编辑' if config else '新建' }}
+{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 24px;">{{ '编辑AI配置' if config else '新建AI配置' }}</h1>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ '/admin/ai-configs/' + config.id + '/edit' if config else '/admin/ai-configs/create' }}">
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h3>基本信息</h3>
+
+                <div class="form-group">
+                    <label for="name">配置名称 *</label>
+                    <input type="text" id="name" name="name" class="form-control"
+                           value="{{ config.name if config else '' }}" required maxlength="100"
+                           placeholder="例如：我的OpenAI配置">
+                    <small class="form-text">为这个AI配置起一个容易识别的名字</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">描述</label>
+                    <textarea id="description" name="description" class="form-control" rows="3"
+                              maxlength="500" placeholder="可选：描述这个配置的用途">{{ config.description if config else '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Provider Selection -->
+            <div class="form-section">
+                <h3>AI提供商</h3>
+
+                <div class="form-group">
+                    <label for="provider">选择提供商 *</label>
+                    <select id="provider" name="provider" class="form-control" required onchange="updateModelOptions()">
+                        <option value="">-- 请选择 --</option>
+                        <option value="openai" {% if config and config.provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                        <option value="claude" {% if config and config.provider == 'claude' %}selected{% endif %}>Anthropic Claude</option>
+                        <option value="zhipu" {% if config and config.provider == 'zhipu' %}selected{% endif %}>智谱AI (GLM)</option>
+                        <option value="custom" {% if config and config.provider == 'custom' %}selected{% endif %}>自定义</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="model_name">模型名称 *</label>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <input type="radio" name="model_input_type" value="select" id="model_type_select" checked onchange="toggleModelInput()">
+                        <label for="model_type_select" style="margin: 0; font-weight: normal; cursor: pointer;">从列表选择</label>
+                        <input type="radio" name="model_input_type" value="custom" id="model_type_custom" onchange="toggleModelInput()">
+                        <label for="model_type_custom" style="margin: 0; font-weight: normal; cursor: pointer;">自定义输入</label>
+                    </div>
+                    <select id="model_name_select" name="model_name" class="form-control" required>
+                        <option value="">-- 请先选择提供商 --</option>
+                    </select>
+                    <input type="text" id="model_name_custom" name="model_name_custom" class="form-control"
+                           style="display: none;" placeholder="例如: gpt-4, claude-3-opus-20240229, glm-4">
+                    <small class="form-text">不同模型有不同的能力和价格。可以从列表选择常用模型，或自定义输入任意模型名称。</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="api_key">API密钥 *</label>
+                    <input type="text" id="api_key" name="api_key" class="form-control"
+                           value="{{ config.api_key if config else '' }}" required
+                           placeholder="sk-...">
+                    <small class="form-text">{% if config %}留空保持不变{% else %}从AI提供商处获取API密钥{% endif %}</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="base_url">API地址 (可选)</label>
+                    <input type="url" id="base_url" name="base_url" class="form-control"
+                           value="{{ config.base_url if config else '' }}"
+                           placeholder="https://api.openai.com/v1">
+                    <small class="form-text">使用自定义API地址或代理，留空使用默认</small>
+                </div>
+            </div>
+
+            <!-- Model Parameters -->
+            <div class="form-section">
+                <h3>模型参数</h3>
+
+                <div class="form-group">
+                    <label for="temperature">Temperature (0.0 - 2.0)</label>
+                    <input type="number" id="temperature" name="temperature" class="form-control"
+                           value="{{ config.temperature if config else 0.7 }}"
+                           min="0" max="2" step="0.1">
+                    <small class="form-text">控制输出的随机性，越高越随机，越低越确定</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="max_tokens">最大Tokens</label>
+                    <input type="number" id="max_tokens" name="max_tokens" class="form-control"
+                           value="{{ config.max_tokens if config else 2000 }}"
+                           min="1" max="200000" step="100">
+                    <small class="form-text" id="max_tokens_hint">
+                        单次回复的最大长度。不同模型支持不同的上下文长度：
+                        GPT-4: 8K-128K, Claude: 100K-200K, GLM-4: 128K
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="top_p">Top P (0.0 - 1.0)</label>
+                    <input type="number" id="top_p" name="top_p" class="form-control"
+                           value="{{ config.top_p if config else 1.0 }}"
+                           min="0" max="1" step="0.1">
+                    <small class="form-text">控制输出多样性的另一种方式</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="is_default" value="true"
+                               {% if config and config.is_default %}checked{% endif %}>
+                        设为默认配置
+                    </label>
+                    <small class="form-text">每个用户只能有一个默认配置</small>
+                </div>
+            </div>
+
+            <!-- Test Section -->
+            <div class="form-section">
+                <h3>测试配置</h3>
+                <p style="color: #666; margin-bottom: 16px;">
+                    在保存前，建议先测试API配置是否正确
+                </p>
+
+                <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                    <button type="button" class="btn btn-default" onclick="testAPIConnection()">
+                        <i class="fas fa-plug"></i> 测试API连接
+                    </button>
+                    <button type="button" class="btn btn-default" onclick="openChatTest()">
+                        <i class="fas fa-comments"></i> 对话测试
+                    </button>
+                </div>
+
+                <!-- API测试结果 -->
+                <div id="api-test-result" style="display: none; padding: 12px; border-radius: 4px; margin-top: 12px;">
+                    <div id="api-test-content"></div>
+                </div>
+
+                <!-- 对话测试区域 -->
+                <div id="chat-test-area" style="display: none; margin-top: 16px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="margin: 0;">对话测试</h4>
+                        <button type="button" class="btn btn-sm btn-default" onclick="closeChatTest()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div id="chat-messages" style="max-height: 300px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 4px; padding: 12px; margin-bottom: 12px; background: #f9f9f9;">
+                        <div style="text-align: center; color: #999; padding: 20px;">
+                            输入消息开始测试对话...
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="test-message" class="form-control" placeholder="输入测试消息..." onkeypress="if(event.key==='Enter') sendTestMessage()">
+                        <button type="button" class="btn btn-primary" onclick="sendTestMessage()">
+                            <i class="fas fa-paper-plane"></i> 发送
+                        </button>
+                        <button type="button" class="btn btn-default" onclick="clearChatTest()">
+                            <i class="fas fa-trash"></i> 清空
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div style="margin-top: 24px; display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存配置
+                </button>
+                <a href="/admin/ai-configs" class="btn btn-default">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 模型选项映射
+const modelOptions = {
+    'openai': [
+        { value: 'gpt-4', label: 'GPT-4 (最强大)' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo (更快)' },
+        { value: 'gpt-4-turbo-preview', label: 'GPT-4 Turbo Preview' },
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (快速经济)' },
+        { value: 'gpt-3.5-turbo-16k', label: 'GPT-3.5 Turbo 16K' }
+    ],
+    'claude': [
+        { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (最强大)' },
+        { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet (平衡)' },
+        { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku (快速)' },
+        { value: 'claude-2.1', label: 'Claude 2.1' },
+        { value: 'claude-2.0', label: 'Claude 2.0' }
+    ],
+    'zhipu': [
+        { value: 'glm-4', label: 'GLM-4 (最新)' },
+        { value: 'glm-4v', label: 'GLM-4V (视觉)' },
+        { value: 'glm-3-turbo', label: 'GLM-3 Turbo (快速)' }
+    ],
+    'custom': [
+        { value: '', label: '请使用自定义输入' }
+    ]
+};
+
+function updateModelOptions() {
+    const provider = document.getElementById('provider').value;
+    const modelSelect = document.getElementById('model_name_select');
+
+    // 清空现有选项
+    modelSelect.innerHTML = '<option value="">-- 请选择模型 --</option>';
+
+    if (provider && modelOptions[provider]) {
+        modelOptions[provider].forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.label;
+            modelSelect.appendChild(opt);
+        });
+    }
+
+    // 如果是自定义提供商，自动切换到自定义输入
+    if (provider === 'custom') {
+        document.getElementById('model_type_custom').checked = true;
+        toggleModelInput();
+    }
+}
+
+function toggleModelInput() {
+    const isCustom = document.getElementById('model_type_custom').checked;
+    const selectInput = document.getElementById('model_name_select');
+    const customInput = document.getElementById('model_name_custom');
+
+    if (isCustom) {
+        // 显示自定义输入框
+        selectInput.style.display = 'none';
+        selectInput.removeAttribute('required');
+        selectInput.removeAttribute('name');
+
+        customInput.style.display = 'block';
+        customInput.setAttribute('required', 'required');
+        customInput.setAttribute('name', 'model_name');
+    } else {
+        // 显示下拉选择
+        selectInput.style.display = 'block';
+        selectInput.setAttribute('required', 'required');
+        selectInput.setAttribute('name', 'model_name');
+
+        customInput.style.display = 'none';
+        customInput.removeAttribute('required');
+        customInput.removeAttribute('name');
+    }
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    const provider = document.getElementById('provider').value;
+    if (provider) {
+        updateModelOptions();
+        {% if config %}
+        // 如果是编辑模式，检查模型是否在列表中
+        const modelName = '{{ config.model_name if config else '' }}';
+        const modelSelect = document.getElementById('model_name_select');
+
+        // 尝试在下拉列表中找到该模型
+        let foundInList = false;
+        for (let i = 0; i < modelSelect.options.length; i++) {
+            if (modelSelect.options[i].value === modelName) {
+                modelSelect.value = modelName;
+                foundInList = true;
+                break;
+            }
+        }
+
+        // 如果在列表中找不到，切换到自定义输入
+        if (!foundInList && modelName) {
+            document.getElementById('model_type_custom').checked = true;
+            toggleModelInput();
+            document.getElementById('model_name_custom').value = modelName;
+        }
+        {% endif %}
+    }
+});
+
+// ==================== 测试功能 ====================
+
+// 获取表单配置数据
+function getConfigData() {
+    const isCustomInput = document.getElementById('model_type_custom').checked;
+    const modelName = isCustomInput
+        ? document.getElementById('model_name_custom').value
+        : document.getElementById('model_name_select').value;
+
+    return {
+        provider: document.getElementById('provider').value,
+        model_name: modelName,
+        api_key: document.getElementById('api_key').value,
+        base_url: document.getElementById('base_url').value || null,
+        temperature: parseFloat(document.getElementById('temperature').value),
+        max_tokens: parseInt(document.getElementById('max_tokens').value),
+        top_p: parseFloat(document.getElementById('top_p').value)
+    };
+}
+
+// 显示API测试结果
+function showAPITestResult(success, message, details = null) {
+    const resultDiv = document.getElementById('api-test-result');
+    const contentDiv = document.getElementById('api-test-content');
+
+    resultDiv.style.display = 'block';
+    resultDiv.style.backgroundColor = success ? '#d4edda' : '#f8d7da';
+    resultDiv.style.borderColor = success ? '#c3e6cb' : '#f5c6cb';
+    resultDiv.style.color = success ? '#155724' : '#721c24';
+
+    let html = `<strong><i class="fas fa-${success ? 'check-circle' : 'exclamation-circle'}"></i> ${message}</strong>`;
+
+    if (details) {
+        html += `<div style="margin-top: 8px; font-size: 13px;">${details}</div>`;
+    }
+
+    contentDiv.innerHTML = html;
+}
+
+// 测试API连接
+async function testAPIConnection() {
+    const config = getConfigData();
+
+    // 验证必填字段
+    if (!config.provider) {
+        showAPITestResult(false, '请选择AI提供商');
+        return;
+    }
+    if (!config.model_name) {
+        showAPITestResult(false, '请输入模型名称');
+        return;
+    }
+    if (!config.api_key) {
+        showAPITestResult(false, '请输入API密钥');
+        return;
+    }
+
+    // 调试：显示实际发送的配置
+    console.log('发送的配置:', JSON.stringify(config, null, 2));
+
+    // 显示加载状态
+    showAPITestResult(true, '正在测试API连接...', '请稍候');
+
+    try {
+        const response = await fetch('/admin/ai-configs/test-api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(config)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            let details = `
+                <div>✓ API连接成功</div>
+                <div>✓ 模型: ${config.model_name}</div>
+                <div>✓ 响应时间: ${result.response_time || 'N/A'}</div>
+            `;
+            showAPITestResult(true, '测试通过！', details);
+        } else {
+            showAPITestResult(false, '测试失败', result.error || '未知错误');
+        }
+    } catch (error) {
+        showAPITestResult(false, '测试失败', '网络错误或服务器异常: ' + error.message);
+    }
+}
+
+// 打开对话测试
+function openChatTest() {
+    const config = getConfigData();
+
+    // 验证必填字段
+    if (!config.provider || !config.model_name || !config.api_key) {
+        alert('请先填写完整的配置信息（提供商、模型名称、API密钥）');
+        return;
+    }
+
+    document.getElementById('chat-test-area').style.display = 'block';
+    document.getElementById('test-message').focus();
+}
+
+// 关闭对话测试
+function closeChatTest() {
+    document.getElementById('chat-test-area').style.display = 'none';
+}
+
+// 清空对话测试
+function clearChatTest() {
+    const messagesDiv = document.getElementById('chat-messages');
+    messagesDiv.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">输入消息开始测试对话...</div>';
+}
+
+// 添加消息到对话区域
+function addChatMessage(role, content, isError = false) {
+    const messagesDiv = document.getElementById('chat-messages');
+
+    // 移除空状态提示
+    if (messagesDiv.children.length === 1 && messagesDiv.children[0].style.textAlign === 'center') {
+        messagesDiv.innerHTML = '';
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.style.marginBottom = '12px';
+    messageDiv.style.padding = '8px 12px';
+    messageDiv.style.borderRadius = '8px';
+
+    if (role === 'user') {
+        messageDiv.style.backgroundColor = '#e3f2fd';
+        messageDiv.style.marginLeft = '20%';
+        messageDiv.innerHTML = `<strong>你:</strong> ${content}`;
+    } else if (isError) {
+        messageDiv.style.backgroundColor = '#ffebee';
+        messageDiv.style.color = '#c62828';
+        messageDiv.innerHTML = `<strong><i class="fas fa-exclamation-triangle"></i> 错误:</strong> ${content}`;
+    } else {
+        messageDiv.style.backgroundColor = '#f3e5f5';
+        messageDiv.style.marginRight = '20%';
+        messageDiv.innerHTML = `<strong>AI:</strong> ${content}`;
+    }
+
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// 发送测试消息
+async function sendTestMessage() {
+    const input = document.getElementById('test-message');
+    const message = input.value.trim();
+
+    if (!message) {
+        return;
+    }
+
+    // 添加用户消息
+    addChatMessage('user', message);
+    input.value = '';
+
+    // 显示加载状态
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'loading-indicator';
+    loadingDiv.style.textAlign = 'center';
+    loadingDiv.style.padding = '8px';
+    loadingDiv.style.color = '#999';
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI正在思考...';
+    document.getElementById('chat-messages').appendChild(loadingDiv);
+
+    try {
+        const config = getConfigData();
+        const response = await fetch('/admin/ai-configs/test-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                config: config,
+                message: message
+            })
+        });
+
+        // 移除加载指示器
+        const loading = document.getElementById('loading-indicator');
+        if (loading) {
+            loading.remove();
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            addChatMessage('assistant', result.content);
+        } else {
+            addChatMessage('assistant', result.error || '未知错误', true);
+        }
+    } catch (error) {
+        // 移除加载指示器
+        const loading = document.getElementById('loading-indicator');
+        if (loading) {
+            loading.remove();
+        }
+
+        addChatMessage('assistant', '网络错误: ' + error.message, true);
+    }
+}
+</script>
+
+<style>
+.form-section {
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 18px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #666;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+</style>
+{% endblock %}

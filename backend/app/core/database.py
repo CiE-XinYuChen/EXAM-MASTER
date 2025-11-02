@@ -28,8 +28,9 @@ SessionMain = sessionmaker(autocommit=False, autoflush=False, bind=engine_main)
 SessionQBank = sessionmaker(autocommit=False, autoflush=False, bind=engine_qbank)
 
 # Base classes for models
-BaseMain = declarative_base()
-BaseQBank = declarative_base()
+Base = declarative_base(metadata=MetaData())  # Main database base (for backwards compatibility)
+BaseMain = Base  # Alias for clarity
+BaseQBank = declarative_base(metadata=MetaData())  # Question bank database base
 
 
 # Dependency injection functions
@@ -53,11 +54,14 @@ def get_qbank_db() -> Generator[Session, None, None]:
 
 def init_databases():
     """Initialize both databases"""
-    # Import all models to ensure they are registered
-    from app.models import user_models, question_models
-    
+    # Import all models to ensure they are registered with SQLAlchemy
+    from app.models import user_models, question_models, question_models_v2, llm_models
+    from app.models import user_practice, activation, user_statistics, ai_models
+
     # Create all tables
     BaseMain.metadata.create_all(bind=engine_main)
     BaseQBank.metadata.create_all(bind=engine_qbank)
-    
-    print("Databases initialized successfully!")
+
+    print("✅ Databases initialized successfully!")
+    print(f"📊 Main DB tables: {list(BaseMain.metadata.tables.keys())}")
+    print(f"📚 QBank DB tables: {list(BaseQBank.metadata.tables.keys())}")

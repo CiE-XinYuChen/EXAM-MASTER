@@ -20,12 +20,12 @@ from app.models.question_models_v2 import QuestionV2 as Question, QuestionOption
 import uuid
 import json
 
-router = APIRouter(tags=["LLM"])
+router = APIRouter()
 
 
 # ============ LLM Interface Management ============
 
-@router.get("/interfaces", response_model=List[LLMInterfaceResponse])
+@router.get("/interfaces", response_model=List[LLMInterfaceResponse], tags=["🔌 Interface Config"])
 async def get_interfaces(
     request: Request,
     current_user=Depends(get_admin_user_from_session),
@@ -40,7 +40,7 @@ async def get_interfaces(
     return interfaces
 
 
-@router.get("/interfaces/{interface_id}", response_model=LLMInterfaceResponse)
+@router.get("/interfaces/{interface_id}", response_model=LLMInterfaceResponse, tags=["🔌 Interface Config"])
 async def get_interface(
     interface_id: str,
     request: Request,
@@ -57,7 +57,7 @@ async def get_interface(
     return interface
 
 
-@router.post("/interfaces", response_model=LLMInterfaceResponse)
+@router.post("/interfaces", response_model=LLMInterfaceResponse, tags=["🔌 Interface Config"])
 async def create_interface(
     interface_data: LLMInterfaceCreate,
     request: Request,
@@ -90,7 +90,7 @@ async def create_interface(
     return interface
 
 
-@router.put("/interfaces/{interface_id}", response_model=LLMInterfaceResponse)
+@router.put("/interfaces/{interface_id}", response_model=LLMInterfaceResponse, tags=["🔌 Interface Config"])
 async def update_interface(
     interface_id: str,
     interface_data: LLMInterfaceUpdate,
@@ -128,7 +128,7 @@ async def update_interface(
     return interface
 
 
-@router.delete("/interfaces/{interface_id}")
+@router.delete("/interfaces/{interface_id}", tags=["🔌 Interface Config"])
 async def delete_interface(
     interface_id: str,
     request: Request,
@@ -148,7 +148,7 @@ async def delete_interface(
     return {"message": "Interface deleted successfully"}
 
 
-@router.post("/interfaces/{interface_id}/test", response_model=InterfaceTestResponse)
+@router.post("/interfaces/{interface_id}/test", response_model=InterfaceTestResponse, tags=["🔌 Interface Config"])
 async def test_interface(
     interface_id: str,
     test_request: InterfaceTestRequest,
@@ -171,7 +171,7 @@ async def test_interface(
 
 # ============ Prompt Template Management ============
 
-@router.get("/templates", response_model=List[PromptTemplateResponse])
+@router.get("/templates", response_model=List[PromptTemplateResponse], tags=["📝 Prompt Templates"])
 async def get_templates(
     request: Request,
     current_user=Depends(get_admin_user_from_session),
@@ -201,13 +201,13 @@ async def get_templates(
     return templates
 
 
-@router.get("/templates/presets")
+@router.get("/templates/presets", tags=["📝 Prompt Templates"])
 async def get_preset_templates():
     """获取预设模板（无需登录）"""
     return get_all_preset_templates()
 
 
-@router.get("/templates/{template_id}", response_model=PromptTemplateResponse)
+@router.get("/templates/{template_id}", response_model=PromptTemplateResponse, tags=["📝 Prompt Templates"])
 async def get_template(
     template_id: str,
     req: Request,
@@ -226,7 +226,7 @@ async def get_template(
     return template
 
 
-@router.post("/templates", response_model=PromptTemplateResponse)
+@router.post("/templates", response_model=PromptTemplateResponse, tags=["📝 Prompt Templates"])
 async def create_template(
     template_data: PromptTemplateCreate,
     request: Request,
@@ -254,7 +254,7 @@ async def create_template(
     return template
 
 
-@router.put("/templates/{template_id}", response_model=PromptTemplateResponse)
+@router.put("/templates/{template_id}", response_model=PromptTemplateResponse, tags=["📝 Prompt Templates"])
 async def update_template(
     template_id: str,
     template_data: PromptTemplateUpdate,
@@ -279,7 +279,7 @@ async def update_template(
     return template
 
 
-@router.delete("/templates/{template_id}")
+@router.delete("/templates/{template_id}", tags=["📝 Prompt Templates"])
 async def delete_template(
     template_id: str,
     req: Request,
@@ -301,7 +301,7 @@ async def delete_template(
 
 # ============ Question Parsing ============
 
-@router.post("/parse", response_model=QuestionParseResponse)
+@router.post("/parse", response_model=QuestionParseResponse, tags=["🤖 AI Question Parsing"])
 async def parse_questions(
     request: QuestionParseRequest,
     req: Request,
@@ -314,7 +314,7 @@ async def parse_questions(
     return response
 
 
-@router.post("/import", response_model=BatchImportResponse)
+@router.post("/import", response_model=BatchImportResponse, tags=["🤖 AI Question Parsing"])
 async def batch_import_questions(
     request: BatchImportRequest,
     req: Request,

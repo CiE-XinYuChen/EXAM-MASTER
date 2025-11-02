@@ -42,8 +42,8 @@
             
             <div class="form-group">
                 <label class="form-label" for="file">选择文件</label>
-                <input type="file" name="file" id="file" class="form-control" accept=".csv,.json" required>
-                <small style="color: #666;">支持格式: CSV, JSON</small>
+                <input type="file" name="file" id="file" class="form-control" accept=".csv,.json,.zip" required>
+                <small style="color: #666;">支持格式: CSV, JSON, ZIP (含多媒体)</small>
             </div>
             
             <div class="form-group">
@@ -86,10 +86,13 @@
                         <td>
                             <div class="btn-group">
                                 <a href="/admin/exports/{{ bank.id }}?format=csv" class="btn btn-default btn-sm">
-                                    <i class="fas fa-file-csv"></i> 导出CSV
+                                    <i class="fas fa-file-csv"></i> CSV
                                 </a>
                                 <a href="/admin/exports/{{ bank.id }}?format=json" class="btn btn-default btn-sm">
-                                    <i class="fas fa-file-code"></i> 导出JSON
+                                    <i class="fas fa-file-code"></i> JSON
+                                </a>
+                                <a href="/admin/exports/{{ bank.id }}?format=zip" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-file-archive"></i> ZIP (含多媒体)
                                 </a>
                             </div>
                         </td>

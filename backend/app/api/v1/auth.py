@@ -16,7 +16,7 @@ from app.core.config import settings
 router = APIRouter()
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, tags=["🔐 Authentication"])
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_main_db)
@@ -51,7 +51,7 @@ async def login(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED, tags=["🔐 Authentication"])
 async def register(
     request: RegisterRequest,
     db: Session = Depends(get_main_db)
@@ -94,7 +94,7 @@ async def register(
     return user
 
 
-@router.post("/change-password", response_model=dict)
+@router.post("/change-password", response_model=dict, tags=["🔐 Authentication"])
 async def change_password(
     request: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
@@ -122,7 +122,7 @@ async def change_password(
     return {"message": "Password changed successfully"}
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse, tags=["🔐 Authentication"])
 async def get_current_user_info(
     current_user: User = Depends(get_current_user)
 ):
@@ -130,7 +130,7 @@ async def get_current_user_info(
     return current_user
 
 
-@router.post("/logout", response_model=dict)
+@router.post("/logout", response_model=dict, tags=["🔐 Authentication"])
 async def logout():
     """Logout (client should discard token)"""
     return {"message": "Successfully logged out"}

@@ -66,7 +66,7 @@ def check_question_permission(
     return question
 
 
-@router.get("/{option_id}", response_model=QuestionOptionResponse)
+@router.get("/{option_id}", response_model=QuestionOptionResponse, tags=["⚙️ Question Options"])
 async def get_option(
     option_id: str,
     current_user: User = Depends(get_current_user),
@@ -88,7 +88,7 @@ async def get_option(
     return option
 
 
-@router.put("/{option_id}", response_model=QuestionOptionResponse)
+@router.put("/{option_id}", response_model=QuestionOptionResponse, tags=["⚙️ Question Options"])
 async def update_option(
     option_id: str,
     option_update: QuestionOptionUpdate,
@@ -119,7 +119,7 @@ async def update_option(
     return option
 
 
-@router.delete("/{option_id}", response_model=dict)
+@router.delete("/{option_id}", response_model=dict, tags=["⚙️ Question Options"])
 async def delete_option(
     option_id: str,
     current_user: User = Depends(get_current_user),
@@ -170,7 +170,7 @@ async def delete_option(
     return {"message": "Option deleted successfully"}
 
 
-@router.post("/{option_id}/reorder", response_model=dict)
+@router.post("/{option_id}/reorder", response_model=dict, tags=["⚙️ Question Options"])
 async def reorder_options(
     question_id: str,
     new_order: List[str],  # List of option IDs in new order
@@ -207,7 +207,7 @@ async def reorder_options(
     return {"message": "Options reordered successfully"}
 
 
-@router.post("/batch-update", response_model=dict)
+@router.post("/batch-update", response_model=dict, tags=["⚙️ Question Options"])
 async def batch_update_options(
     updates: List[dict],  # List of {option_id, updates}
     current_user: User = Depends(get_current_user),

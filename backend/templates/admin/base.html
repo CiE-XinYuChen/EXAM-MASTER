@@ -33,8 +33,17 @@
                 <a href="/admin/imports" class="menu-item {% if '/imports' in request.url.path %}active{% endif %}">
                     <i class="fas fa-file-upload"></i> 导入导出
                 </a>
+                <a href="/admin/activation-codes" class="menu-item {% if '/activation-codes' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-key"></i> 激活码管理
+                </a>
                 <a href="/admin/llm" class="menu-item {% if '/llm' in request.url.path %}active{% endif %}">
                     <i class="fas fa-robot"></i> LLM配置
+                </a>
+                <a href="/admin/ai-configs" class="menu-item {% if '/ai-config' in request.url.path or '/ai-session' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-brain"></i> AI助手
+                </a>
+                <a href="/admin/agent-test" class="menu-item {% if '/agent-test' in request.url.path %}active{% endif %}">
+                    <i class="fas fa-flask"></i> Agent测试
                 </a>
                 <a href="/api/docs" class="menu-item" target="_blank">
                     <i class="fas fa-book"></i> API文档

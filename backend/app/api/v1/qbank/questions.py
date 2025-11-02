@@ -49,7 +49,7 @@ def check_bank_permission(
     return False
 
 
-@router.get("/", response_model=List[QuestionResponse])
+@router.get("/", response_model=List[QuestionResponse], tags=["❓ Question Management"])
 async def get_questions(
     bank_id: Optional[str] = None,
     type: Optional[str] = None,
@@ -108,7 +108,7 @@ async def get_questions(
     return accessible_questions
 
 
-@router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED, tags=["❓ Question Management"])
 async def create_question(
     question_data: QuestionCreate,
     current_user: User = Depends(get_current_user),
@@ -178,7 +178,7 @@ async def create_question(
     return question
 
 
-@router.get("/{question_id}", response_model=QuestionResponse)
+@router.get("/{question_id}", response_model=QuestionResponse, tags=["❓ Question Management"])
 async def get_question(
     question_id: str,
     current_user: User = Depends(get_current_user),
@@ -205,7 +205,7 @@ async def get_question(
     return question
 
 
-@router.put("/{question_id}", response_model=QuestionResponse)
+@router.put("/{question_id}", response_model=QuestionResponse, tags=["❓ Question Management"])
 async def update_question(
     question_id: str,
     question_update: QuestionUpdate,
@@ -271,7 +271,7 @@ async def update_question(
     return question
 
 
-@router.delete("/{question_id}", response_model=dict)
+@router.delete("/{question_id}", response_model=dict, tags=["❓ Question Management"])
 async def delete_question(
     question_id: str,
     current_user: User = Depends(get_current_user),
@@ -301,7 +301,7 @@ async def delete_question(
     return {"message": "Question deleted successfully"}
 
 
-@router.post("/{question_id}/options", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post("/{question_id}/options", response_model=dict, status_code=status.HTTP_201_CREATED, tags=["❓ Question Management"])
 async def add_option(
     question_id: str,
     option_data: QuestionOptionCreate,
@@ -358,7 +358,7 @@ async def add_option(
     return {"message": "Option added successfully", "option_id": option.id}
 
 
-@router.post("/{question_id}/duplicate", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{question_id}/duplicate", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED, tags=["❓ Question Management"])
 async def duplicate_question(
     question_id: str,
     target_bank_id: Optional[str] = None,

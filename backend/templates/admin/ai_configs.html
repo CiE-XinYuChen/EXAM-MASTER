@@ -1,0 +1,186 @@
+{% extends "admin/base.html" %}
+
+{% block title %}AI配置管理{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a> / AI配置管理
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1>AI配置管理</h1>
+    <button class="btn btn-primary" onclick="window.location.href='/admin/ai-configs/create'">
+        <i class="fas fa-plus"></i> 新建配置
+    </button>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stat-cards" style="margin-bottom: 24px;">
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">总配置数</span>
+            <div class="stat-card-icon blue">
+                <i class="fas fa-cog"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ total_configs }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">活跃会话</span>
+            <div class="stat-card-icon green">
+                <i class="fas fa-comments"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ total_sessions }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">总消息数</span>
+            <div class="stat-card-icon orange">
+                <i class="fas fa-message"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ total_messages }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">总Tokens</span>
+            <div class="stat-card-icon purple">
+                <i class="fas fa-chart-line"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ total_tokens|default(0) }}</div>
+    </div>
+</div>
+
+<!-- AI Configurations List -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">AI配置列表</h3>
+    </div>
+    <div class="card-body">
+        {% if configs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>配置名称</th>
+                    <th>用户</th>
+                    <th>提供商</th>
+                    <th>模型</th>
+                    <th>参数</th>
+                    <th>默认</th>
+                    <th>创建时间</th>
+                    <th style="text-align: center;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for config in configs %}
+                <tr>
+                    <td>
+                        <strong>{{ config.name }}</strong>
+                        {% if config.description %}
+                        <br><small style="color: #666;">{{ config.description }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ config.user.username if config.user else 'N/A' }}</td>
+                    <td>
+                        <span class="tag {% if config.provider == 'openai' %}tag-blue{% elif config.provider == 'claude' %}tag-purple{% else %}tag-green{% endif %}">
+                            {{ config.provider }}
+                        </span>
+                    </td>
+                    <td><code style="font-size: 12px;">{{ config.model_name }}</code></td>
+                    <td>
+                        <small>
+                            T: {{ config.temperature }}<br>
+                            Max: {{ config.max_tokens }}
+                        </small>
+                    </td>
+                    <td>
+                        {% if config.is_default %}
+                        <span class="tag tag-green"><i class="fas fa-check"></i> 默认</span>
+                        {% else %}
+                        <span class="tag tag-gray">否</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ config.created_at.strftime('%Y-%m-%d %H:%M') if config.created_at else 'N/A' }}</td>
+                    <td style="text-align: center;">
+                        <a href="/admin/ai-configs/{{ config.id }}/edit" class="btn btn-sm btn-default" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form action="/admin/ai-configs/{{ config.id }}/delete" method="POST" style="display: inline;"
+                              onsubmit="return confirm('确定要删除此配置吗？这将同时删除所有相关的聊天会话。');">
+                            <button type="submit" class="btn btn-sm btn-danger" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-robot" style="font-size: 48px; margin-bottom: 16px;"></i>
+            <p>暂无AI配置</p>
+            <a href="/admin/ai-configs/create" class="btn btn-primary">创建第一个配置</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Chat Sessions List -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header">
+        <h3 class="card-title">最近聊天会话</h3>
+    </div>
+    <div class="card-body">
+        {% if recent_sessions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>会话ID</th>
+                    <th>用户</th>
+                    <th>配置</th>
+                    <th>模式</th>
+                    <th>消息数</th>
+                    <th>Tokens</th>
+                    <th>最后活动</th>
+                    <th style="text-align: center;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in recent_sessions %}
+                <tr>
+                    <td><code style="font-size: 11px;">{{ session.id[:8] }}...</code></td>
+                    <td>{{ session.user.username if session.user else 'N/A' }}</td>
+                    <td>{{ session.ai_config.name if session.ai_config else 'N/A' }}</td>
+                    <td>
+                        <span class="tag {% if session.mode == 'practice' %}tag-blue{% elif session.mode == 'review' %}tag-orange{% else %}tag-green{% endif %}">
+                            {{ session.mode }}
+                        </span>
+                    </td>
+                    <td>{{ session.total_messages }}</td>
+                    <td>{{ session.total_tokens }}</td>
+                    <td>{{ session.last_activity_at.strftime('%Y-%m-%d %H:%M') if session.last_activity_at else 'N/A' }}</td>
+                    <td style="text-align: center;">
+                        <a href="/admin/ai-sessions/{{ session.id }}" class="btn btn-sm btn-default" title="查看详情">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 16px;"></i>
+            <p>暂无聊天会话</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

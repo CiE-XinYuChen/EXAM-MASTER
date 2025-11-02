@@ -69,6 +69,9 @@
                         <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
                         <td>
                             <div class="btn-group">
+                                <a href="/admin/users/{{ user.id }}/statistics" class="btn btn-info btn-sm" title="查看统计">
+                                    <i class="fas fa-chart-bar"></i>
+                                </a>
                                 <a href="/admin/users/{{ user.id }}/edit" class="btn btn-default btn-sm" title="编辑">
                                     <i class="fas fa-edit"></i>
                                 </a>

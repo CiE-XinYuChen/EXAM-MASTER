@@ -1,0 +1,218 @@
+INFO:     Will watch for changes in these directories: ['/Users/shaynechen/shayne/demo/EXAM-MASTER/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [50661] using StatReload
+/opt/anaconda3/lib/python3.13/site-packages/pydantic/_internal/_config.py:345: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [50693]
+INFO:     Waiting for application startup.
+Starting up...
+2025-11-02 20:02:29,433 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-11-02 20:02:29,433 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("users")
+2025-11-02 20:02:29,433 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,434 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_bank_permissions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_bank_permissions")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("answer_history")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("answer_history")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("exam_sessions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("exam_sessions")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("favorites")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("favorites")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_daily_statistics")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_daily_statistics")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_configs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_configs")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("chat_sessions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("chat_sessions")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("chat_messages")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("chat_messages")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_banks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_banks")
+2025-11-02 20:02:29,435 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("questions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("questions")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_options")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_options")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_resources")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_resources")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_versions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_versions")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_banks_v2")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_banks_v2")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("questions_v2")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("questions_v2")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_options_v2")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_options_v2")
+2025-11-02 20:02:29,436 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_resources_v2")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_resources_v2")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_bank_resources")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_bank_resources")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("question_bank_exports")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("question_bank_exports")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("llm_interfaces")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("llm_interfaces")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("prompt_templates")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("prompt_templates")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("llm_parse_logs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("llm_parse_logs")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("practice_sessions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("practice_sessions")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_answer_records")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_answer_records")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_favorites")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_favorites")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_wrong_questions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_wrong_questions")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("activation_codes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("activation_codes")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_bank_access")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_bank_access")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("user_bank_statistics")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("user_bank_statistics")
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2025-11-02 20:02:29,437 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:     Application startup complete.
+✅ Databases initialized successfully!
+📊 Main DB tables: ['users', 'user_bank_permissions', 'answer_history', 'exam_sessions', 'favorites', 'user_daily_statistics', 'ai_configs', 'chat_sessions', 'chat_messages']
+📚 QBank DB tables: ['question_banks', 'questions', 'question_options', 'question_resources', 'question_versions', 'question_banks_v2', 'questions_v2', 'question_options_v2', 'question_resources_v2', 'question_bank_resources', 'question_bank_exports', 'llm_interfaces', 'prompt_templates', 'llm_parse_logs', 'practice_sessions', 'user_answer_records', 'user_favorites', 'user_wrong_questions', 'activation_codes', 'user_bank_access', 'user_bank_statistics']
+INFO:     127.0.0.1:54145 - "GET /admin/ai-configs/196bf0a0-188f-4c0b-8c22-5a54795fe4f6/edit HTTP/1.1" 303 See Other
+INFO:     127.0.0.1:54145 - "GET /admin/login HTTP/1.1" 200 OK
+2025-11-02 20:03:52,745 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-11-02 20:03:52,747 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.email AS users_email, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ? OR users.email = ?
+ LIMIT ? OFFSET ?
+INFO:sqlalchemy.engine.Engine:SELECT users.id AS users_id, users.username AS users_username, users.email AS users_email, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ? OR users.email = ?
+ LIMIT ? OFFSET ?
+2025-11-02 20:03:52,747 INFO sqlalchemy.engine.Engine [generated in 0.00023s] ('admin', 'admin', 1, 0)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00023s] ('admin', 'admin', 1, 0)
+WARNING:passlib.handlers.bcrypt:(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/opt/anaconda3/lib/python3.13/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2025-11-02 20:03:52,956 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:     127.0.0.1:54145 - "POST /admin/login HTTP/1.1" 303 See Other
+2025-11-02 20:03:52,962 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-11-02 20:03:52,964 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT users.id AS users_id, users.username AS users_username, users.email AS users_email, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users) AS anon_1
+INFO:sqlalchemy.engine.Engine:SELECT count(*) AS count_1 
+FROM (SELECT users.id AS users_id, users.username AS users_username, users.email AS users_email, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users) AS anon_1
+2025-11-02 20:03:52,964 INFO sqlalchemy.engine.Engine [generated in 0.00009s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00009s] ()
+2025-11-02 20:03:52,980 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2025-11-02 20:03:52,981 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT question_banks_v2.id AS question_banks_v2_id, question_banks_v2.name AS question_banks_v2_name, question_banks_v2.description AS question_banks_v2_description, question_banks_v2.version AS question_banks_v2_version, question_banks_v2.category AS question_banks_v2_category, question_banks_v2.tags AS question_banks_v2_tags, question_banks_v2.folder_path AS question_banks_v2_folder_path, question_banks_v2.storage_type AS question_banks_v2_storage_type, question_banks_v2.storage_config AS question_banks_v2_storage_config, question_banks_v2.total_questions AS question_banks_v2_total_questions, question_banks_v2.total_size_mb AS question_banks_v2_total_size_mb, question_banks_v2.has_images AS question_banks_v2_has_images, question_banks_v2.has_audio AS question_banks_v2_has_audio, question_banks_v2.has_video AS question_banks_v2_has_video, question_banks_v2.last_sync_at AS question_banks_v2_last_sync_at, question_banks_v2.creator_id AS question_banks_v2_creator_id, question_banks_v2.is_public AS question_banks_v2_is_public, question_banks_v2.is_published AS question_banks_v2_is_published, question_banks_v2.allow_download AS question_banks_v2_allow_download, question_banks_v2.allow_fork AS question_banks_v2_allow_fork, question_banks_v2.meta_data AS question_banks_v2_meta_data, question_banks_v2.created_at AS question_banks_v2_created_at, question_banks_v2.updated_at AS question_banks_v2_updated_at 
+FROM question_banks_v2) AS anon_1
+INFO:sqlalchemy.engine.Engine:SELECT count(*) AS count_1 
+FROM (SELECT question_banks_v2.id AS question_banks_v2_id, question_banks_v2.name AS question_banks_v2_name, question_banks_v2.description AS question_banks_v2_description, question_banks_v2.version AS question_banks_v2_version, question_banks_v2.category AS question_banks_v2_category, question_banks_v2.tags AS question_banks_v2_tags, question_banks_v2.folder_path AS question_banks_v2_folder_path, question_banks_v2.storage_type AS question_banks_v2_storage_type, question_banks_v2.storage_config AS question_banks_v2_storage_config, question_banks_v2.total_questions AS question_banks_v2_total_questions, question_banks_v2.total_size_mb AS question_banks_v2_total_size_mb, question_banks_v2.has_images AS question_banks_v2_has_images, question_banks_v2.has_audio AS question_banks_v2_has_audio, question_banks_v2.has_video AS question_banks_v2_has_video, question_banks_v2.last_sync_at AS question_banks_v2_last_sync_at, question_banks_v2.creator_id AS question_banks_v2_creator_id, question_banks_v2.is_public AS question_banks_v2_is_public, question_banks_v2.is_published AS question_banks_v2_is_published, question_banks_v2.allow_download AS question_banks_v2_allow_download, question_banks_v2.allow_fork AS question_banks_v2_allow_fork, question_banks_v2.meta_data AS question_banks_v2_meta_data, question_banks_v2.created_at AS question_banks_v2_created_at, question_banks_v2.updated_at AS question_banks_v2_updated_at 
+FROM question_banks_v2) AS anon_1
+2025-11-02 20:03:52,981 INFO sqlalchemy.engine.Engine [generated in 0.00007s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00007s] ()
+2025-11-02 20:03:52,983 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT questions_v2.id AS questions_v2_id, questions_v2.bank_id AS questions_v2_bank_id, questions_v2.question_number AS questions_v2_question_number, questions_v2.question_code AS questions_v2_question_code, questions_v2.stem AS questions_v2_stem, questions_v2.stem_format AS questions_v2_stem_format, questions_v2.stem_rich AS questions_v2_stem_rich, questions_v2.type AS questions_v2_type, questions_v2.difficulty AS questions_v2_difficulty, questions_v2.score AS questions_v2_score, questions_v2.estimated_time AS questions_v2_estimated_time, questions_v2.category AS questions_v2_category, questions_v2.sub_category AS questions_v2_sub_category, questions_v2.tags AS questions_v2_tags, questions_v2.knowledge_points AS questions_v2_knowledge_points, questions_v2.explanation AS questions_v2_explanation, questions_v2.explanation_format AS questions_v2_explanation_format, questions_v2.explanation_rich AS questions_v2_explanation_rich, questions_v2.hint AS questions_v2_hint, questions_v2.note AS questions_v2_note, questions_v2.source AS questions_v2_source, questions_v2.has_images AS questions_v2_has_images, questions_v2.has_audio AS questions_v2_has_audio, questions_v2.has_video AS questions_v2_has_video, questions_v2.has_formula AS questions_v2_has_formula, questions_v2.usage_count AS questions_v2_usage_count, questions_v2.error_count AS questions_v2_error_count, questions_v2.avg_score AS questions_v2_avg_score, questions_v2.avg_time AS questions_v2_avg_time, questions_v2.meta_data AS questions_v2_meta_data, questions_v2.created_at AS questions_v2_created_at, questions_v2.updated_at AS questions_v2_updated_at 
+FROM questions_v2) AS anon_1
+INFO:sqlalchemy.engine.Engine:SELECT count(*) AS count_1 
+FROM (SELECT questions_v2.id AS questions_v2_id, questions_v2.bank_id AS questions_v2_bank_id, questions_v2.question_number AS questions_v2_question_number, questions_v2.question_code AS questions_v2_question_code, questions_v2.stem AS questions_v2_stem, questions_v2.stem_format AS questions_v2_stem_format, questions_v2.stem_rich AS questions_v2_stem_rich, questions_v2.type AS questions_v2_type, questions_v2.difficulty AS questions_v2_difficulty, questions_v2.score AS questions_v2_score, questions_v2.estimated_time AS questions_v2_estimated_time, questions_v2.category AS questions_v2_category, questions_v2.sub_category AS questions_v2_sub_category, questions_v2.tags AS questions_v2_tags, questions_v2.knowledge_points AS questions_v2_knowledge_points, questions_v2.explanation AS questions_v2_explanation, questions_v2.explanation_format AS questions_v2_explanation_format, questions_v2.explanation_rich AS questions_v2_explanation_rich, questions_v2.hint AS questions_v2_hint, questions_v2.note AS questions_v2_note, questions_v2.source AS questions_v2_source, questions_v2.has_images AS questions_v2_has_images, questions_v2.has_audio AS questions_v2_has_audio, questions_v2.has_video AS questions_v2_has_video, questions_v2.has_formula AS questions_v2_has_formula, questions_v2.usage_count AS questions_v2_usage_count, questions_v2.error_count AS questions_v2_error_count, questions_v2.avg_score AS questions_v2_avg_score, questions_v2.avg_time AS questions_v2_avg_time, questions_v2.meta_data AS questions_v2_meta_data, questions_v2.created_at AS questions_v2_created_at, questions_v2.updated_at AS questions_v2_updated_at 
+FROM questions_v2) AS anon_1
+2025-11-02 20:03:52,983 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00006s] ()
+2025-11-02 20:03:52,984 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT ai_configs.id AS ai_configs_id, ai_configs.user_id AS ai_configs_user_id, ai_configs.name AS ai_configs_name, ai_configs.provider AS ai_configs_provider, ai_configs.model_name AS ai_configs_model_name, ai_configs.api_key AS ai_configs_api_key, ai_configs.base_url AS ai_configs_base_url, ai_configs.temperature AS ai_configs_temperature, ai_configs.max_tokens AS ai_configs_max_tokens, ai_configs.top_p AS ai_configs_top_p, ai_configs.is_default AS ai_configs_is_default, ai_configs.description AS ai_configs_description, ai_configs.created_at AS ai_configs_created_at, ai_configs.updated_at AS ai_configs_updated_at 
+FROM ai_configs) AS anon_1
+INFO:sqlalchemy.engine.Engine:SELECT count(*) AS count_1 
+FROM (SELECT ai_configs.id AS ai_configs_id, ai_configs.user_id AS ai_configs_user_id, ai_configs.name AS ai_configs_name, ai_configs.provider AS ai_configs_provider, ai_configs.model_name AS ai_configs_model_name, ai_configs.api_key AS ai_configs_api_key, ai_configs.base_url AS ai_configs_base_url, ai_configs.temperature AS ai_configs_temperature, ai_configs.max_tokens AS ai_configs_max_tokens, ai_configs.top_p AS ai_configs_top_p, ai_configs.is_default AS ai_configs_is_default, ai_configs.description AS ai_configs_description, ai_configs.created_at AS ai_configs_created_at, ai_configs.updated_at AS ai_configs_updated_at 
+FROM ai_configs) AS anon_1
+2025-11-02 20:03:52,984 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00006s] ()
+2025-11-02 20:03:52,985 INFO sqlalchemy.engine.Engine SELECT count(*) AS count_1 
+FROM (SELECT chat_sessions.id AS chat_sessions_id, chat_sessions.user_id AS chat_sessions_user_id, chat_sessions.ai_config_id AS chat_sessions_ai_config_id, chat_sessions.bank_id AS chat_sessions_bank_id, chat_sessions.mode AS chat_sessions_mode, chat_sessions.system_prompt AS chat_sessions_system_prompt, chat_sessions.total_messages AS chat_sessions_total_messages, chat_sessions.total_tokens AS chat_sessions_total_tokens, chat_sessions.started_at AS chat_sessions_started_at, chat_sessions.last_activity_at AS chat_sessions_last_activity_at 
+FROM chat_sessions) AS anon_1
+INFO:sqlalchemy.engine.Engine:SELECT count(*) AS count_1 
+FROM (SELECT chat_sessions.id AS chat_sessions_id, chat_sessions.user_id AS chat_sessions_user_id, chat_sessions.ai_config_id AS chat_sessions_ai_config_id, chat_sessions.bank_id AS chat_sessions_bank_id, chat_sessions.mode AS chat_sessions_mode, chat_sessions.system_prompt AS chat_sessions_system_prompt, chat_sessions.total_messages AS chat_sessions_total_messages, chat_sessions.total_tokens AS chat_sessions_total_tokens, chat_sessions.started_at AS chat_sessions_started_at, chat_sessions.last_activity_at AS chat_sessions_last_activity_at 
+FROM chat_sessions) AS anon_1
+2025-11-02 20:03:52,985 INFO sqlalchemy.engine.Engine [generated in 0.00004s] ()
+INFO:sqlalchemy.engine.Engine:[generated in 0.00004s] ()
+2025-11-02 20:03:52,987 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+2025-11-02 20:03:52,987 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:     127.0.0.1:54145 - "GET /admin HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [50693]
+INFO:     Stopping reloader process [50661]

@@ -487,9 +487,24 @@
 </style>
 
 <script>
-// 渲染Markdown内容（如果需要）
+// 渲染Markdown内容和多媒体资源
 document.addEventListener('DOMContentLoaded', function() {
     const stemContent = document.getElementById('stemContent');
+
+    // 渲染多媒体资源
+    renderMediaResources(stemContent);
+
+    // 渲染选项中的多媒体
+    document.querySelectorAll('.option-content').forEach(function(optionEl) {
+        renderMediaResources(optionEl);
+    });
+
+    // 渲染解析中的多媒体
+    const explanationContent = document.querySelector('.explanation-content');
+    if (explanationContent) {
+        renderMediaResources(explanationContent);
+    }
+
     // 处理填空题的下划线
     if ('{{ question.type }}' === 'fill') {
         let stem = stemContent.innerHTML;
@@ -501,6 +516,72 @@ document.addEventListener('DOMContentLoaded', function() {
         stemContent.innerHTML = stem;
     }
 });
+
+function renderMediaResources(element) {
+    if (!element) return;
+
+    let content = element.innerHTML;
+
+    // 渲染图片 ![图片](url)
+    content = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(match, alt, url) {
+        return `<div class="media-container image-container">
+                    <img src="${url}" alt="${alt}" class="media-image" onclick="enlargeMedia(this)">
+                    <div class="media-caption">${alt}</div>
+                </div>`;
+    });
+
+    // 渲染视频 [视频](url)
+    content = content.replace(/\[视频\]\(([^)]+)\)/g, function(match, url) {
+        return `<div class="media-container video-container">
+                    <video src="${url}" controls class="media-video" preload="metadata">
+                        您的浏览器不支持视频播放。
+                    </video>
+                    <div class="media-caption"><i class="fas fa-video"></i> 视频资源</div>
+                </div>`;
+    });
+
+    // 渲染音频 [音频](url)
+    content = content.replace(/\[音频\]\(([^)]+)\)/g, function(match, url) {
+        return `<div class="media-container audio-container">
+                    <audio src="${url}" controls class="media-audio" preload="metadata">
+                        您的浏览器不支持音频播放。
+                    </audio>
+                    <div class="media-caption"><i class="fas fa-volume-up"></i> 音频资源</div>
+                </div>`;
+    });
+
+    // 渲染文档 [资源](url) or [文档](url)
+    content = content.replace(/\[(资源|文档)\]\(([^)]+)\)/g, function(match, type, url) {
+        const fileName = url.split('/').pop();
+        return `<div class="media-container document-container">
+                    <a href="${url}" target="_blank" class="media-document">
+                        <i class="fas fa-file-alt"></i> ${fileName}
+                    </a>
+                </div>`;
+    });
+
+    element.innerHTML = content;
+}
+
+function enlargeMedia(img) {
+    // 创建放大预览
+    const overlay = document.createElement('div');
+    overlay.className = 'media-overlay';
+    overlay.innerHTML = `
+        <div class="media-overlay-content">
+            <img src="${img.src}" alt="${img.alt}" class="media-enlarged">
+            <button class="media-close" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    overlay.onclick = function(e) {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    };
+    document.body.appendChild(overlay);
+}
 </script>
 
 <style>
@@ -509,6 +590,147 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 600;
     border-bottom: 2px solid #007bff;
     padding: 0 5px;
+}
+
+/* 多媒体容器样式 */
+.media-container {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.media-caption {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #6c757d;
+    text-align: center;
+}
+
+/* 图片样式 */
+.media-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.3s;
+    display: block;
+    margin: 0 auto;
+}
+
+.media-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 视频样式 */
+.media-video {
+    max-width: 100%;
+    width: 100%;
+    max-height: 500px;
+    border-radius: 5px;
+    background: #000;
+    display: block;
+    margin: 0 auto;
+}
+
+/* 音频样式 */
+.media-audio {
+    width: 100%;
+    display: block;
+}
+
+/* 文档样式 */
+.media-document {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 500;
+    transition: background 0.3s;
+}
+
+.media-document:hover {
+    background: #0056b3;
+    color: white;
+    text-decoration: none;
+}
+
+.media-document i {
+    font-size: 20px;
+}
+
+/* 图片放大预览遮罩 */
+.media-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.media-overlay-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.media-enlarged {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.media-close {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    color: #333;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: all 0.3s;
+}
+
+.media-close:hover {
+    background: #f8f9fa;
+    transform: rotate(90deg);
+}
+
+/* 选项中的多媒体 */
+.option-content .media-container {
+    margin: 10px 0;
+    padding: 10px;
+}
+
+.option-content .media-image {
+    max-width: 200px;
+}
+
+.option-content .media-video {
+    max-height: 200px;
 }
 </style>
 {% endblock %}

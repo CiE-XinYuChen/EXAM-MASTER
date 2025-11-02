@@ -118,7 +118,7 @@ def parse_json_question(data: dict, bank_id: str) -> tuple[Question, List[Questi
     return question, options
 
 
-@router.post("/csv", response_model=ImportResult)
+@router.post("/csv", response_model=ImportResult, tags=["📅 Import & Export"])
 async def import_csv(
     file: UploadFile = File(...),
     bank_id: str = Form(...),
@@ -235,7 +235,7 @@ async def import_csv(
         )
 
 
-@router.post("/json", response_model=ImportResult)
+@router.post("/json", response_model=ImportResult, tags=["📅 Import & Export"])
 async def import_json(
     file: UploadFile = File(...),
     bank_id: str = Form(...),
@@ -329,7 +329,7 @@ async def import_json(
         )
 
 
-@router.post("/validate", response_model=dict)
+@router.post("/validate", response_model=dict, tags=["📅 Import & Export"])
 async def validate_import_file(
     file: UploadFile = File(...),
     format: str = Form("auto_detect")
@@ -408,7 +408,7 @@ async def validate_import_file(
         }
 
 
-@router.get("/export/{bank_id}")
+@router.get("/export/{bank_id}", tags=["📅 Import & Export"])
 async def export_question_bank(
     bank_id: str,
     format: str = "csv",

@@ -1,0 +1,434 @@
+{% extends "admin/base.html" %}
+
+{% block title %}激活码管理{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+激活码管理
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">激活码管理</h3>
+        <button type="button" class="btn btn-primary btn-sm" onclick="showGenerateModal()">
+            <i class="fas fa-plus"></i> 生成激活码
+        </button>
+    </div>
+    <div class="card-body">
+        <!-- Filter Bar -->
+        <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <select id="bankFilter" class="form-control" style="width: 200px;">
+                <option value="">所有题库</option>
+                {% for bank in banks %}
+                <option value="{{ bank.id }}">{{ bank.name }}</option>
+                {% endfor %}
+            </select>
+            <select id="statusFilter" class="form-control" style="width: 150px;">
+                <option value="">所有状态</option>
+                <option value="unused">未使用</option>
+                <option value="used">已使用</option>
+            </select>
+            <select id="typeFilter" class="form-control" style="width: 150px;">
+                <option value="">所有类型</option>
+                <option value="permanent">永久</option>
+                <option value="temporary">临时</option>
+            </select>
+            <input type="text" id="searchInput" class="form-control" style="width: 200px;" placeholder="搜索激活码或描述...">
+            <button type="button" class="btn btn-default" onclick="applyFilters()">筛选</button>
+            <button type="button" class="btn btn-default" onclick="resetFilters()">重置</button>
+        </div>
+
+        <!-- Statistics -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCount">-</div>
+                <div class="stat-label">总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #4CAF50;" id="unusedCount">-</div>
+                <div class="stat-label">未使用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #FF9800;" id="usedCount">-</div>
+                <div class="stat-label">已使用</div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table id="codesTable">
+                <thead>
+                    <tr>
+                        <th>激活码</th>
+                        <th>题库</th>
+                        <th>类型</th>
+                        <th>有效期</th>
+                        <th>状态</th>
+                        <th>使用者</th>
+                        <th>创建时间</th>
+                        <th>描述</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="codesTableBody">
+                    <tr>
+                        <td colspan="9" style="text-align: center; color: #999;">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<!-- Generate Modal -->
+<div id="generateModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 5px; width: 500px; max-width: 90%;">
+        <h3 style="margin-top: 0;">生成激活码</h3>
+        <form id="generateForm" onsubmit="return generateCodes(event);">
+            <div class="form-group">
+                <label>题库 <span style="color: red;">*</span></label>
+                <select name="bank_id" class="form-control" required>
+                    <option value="">请选择题库</option>
+                    {% for bank in banks %}
+                    <option value="{{ bank.id }}">{{ bank.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>激活码类型 <span style="color: red;">*</span></label>
+                <select name="expire_type" class="form-control" onchange="toggleExpireDays(this.value)" required>
+                    <option value="permanent">永久</option>
+                    <option value="temporary">临时（有有效期）</option>
+                </select>
+            </div>
+            <div class="form-group" id="expireDaysGroup" style="display: none;">
+                <label>有效天数 <span style="color: red;">*</span></label>
+                <input type="number" name="expire_days" class="form-control" min="1" max="3650" placeholder="例如：30">
+            </div>
+            <div class="form-group">
+                <label>生成数量</label>
+                <input type="number" name="count" class="form-control" min="1" max="100" value="1" required>
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <input type="text" name="description" class="form-control" maxlength="200" placeholder="可选，用于备注该批激活码的用途">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn btn-default" onclick="hideGenerateModal()">取消</button>
+                <button type="submit" class="btn btn-primary">生成</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Result Modal -->
+<div id="resultModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1001;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 5px; width: 600px; max-width: 90%; max-height: 80vh; overflow-y: auto;">
+        <h3 style="margin-top: 0;">生成成功</h3>
+        <p style="color: #666; margin-bottom: 15px;">已生成 <strong id="generatedCount"></strong> 个激活码</p>
+        <div id="generatedCodes" style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto; font-family: monospace;">
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn btn-default" onclick="copyAllCodes()">
+                <i class="fas fa-copy"></i> 复制所有
+            </button>
+            <button type="button" class="btn btn-primary" onclick="hideResultModal()">确定</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 15px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.code-value {
+    font-family: monospace;
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: bold;
+}
+</style>
+
+<script>
+let currentPage = 1;
+let currentFilters = {};
+let generatedCodesData = [];
+
+// Load codes on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadCodes();
+});
+
+function loadCodes(page = 1) {
+    currentPage = page;
+
+    const params = new URLSearchParams({
+        skip: (page - 1) * 20,
+        limit: 20,
+        ...currentFilters
+    });
+
+    fetch(`/api/v1/activation/admin/codes?${params}`, {
+        headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('token')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        renderTable(data.codes);
+        renderPagination(data.total);
+        updateStats(data.total, data.unused_count, data.used_count);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('codesTableBody').innerHTML = `
+            <tr><td colspan="9" style="text-align: center; color: red;">加载失败</td></tr>
+        `;
+    });
+}
+
+function renderTable(codes) {
+    const tbody = document.getElementById('codesTableBody');
+
+    if (codes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #999;">暂无数据</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = codes.map(code => `
+        <tr>
+            <td><span class="code-value">${code.code}</span></td>
+            <td>${code.bank_name || '未知'}</td>
+            <td>
+                <span class="tag ${code.expire_type === 'permanent' ? 'tag-blue' : 'tag-orange'}">
+                    ${code.expire_type === 'permanent' ? '永久' : '临时'}
+                </span>
+            </td>
+            <td>${code.expire_days ? code.expire_days + '天' : '永久'}</td>
+            <td>
+                <span class="tag ${code.is_used ? 'tag-orange' : 'tag-green'}">
+                    ${code.is_used ? '已使用' : '未使用'}
+                </span>
+            </td>
+            <td>${code.used_by || '-'}</td>
+            <td>${formatDate(code.created_at)}</td>
+            <td>${code.description || '-'}</td>
+            <td>
+                <div class="btn-group">
+                    <button class="btn btn-default btn-sm" onclick="copyCode('${code.code}')" title="复制">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    ${!code.is_used ? `
+                        <button class="btn btn-danger btn-sm" onclick="deleteCode('${code.id}')" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderPagination(total) {
+    const totalPages = Math.ceil(total / 20);
+    const pagination = document.getElementById('pagination');
+
+    if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    if (currentPage > 1) {
+        html += `<a href="#" class="pagination-item" onclick="loadCodes(${currentPage - 1}); return false;">上一页</a>`;
+    }
+    html += `<span class="pagination-item active">${currentPage}</span>`;
+    if (currentPage < totalPages) {
+        html += `<a href="#" class="pagination-item" onclick="loadCodes(${currentPage + 1}); return false;">下一页</a>`;
+    }
+
+    pagination.innerHTML = html;
+}
+
+function updateStats(total, unused, used) {
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('unusedCount').textContent = unused;
+    document.getElementById('usedCount').textContent = used;
+}
+
+function applyFilters() {
+    currentFilters = {};
+
+    const bankId = document.getElementById('bankFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const search = document.getElementById('searchInput').value;
+
+    if (bankId) currentFilters.bank_id = bankId;
+    if (status) currentFilters.is_used = status === 'used';
+    if (type) currentFilters.expire_type = type;
+    if (search) currentFilters.search = search;
+
+    loadCodes(1);
+}
+
+function resetFilters() {
+    document.getElementById('bankFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('searchInput').value = '';
+    currentFilters = {};
+    loadCodes(1);
+}
+
+function showGenerateModal() {
+    document.getElementById('generateModal').style.display = 'block';
+}
+
+function hideGenerateModal() {
+    document.getElementById('generateModal').style.display = 'none';
+    document.getElementById('generateForm').reset();
+    document.getElementById('expireDaysGroup').style.display = 'none';
+}
+
+function toggleExpireDays(value) {
+    const group = document.getElementById('expireDaysGroup');
+    const input = group.querySelector('input[name="expire_days"]');
+
+    if (value === 'temporary') {
+        group.style.display = 'block';
+        input.required = true;
+    } else {
+        group.style.display = 'none';
+        input.required = false;
+    }
+}
+
+function generateCodes(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+    const data = {
+        bank_id: formData.get('bank_id'),
+        expire_type: formData.get('expire_type'),
+        count: parseInt(formData.get('count'))
+    };
+
+    if (data.expire_type === 'temporary') {
+        data.expire_days = parseInt(formData.get('expire_days'));
+    }
+
+    if (formData.get('description')) {
+        data.description = formData.get('description');
+    }
+
+    fetch('/api/v1/activation/admin/codes', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + localStorage.getItem('token')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(codes => {
+        hideGenerateModal();
+        showResultModal(codes);
+        loadCodes(1); // Reload table
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('生成失败，请重试');
+    });
+
+    return false;
+}
+
+function showResultModal(codes) {
+    generatedCodesData = codes;
+    document.getElementById('generatedCount').textContent = codes.length;
+    document.getElementById('generatedCodes').innerHTML = codes.map(code =>
+        `<div style="padding: 5px 0; border-bottom: 1px solid #e0e0e0;">${code.code}</div>`
+    ).join('');
+    document.getElementById('resultModal').style.display = 'block';
+}
+
+function hideResultModal() {
+    document.getElementById('resultModal').style.display = 'none';
+}
+
+function copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        alert('已复制: ' + code);
+    });
+}
+
+function copyAllCodes() {
+    const codes = generatedCodesData.map(c => c.code).join('\n');
+    navigator.clipboard.writeText(codes).then(() => {
+        alert('已复制所有激活码');
+    });
+}
+
+function deleteCode(codeId) {
+    if (!confirm('确定要删除这个激活码吗？')) {
+        return;
+    }
+
+    fetch(`/api/v1/activation/admin/codes/${codeId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('token')
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('删除成功');
+            loadCodes(currentPage);
+        } else {
+            alert('删除失败: ' + result.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败，请重试');
+    });
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+</script>
+{% endblock %}

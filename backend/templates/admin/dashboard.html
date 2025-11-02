@@ -46,6 +46,26 @@
         </div>
         <div class="stat-card-value">{{ stats.active }}</div>
     </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">AI配置</span>
+            <div class="stat-card-icon purple">
+                <i class="fas fa-brain"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ stats.ai_configs|default(0) }}</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <span class="stat-card-title">AI会话</span>
+            <div class="stat-card-icon green">
+                <i class="fas fa-comments"></i>
+            </div>
+        </div>
+        <div class="stat-card-value">{{ stats.ai_sessions|default(0) }}</div>
+    </div>
 </div>
 
 <!-- Quick Actions -->
@@ -61,11 +81,17 @@
             <a href="/admin/qbanks" class="btn btn-success">
                 <i class="fas fa-database"></i> 管理题库
             </a>
+            <a href="/admin/activation-codes" class="btn btn-warning">
+                <i class="fas fa-key"></i> 激活码管理
+            </a>
             <a href="/admin/imports" class="btn btn-default">
                 <i class="fas fa-file-upload"></i> 导入题目
             </a>
             <a href="/admin/questions" class="btn btn-default">
                 <i class="fas fa-plus-circle"></i> 管理题目
+            </a>
+            <a href="/admin/ai-configs" class="btn btn-default" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <i class="fas fa-brain"></i> AI助手配置
             </a>
         </div>
     </div>

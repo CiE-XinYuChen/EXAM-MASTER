@@ -53,7 +53,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label" for="type">题目类型 *</label>
-                    <select id="type" name="type" class="form-control" required onchange="handleTypeChange()">
+                    <select id="type" name="type" class="form-control" required onchange="handleTypeChange()" disabled>
                         <option value="">请选择类型</option>
                         <option value="single" {% if question.type == 'single' %}selected{% endif %}>单选题</option>
                         <option value="multiple" {% if question.type == 'multiple' %}selected{% endif %}>多选题</option>
@@ -61,6 +61,9 @@
                         <option value="fill" {% if question.type == 'fill' %}selected{% endif %}>填空题</option>
                         <option value="essay" {% if question.type == 'essay' %}selected{% endif %}>问答题</option>
                     </select>
+                    <small style="color: #666; display: block; margin-top: 5px;">编辑时不允许修改题目类型</small>
+                    <!-- Hidden input to ensure type is submitted even when select is disabled -->
+                    <input type="hidden" name="type" value="{{ question.type }}">
                 </div>
                 
                 <div class="form-group">
@@ -93,10 +96,10 @@
                 <div class="card-body">
                     <div id="resourceUploadSection">
                         <button type="button" class="btn btn-sm btn-primary" onclick="showResourceUpload()">
-                            <i class="fas fa-upload"></i> 上传图片/音频
+                            <i class="fas fa-upload"></i> 上传图片/音频/视频
                         </button>
                         <div id="uploadArea" style="display: none; margin-top: 15px;">
-                            <input type="file" id="resourceFile" accept="image/*,audio/*" multiple>
+                            <input type="file" id="resourceFile" accept="image/*,audio/*,video/*" multiple>
                             <button type="button" class="btn btn-sm btn-success" onclick="uploadResources()">
                                 <i class="fas fa-cloud-upload-alt"></i> 上传
                             </button>
@@ -293,8 +296,8 @@ function addOption(label = null, content = '', isCorrect = false) {
                    required
                    style="flex: 1;">
             <label style="display: flex; align-items: center; margin: 0;">
-                <input type="${type === 'multiple' ? 'checkbox' : 'radio'}" 
-                       name="option_correct_${type === 'multiple' ? optionIndex : ''}" 
+                <input type="${type === 'multiple' ? 'checkbox' : 'radio'}"
+                       name="${type === 'multiple' ? 'option_correct_' + optionIndex : 'option_correct_single'}"
                        value="${optionIndex}"
                        ${isCorrect ? 'checked' : ''}
                        style="margin-right: 5px;">
@@ -425,7 +428,7 @@ function validateAndSubmit() {
         
         // Check for correct answers
         if (type === 'single') {
-            const hasCorrect = document.querySelector('input[name="option_correct_"]:checked');
+            const hasCorrect = document.querySelector('input[name="option_correct_single"]:checked');
             if (!hasCorrect) {
                 alert('请选择一个正确答案！');
                 return false;
@@ -484,9 +487,9 @@ async function uploadResources() {
     for (let file of files) {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         try {
-            const response = await fetch(`/api/v2/qbank/banks/${bankId}/resources/upload?question_id=${questionId}`, {
+            const response = await fetch(`/admin/questions/${questionId}/resources/upload`, {
                 method: 'POST',
                 body: formData
             });
@@ -510,35 +513,166 @@ function displayResource(resource) {
     const resourceList = document.getElementById('resourceList');
     const resourceItem = document.createElement('div');
     resourceItem.className = 'resource-item';
-    resourceItem.style.cssText = 'padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px;';
-    
-    if (resource.type === 'image') {
-        resourceItem.innerHTML = `
-            <img src="${resource.url}" style="max-width: 100px; max-height: 100px; margin-right: 10px;">
-            <span>${resource.filename}</span>
-            <button class="btn btn-sm btn-danger" onclick="deleteResource('${resource.id}', this)">
-                <i class="fas fa-trash"></i>
-            </button>
-            <button class="btn btn-sm btn-info" onclick="insertResourceToStem('${resource.url}')">
-                插入题干
-            </button>
-        `;
+    resourceItem.style.cssText = 'padding: 10px; border: 1px solid #ddd; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; gap: 10px;';
+
+    let mediaPreview = '';
+    let insertButton = '';
+    let icon = '';
+    const resourceType = resource.resource_type;
+    const fileName = resource.file_name;
+
+    if (resourceType === 'image') {
+        mediaPreview = `<img src="${resource.url}" style="max-width: 100px; max-height: 100px; border-radius: 3px;">`;
+        insertButton = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-info" onclick="insertResourceToStem('${resource.url}', 'image'); return false;">
+                    <i class="fas fa-plus"></i> 插入题干
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="showInsertToOptionMenu('${resource.url}', 'image'); return false;">
+                    <i class="fas fa-list"></i> 插入选项
+                </button>
+            </div>`;
+    } else if (resourceType === 'video') {
+        mediaPreview = `<video src="${resource.url}" style="max-width: 150px; max-height: 100px; border-radius: 3px;" controls></video>`;
+        insertButton = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-info" onclick="insertResourceToStem('${resource.url}', 'video'); return false;">
+                    <i class="fas fa-plus"></i> 插入题干
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="showInsertToOptionMenu('${resource.url}', 'video'); return false;">
+                    <i class="fas fa-list"></i> 插入选项
+                </button>
+            </div>`;
+        icon = '<i class="fas fa-video"></i>';
+    } else if (resourceType === 'audio') {
+        mediaPreview = `<audio src="${resource.url}" style="max-width: 200px;" controls></audio>`;
+        insertButton = `
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-info" onclick="insertResourceToStem('${resource.url}', 'audio'); return false;">
+                    <i class="fas fa-plus"></i> 插入题干
+                </button>
+                <button type="button" class="btn btn-outline-info" onclick="showInsertToOptionMenu('${resource.url}', 'audio'); return false;">
+                    <i class="fas fa-list"></i> 插入选项
+                </button>
+            </div>`;
+        icon = '<i class="fas fa-file-audio"></i>';
     } else {
-        resourceItem.innerHTML = `
-            <i class="fas fa-file-audio"></i>
-            <span>${resource.filename}</span>
-            <button class="btn btn-sm btn-danger" onclick="deleteResource('${resource.id}', this)">
-                <i class="fas fa-trash"></i>
-            </button>
-        `;
+        icon = '<i class="fas fa-file"></i>';
     }
-    
+
+    resourceItem.innerHTML = `
+        <div style="flex-shrink: 0;">${mediaPreview || icon}</div>
+        <div style="flex-grow: 1;">
+            <div style="font-weight: 500;">${fileName}</div>
+            <small style="color: #666;">${formatFileSize(resource.file_size || 0)}</small>
+        </div>
+        ${insertButton}
+        <button type="button" class="btn btn-sm btn-danger" onclick="deleteResource('${resource.id}', this); return false;">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+
     resourceList.appendChild(resourceItem);
 }
 
-function insertResourceToStem(url) {
+function insertResourceToStem(url, type) {
     const stemField = document.getElementById('stem');
-    stemField.value += `\n![图片](${url})`;
+    let markdownText = '';
+
+    if (type === 'image') {
+        markdownText = `\n![图片](${url})`;
+    } else if (type === 'video') {
+        markdownText = `\n[视频](${url})`;
+    } else if (type === 'audio') {
+        markdownText = `\n[音频](${url})`;
+    } else {
+        markdownText = `\n[资源](${url})`;
+    }
+
+    stemField.value += markdownText;
+    return false; // 防止表单提交
+}
+
+function showInsertToOptionMenu(url, type) {
+    // 获取当前所有选项
+    const optionsContainer = document.getElementById('optionsContainer');
+    if (!optionsContainer) {
+        alert('只有单选题和多选题才能插入选项');
+        return false;
+    }
+
+    const options = optionsContainer.querySelectorAll('.option-item');
+    if (options.length === 0) {
+        alert('请先添加选项');
+        return false;
+    }
+
+    // 创建选项选择器
+    let optionsList = '<div class="list-group">';
+    options.forEach((option, index) => {
+        const label = String.fromCharCode(65 + index); // A, B, C, D...
+        const preview = option.querySelector('input[name^="option_content_"]')?.value?.substring(0, 30) || '(空)';
+        optionsList += `
+            <button type="button" class="list-group-item list-group-item-action"
+                    onclick="insertResourceToOption('${url}', '${type}', ${index}); closeInsertMenu(); return false;">
+                <strong>选项 ${label}</strong>: ${preview}...
+            </button>`;
+    });
+    optionsList += '</div>';
+
+    // 直接显示浮层菜单（移除 confirm 确认框）
+    const menuHtml = `
+        <div id="insertOptionMenu" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+             background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+             z-index: 10000; max-width: 400px; max-height: 500px; overflow-y: auto;">
+            <h5 style="margin-bottom: 15px;">选择要插入的选项</h5>
+            ${optionsList}
+            <button type="button" class="btn btn-secondary btn-sm mt-3" onclick="closeInsertMenu(); return false;">取消</button>
+        </div>
+        <div id="insertOptionBackdrop" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+             background: rgba(0,0,0,0.5); z-index: 9999;" onclick="closeInsertMenu();"></div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', menuHtml);
+
+    return false; // 防止表单提交
+}
+
+function insertResourceToOption(url, type, optionIndex) {
+    const optionField = document.querySelector(`input[name="option_content_${optionIndex}"]`);
+    if (!optionField) {
+        alert('选项不存在');
+        return false;
+    }
+
+    let markdownText = '';
+    if (type === 'image') {
+        markdownText = `![图片](${url})`;
+    } else if (type === 'video') {
+        markdownText = `[视频](${url})`;
+    } else if (type === 'audio') {
+        markdownText = `[音频](${url})`;
+    } else {
+        markdownText = `[资源](${url})`;
+    }
+
+    optionField.value += ' ' + markdownText;
+    return false; // 防止表单提交
+}
+
+function closeInsertMenu() {
+    const menu = document.getElementById('insertOptionMenu');
+    const backdrop = document.getElementById('insertOptionBackdrop');
+    if (menu) menu.remove();
+    if (backdrop) backdrop.remove();
+    return false;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
 async function deleteResource(resourceId, button) {

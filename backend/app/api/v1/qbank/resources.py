@@ -101,7 +101,7 @@ def check_question_write_permission(
     return question
 
 
-@router.post("/upload", response_model=ResourceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=ResourceResponse, status_code=status.HTTP_201_CREATED, tags=["🖼️ Media & Resources"])
 async def upload_resource(
     file: UploadFile = File(...),
     question_id: str = Form(...),
@@ -178,7 +178,7 @@ async def upload_resource(
     return resource
 
 
-@router.get("/{resource_id}/download")
+@router.get("/{resource_id}/download", tags=["🖼️ Media & Resources"])
 async def download_resource(
     resource_id: str,
     current_user: User = Depends(get_current_user),
@@ -230,7 +230,7 @@ async def download_resource(
     )
 
 
-@router.get("/{resource_id}", response_model=ResourceResponse)
+@router.get("/{resource_id}", response_model=ResourceResponse, tags=["🖼️ Media & Resources"])
 async def get_resource_info(
     resource_id: str,
     current_user: User = Depends(get_current_user),
@@ -272,7 +272,7 @@ async def get_resource_info(
     return resource
 
 
-@router.delete("/{resource_id}", response_model=dict)
+@router.delete("/{resource_id}", response_model=dict, tags=["🖼️ Media & Resources"])
 async def delete_resource(
     resource_id: str,
     current_user: User = Depends(get_current_user),
@@ -315,7 +315,7 @@ async def delete_resource(
     return {"message": "Resource deleted successfully"}
 
 
-@router.post("/batch-upload", response_model=List[ResourceResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/batch-upload", response_model=List[ResourceResponse], status_code=status.HTTP_201_CREATED, tags=["🖼️ Media & Resources"])
 async def batch_upload_resources(
     files: List[UploadFile] = File(...),
     question_id: str = Form(...),

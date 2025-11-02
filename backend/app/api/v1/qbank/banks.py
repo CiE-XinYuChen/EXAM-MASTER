@@ -47,7 +47,7 @@ def check_bank_permission(
     return False
 
 
-@router.get("/", response_model=List[QuestionBankResponse])
+@router.get("/", response_model=List[QuestionBankResponse], tags=["📚 Bank Management"])
 async def get_question_banks(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -83,7 +83,7 @@ async def get_question_banks(
     return accessible_banks
 
 
-@router.post("/", response_model=QuestionBankResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=QuestionBankResponse, status_code=status.HTTP_201_CREATED, tags=["📚 Bank Management"])
 async def create_question_bank(
     bank_data: QuestionBankCreate,
     current_user: User = Depends(get_current_teacher_user),
@@ -121,7 +121,7 @@ async def create_question_bank(
     return bank
 
 
-@router.get("/{bank_id}", response_model=QuestionBankResponse)
+@router.get("/{bank_id}", response_model=QuestionBankResponse, tags=["📚 Bank Management"])
 async def get_question_bank(
     bank_id: str,
     current_user: User = Depends(get_current_user),
@@ -152,7 +152,7 @@ async def get_question_bank(
     return bank
 
 
-@router.put("/{bank_id}", response_model=QuestionBankResponse)
+@router.put("/{bank_id}", response_model=QuestionBankResponse, tags=["📚 Bank Management"])
 async def update_question_bank(
     bank_id: str,
     bank_update: QuestionBankUpdate,
@@ -192,7 +192,7 @@ async def update_question_bank(
     return bank
 
 
-@router.delete("/{bank_id}", response_model=dict)
+@router.delete("/{bank_id}", response_model=dict, tags=["📚 Bank Management"])
 async def delete_question_bank(
     bank_id: str,
     current_user: User = Depends(get_current_user),
@@ -228,7 +228,7 @@ async def delete_question_bank(
     return {"message": "Question bank deleted successfully"}
 
 
-@router.post("/{bank_id}/clone", response_model=QuestionBankResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/{bank_id}/clone", response_model=QuestionBankResponse, status_code=status.HTTP_201_CREATED, tags=["📚 Bank Management"])
 async def clone_question_bank(
     bank_id: str,
     new_name: str = Query(..., min_length=1),

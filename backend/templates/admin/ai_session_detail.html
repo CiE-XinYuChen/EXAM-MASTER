@@ -1,0 +1,227 @@
+{% extends "admin/base.html" %}
+
+{% block title %}聊天会话详情{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a> / <a href="/admin/ai-configs">AI配置管理</a> / 会话详情
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1>聊天会话详情</h1>
+    <form action="/admin/ai-sessions/{{ session.id }}/delete" method="POST" style="display: inline;"
+          onsubmit="return confirm('确定要删除此会话及所有消息吗？');">
+        <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash"></i> 删除会话
+        </button>
+    </form>
+</div>
+
+<!-- Session Info -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">会话信息</h3>
+    </div>
+    <div class="card-body">
+        <table>
+            <tbody>
+                <tr>
+                    <td style="width: 200px;"><strong>会话ID：</strong></td>
+                    <td><code>{{ session.id }}</code></td>
+                </tr>
+                <tr>
+                    <td><strong>用户：</strong></td>
+                    <td>{{ session.user.username if session.user else 'N/A' }} (ID: {{ session.user_id }})</td>
+                </tr>
+                <tr>
+                    <td><strong>AI配置：</strong></td>
+                    <td>{{ session.ai_config.name if session.ai_config else 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>模式：</strong></td>
+                    <td>
+                        <span class="tag {% if session.mode == 'practice' %}tag-blue{% elif session.mode == 'review' %}tag-orange{% else %}tag-green{% endif %}">
+                            {{ session.mode }}
+                        </span>
+                    </td>
+                </tr>
+                {% if session.bank_id %}
+                <tr>
+                    <td><strong>题库ID：</strong></td>
+                    <td><code>{{ session.bank_id }}</code></td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td><strong>系统提示词：</strong></td>
+                    <td>
+                        {% if session.system_prompt %}
+                        <pre style="background: #f5f5f5; padding: 12px; border-radius: 4px; max-height: 200px; overflow-y: auto;">{{ session.system_prompt }}</pre>
+                        {% else %}
+                        <span class="tag tag-gray">未设置</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>总消息数：</strong></td>
+                    <td>{{ session.total_messages }}</td>
+                </tr>
+                <tr>
+                    <td><strong>总Tokens：</strong></td>
+                    <td>{{ session.total_tokens }}</td>
+                </tr>
+                <tr>
+                    <td><strong>开始时间：</strong></td>
+                    <td>{{ session.started_at.strftime('%Y-%m-%d %H:%M:%S') if session.started_at else 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <td><strong>最后活动：</strong></td>
+                    <td>{{ session.last_activity_at.strftime('%Y-%m-%d %H:%M:%S') if session.last_activity_at else 'N/A' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Messages -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header">
+        <h3 class="card-title">对话消息 ({{ messages|length }} 条)</h3>
+    </div>
+    <div class="card-body">
+        {% if messages %}
+        <div class="chat-messages">
+            {% for message in messages %}
+            <div class="chat-message {{ message.role }}">
+                <div class="message-header">
+                    <span class="message-role">
+                        {% if message.role == 'user' %}
+                        <i class="fas fa-user"></i> 用户
+                        {% elif message.role == 'assistant' %}
+                        <i class="fas fa-robot"></i> AI助手
+                        {% elif message.role == 'system' %}
+                        <i class="fas fa-cog"></i> 系统
+                        {% elif message.role == 'tool' %}
+                        <i class="fas fa-wrench"></i> 工具
+                        {% endif %}
+                    </span>
+                    <span class="message-time">{{ message.created_at.strftime('%H:%M:%S') if message.created_at else '' }}</span>
+                    {% if message.tokens %}
+                    <span class="message-tokens">{{ message.tokens }} tokens</span>
+                    {% endif %}
+                </div>
+                <div class="message-content">
+                    {{ message.content }}
+                </div>
+                {% if message.tool_calls %}
+                <div class="message-tool-calls">
+                    <strong><i class="fas fa-tools"></i> 工具调用：</strong>
+                    <pre>{{ message.tool_calls|tojson(indent=2) }}</pre>
+                </div>
+                {% endif %}
+                {% if message.tool_call_id %}
+                <div class="message-tool-id">
+                    <small><i class="fas fa-link"></i> 工具调用ID: <code>{{ message.tool_call_id }}</code></small>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 16px;"></i>
+            <p>此会话暂无消息</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.chat-message {
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.chat-message.user {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.chat-message.assistant {
+    background: #f3e5f5;
+    border-color: #9c27b0;
+}
+
+.chat-message.system {
+    background: #fff3e0;
+    border-color: #ff9800;
+}
+
+.chat-message.tool {
+    background: #e8f5e9;
+    border-color: #4caf50;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.message-role {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.message-time {
+    color: #666;
+    font-size: 12px;
+}
+
+.message-tokens {
+    margin-left: auto;
+    font-size: 12px;
+    padding: 2px 8px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+
+.message-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
+}
+
+.message-tool-calls {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 4px;
+}
+
+.message-tool-calls pre {
+    margin: 8px 0 0 0;
+    padding: 8px;
+    background: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    overflow-x: auto;
+}
+
+.message-tool-id {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #666;
+}
+</style>
+{% endblock %}

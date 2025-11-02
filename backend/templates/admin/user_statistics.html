@@ -1,0 +1,187 @@
+{% extends "admin/base.html" %}
+
+{% block title %}用户统计 - {{ user.username }}{% endblock %}
+
+{% block breadcrumb %}
+<a href="/admin">首页</a>
+<span>/</span>
+<a href="/admin/users">用户管理</a>
+<span>/</span>
+用户统计
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">用户统计 - {{ user.username }}</h3>
+        <a href="/admin/users" class="btn btn-default btn-sm">
+            <i class="fas fa-arrow-left"></i> 返回
+        </a>
+    </div>
+    <div class="card-body">
+        <!-- User Info -->
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+                <div>
+                    <strong>用户名:</strong> {{ user.username }}
+                </div>
+                <div>
+                    <strong>邮箱:</strong> {{ user.email }}
+                </div>
+                <div>
+                    <strong>角色:</strong>
+                    {% if user.role.value == 'admin' %}
+                        <span class="tag tag-red">管理员</span>
+                    {% elif user.role.value == 'teacher' %}
+                        <span class="tag tag-blue">教师</span>
+                    {% else %}
+                        <span class="tag tag-green">学生</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <strong>注册时间:</strong> {{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Overview Statistics -->
+        <h4 style="margin-bottom: 15px;">总览统计</h4>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
+            <div class="stat-card">
+                <div class="stat-value">{{ overview.total_banks_accessed }}</div>
+                <div class="stat-label">访问题库数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overview.total_questions_practiced }}</div>
+                <div class="stat-label">练习题目数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ "%.1f"|format(overview.overall_accuracy_rate) }}%</div>
+                <div class="stat-label">总体正确率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overview.total_sessions }}</div>
+                <div class="stat-label">答题会话数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overview.total_favorites }}</div>
+                <div class="stat-label">收藏题目数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overview.total_wrong_questions }}</div>
+                <div class="stat-label">错题数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ overview.consecutive_days }}</div>
+                <div class="stat-label">连续学习天数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ (overview.total_time_spent / 3600)|round(1) }}h</div>
+                <div class="stat-label">总学习时长</div>
+            </div>
+        </div>
+
+        <!-- Bank Statistics -->
+        <h4 style="margin-bottom: 15px;">分题库统计</h4>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>题库名称</th>
+                        <th>总题数</th>
+                        <th>已练习</th>
+                        <th>正确数</th>
+                        <th>错误数</th>
+                        <th>正确率</th>
+                        <th>收藏数</th>
+                        <th>错题数</th>
+                        <th>最后练习</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in bank_stats %}
+                    <tr>
+                        <td>{{ stat.bank_name or '未知题库' }}</td>
+                        <td>{{ stat.total_questions }}</td>
+                        <td>{{ stat.practiced_questions }}</td>
+                        <td>{{ stat.correct_count }}</td>
+                        <td>{{ stat.wrong_count }}</td>
+                        <td>
+                            <span class="tag {% if stat.accuracy_rate >= 80 %}tag-green{% elif stat.accuracy_rate >= 60 %}tag-blue{% else %}tag-orange{% endif %}">
+                                {{ "%.1f"|format(stat.accuracy_rate) }}%
+                            </span>
+                        </td>
+                        <td>{{ stat.favorite_count }}</td>
+                        <td>{{ stat.wrong_questions_count }}</td>
+                        <td>{{ stat.last_practiced_at.strftime('%Y-%m-%d %H:%M') if stat.last_practiced_at else '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; color: #999;">暂无练习数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Access List -->
+        <h4 style="margin-top: 30px; margin-bottom: 15px;">题库访问权限</h4>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>题库名称</th>
+                        <th>激活时间</th>
+                        <th>过期时间</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for access in access_list %}
+                    <tr>
+                        <td>{{ access.bank_name or '未知题库' }}</td>
+                        <td>{{ access.activated_at.strftime('%Y-%m-%d %H:%M') if access.activated_at else '-' }}</td>
+                        <td>{{ access.expire_at.strftime('%Y-%m-%d %H:%M') if access.expire_at else '永久' }}</td>
+                        <td>
+                            {% if access.is_expired %}
+                                <span class="tag tag-red">已过期</span>
+                            {% elif access.is_active %}
+                                <span class="tag tag-green">有效</span>
+                            {% else %}
+                                <span class="tag tag-orange">已禁用</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">暂无访问权限</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 20px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+}
+</style>
+{% endblock %}

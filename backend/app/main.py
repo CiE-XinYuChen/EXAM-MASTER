@@ -20,7 +20,9 @@ from datetime import datetime as datetime
 from app.models.question_models_v2 import QuestionBankV2, QuestionV2, QuestionOptionV2
 from app.models.llm_models import LLMInterface, PromptTemplate, LLMParseLog
 from app.services.question_bank_service import QuestionBankService
+from app.api.v1 import api_router as v1_api_router
 from app.api.v2 import api_router
+from app.api.mcp.router import router as mcp_router
 
 
 # Session storage for admin panel (in production, use Redis or database)
@@ -62,8 +64,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include V2 API routes only
+# Include V1 API routes (for resources and other endpoints)
+app.include_router(v1_api_router, prefix="/api/v1")
+
+# Include V2 API routes
 app.include_router(api_router, prefix="/api/v2")
+
+# Include MCP routes
+app.include_router(mcp_router, prefix="/api/mcp")
 
 
 # Admin authentication helper
@@ -85,7 +93,7 @@ def admin_required(request: Request):
 
 
 # Admin Panel Routes
-@app.get("/admin", response_class=HTMLResponse)
+@app.get("/admin", response_class=HTMLResponse, tags=["🖥️ Admin Dashboard"])
 async def admin_dashboard(
     request: Request,
     current_admin = Depends(admin_required),
@@ -93,11 +101,17 @@ async def admin_dashboard(
     qbank_db: Session = Depends(get_qbank_db)
 ):
     """Admin dashboard"""
+    from app.models.ai_models import AIConfig, ChatSession
+
     # Get statistics using V2 models only
     total_users = main_db.query(User).count()
     total_banks = qbank_db.query(QuestionBankV2).count()
     total_questions = qbank_db.query(QuestionV2).count()
-    
+
+    # Get AI statistics
+    total_ai_configs = main_db.query(AIConfig).count()
+    total_ai_sessions = main_db.query(ChatSession).count()
+
     return templates.TemplateResponse("admin/dashboard.html", {
         "request": request,
         "current_user": current_admin,
@@ -105,18 +119,20 @@ async def admin_dashboard(
             "users": total_users,
             "banks": total_banks,
             "questions": total_questions,
-            "active": 0
+            "active": 0,
+            "ai_configs": total_ai_configs,
+            "ai_sessions": total_ai_sessions
         }
     })
 
 
-@app.get("/admin/login", response_class=HTMLResponse)
+@app.get("/admin/login", response_class=HTMLResponse, tags=["🖥️ Admin Dashboard"])
 async def admin_login_page(request: Request):
     """Admin login page"""
     return templates.TemplateResponse("admin/login.html", {"request": request})
 
 
-@app.post("/admin/login")
+@app.post("/admin/login", tags=["🖥️ Admin Dashboard"])
 async def admin_login(
     request: Request,
     username: str = Form(...),
@@ -157,7 +173,7 @@ async def admin_login(
     return response
 
 
-@app.get("/admin/logout")
+@app.get("/admin/logout", tags=["🖥️ Admin Dashboard"])
 async def admin_logout(request: Request):
     """Admin logout"""
     session_id = request.cookies.get("admin_session")
@@ -169,7 +185,7 @@ async def admin_logout(request: Request):
     return response
 
 
-@app.get("/admin/users", response_class=HTMLResponse)
+@app.get("/admin/users", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
 async def admin_users(
     request: Request,
     current_admin = Depends(admin_required),
@@ -196,7 +212,7 @@ async def admin_users(
     })
 
 
-@app.get("/admin/users/create", response_class=HTMLResponse)
+@app.get("/admin/users/create", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
 async def admin_users_create_form(
     request: Request,
     current_admin = Depends(admin_required)
@@ -210,7 +226,7 @@ async def admin_users_create_form(
     })
 
 
-@app.post("/admin/users/create")
+@app.post("/admin/users/create", tags=["🖥️ Admin User Management"])
 async def admin_users_create(
     request: Request,
     username: str = Form(...),
@@ -268,7 +284,7 @@ async def admin_users_create(
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
-@app.get("/admin/users/{user_id}/edit", response_class=HTMLResponse)
+@app.get("/admin/users/{user_id}/edit", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
 async def admin_users_edit_form(
     request: Request,
     user_id: int,
@@ -289,7 +305,7 @@ async def admin_users_edit_form(
     })
 
 
-@app.post("/admin/users/{user_id}/edit")
+@app.post("/admin/users/{user_id}/edit", tags=["🖥️ Admin User Management"])
 async def admin_users_edit(
     request: Request,
     user_id: int,
@@ -343,7 +359,7 @@ async def admin_users_edit(
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
-@app.get("/admin/users/{user_id}/password", response_class=HTMLResponse)
+@app.get("/admin/users/{user_id}/password", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
 async def admin_users_password_form(
     request: Request,
     user_id: int,
@@ -363,7 +379,7 @@ async def admin_users_password_form(
     })
 
 
-@app.post("/admin/users/{user_id}/password")
+@app.post("/admin/users/{user_id}/password", tags=["🖥️ Admin User Management"])
 async def admin_users_change_password(
     request: Request,
     user_id: int,
@@ -401,7 +417,7 @@ async def admin_users_change_password(
     })
 
 
-@app.post("/admin/users/{user_id}/delete")
+@app.post("/admin/users/{user_id}/delete", tags=["🖥️ Admin User Management"])
 async def admin_users_delete(
     user_id: int,
     current_admin = Depends(admin_required),
@@ -430,7 +446,116 @@ async def admin_users_delete(
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
-@app.get("/admin/qbanks", response_class=HTMLResponse)
+@app.get("/admin/users/{user_id}/statistics", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
+async def admin_user_statistics(
+    user_id: int,
+    request: Request,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """View user statistics"""
+    from app.models.user_statistics import UserBankStatistics
+    from app.models.activation import UserBankAccess
+    from app.models.question_models_v2 import QuestionBankV2
+    from app.models.user_practice import UserFavorite, UserWrongQuestion, PracticeSession
+
+    # Get user
+    user = main_db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    # Get bank statistics
+    bank_stats_list = qbank_db.query(UserBankStatistics).filter(
+        UserBankStatistics.user_id == user_id
+    ).all()
+
+    # Get bank names
+    bank_ids = [s.bank_id for s in bank_stats_list]
+    banks = qbank_db.query(QuestionBankV2).filter(
+        QuestionBankV2.id.in_(bank_ids)
+    ).all()
+    bank_names = {b.id: b.name for b in banks}
+
+    # Add bank names to stats
+    for stat in bank_stats_list:
+        stat.bank_name = bank_names.get(stat.bank_id)
+
+    # Calculate overview statistics
+    total_banks_accessed = len(bank_stats_list)
+    total_questions_practiced = sum(s.practiced_questions for s in bank_stats_list)
+    total_correct = sum(s.correct_count for s in bank_stats_list)
+    total_wrong = sum(s.wrong_count for s in bank_stats_list)
+    total_time_spent = sum(s.total_time_spent for s in bank_stats_list)
+    overall_accuracy_rate = (total_correct / (total_correct + total_wrong) * 100) if (total_correct + total_wrong) > 0 else 0.0
+
+    from sqlalchemy import func
+    total_favorites = qbank_db.query(func.count(UserFavorite.id)).filter(
+        UserFavorite.user_id == user_id
+    ).scalar() or 0
+
+    total_wrong_questions = qbank_db.query(func.count(UserWrongQuestion.id)).filter(
+        UserWrongQuestion.user_id == user_id
+    ).scalar() or 0
+
+    total_sessions = qbank_db.query(func.count(PracticeSession.id)).filter(
+        PracticeSession.user_id == user_id
+    ).scalar() or 0
+
+    overview = {
+        "total_banks_accessed": total_banks_accessed,
+        "total_questions_practiced": total_questions_practiced,
+        "total_correct": total_correct,
+        "total_wrong": total_wrong,
+        "overall_accuracy_rate": overall_accuracy_rate,
+        "total_time_spent": total_time_spent,
+        "total_sessions": total_sessions,
+        "total_favorites": total_favorites,
+        "total_wrong_questions": total_wrong_questions,
+        "consecutive_days": 0,  # Simplified for now
+        "total_practice_days": 0
+    }
+
+    # Get access list
+    access_list = qbank_db.query(UserBankAccess).filter(
+        UserBankAccess.user_id == user_id
+    ).all()
+
+    # Add bank names and expired status to access list
+    for access in access_list:
+        access.bank_name = bank_names.get(access.bank_id)
+        access.is_expired = access.is_expired()
+
+    return templates.TemplateResponse("admin/user_statistics.html", {
+        "request": request,
+        "user": user,
+        "overview": overview,
+        "bank_stats": bank_stats_list,
+        "access_list": access_list,
+        "current_user": current_admin
+    })
+
+
+@app.get("/admin/activation-codes", response_class=HTMLResponse, tags=["🖥️ Admin Activation"])
+async def admin_activation_codes(
+    request: Request,
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """Activation code management page"""
+    from app.models.question_models_v2 import QuestionBankV2
+
+    # Get all banks for the dropdown
+    banks = qbank_db.query(QuestionBankV2).order_by(QuestionBankV2.name).all()
+
+    return templates.TemplateResponse("admin/activation_codes.html", {
+        "request": request,
+        "banks": banks,
+        "current_user": current_admin
+    })
+
+
+@app.get("/admin/qbanks", response_class=HTMLResponse, tags=["🖥️ Admin Question Banks"])
 async def admin_qbanks(
     request: Request,
     current_admin = Depends(admin_required),
@@ -465,7 +590,7 @@ async def admin_qbanks(
     })
 
 
-@app.get("/admin/qbanks/create", response_class=HTMLResponse)
+@app.get("/admin/qbanks/create", response_class=HTMLResponse, tags=["🖥️ Admin Question Banks"])
 async def admin_qbanks_create_form(
     request: Request,
     current_admin = Depends(admin_required)
@@ -479,7 +604,7 @@ async def admin_qbanks_create_form(
     })
 
 
-@app.post("/admin/qbanks/create")
+@app.post("/admin/qbanks/create", tags=["🖥️ Admin Question Banks"])
 async def admin_qbanks_create(
     request: Request,
     name: str = Form(...),
@@ -516,7 +641,7 @@ async def admin_qbanks_create(
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
 
-@app.get("/admin/qbanks/{bank_id}/edit", response_class=HTMLResponse)
+@app.get("/admin/qbanks/{bank_id}/edit", response_class=HTMLResponse, tags=["🖥️ Admin Question Banks"])
 async def admin_qbanks_edit_form(
     request: Request,
     bank_id: str,
@@ -537,7 +662,7 @@ async def admin_qbanks_edit_form(
     })
 
 
-@app.post("/admin/qbanks/{bank_id}/edit")
+@app.post("/admin/qbanks/{bank_id}/edit", tags=["🖥️ Admin Question Banks"])
 async def admin_qbanks_edit(
     request: Request,
     bank_id: str,
@@ -565,7 +690,7 @@ async def admin_qbanks_edit(
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
 
-@app.post("/admin/qbanks/{bank_id}/delete")
+@app.post("/admin/qbanks/{bank_id}/delete", tags=["🖥️ Admin Question Banks"])
 async def admin_qbanks_delete(
     bank_id: str,
     current_admin = Depends(admin_required),
@@ -590,7 +715,7 @@ async def admin_qbanks_delete(
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
 
-@app.get("/admin/questions", response_class=HTMLResponse)
+@app.get("/admin/questions", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
 async def admin_questions(
     request: Request,
     current_admin = Depends(admin_required),
@@ -633,7 +758,7 @@ async def admin_questions(
     })
 
 
-@app.get("/admin/questions/create", response_class=HTMLResponse)
+@app.get("/admin/questions/create", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
 async def admin_questions_create_form(
     request: Request,
     current_admin = Depends(admin_required),
@@ -653,7 +778,7 @@ async def admin_questions_create_form(
     })
 
 
-@app.post("/admin/questions/create")
+@app.post("/admin/questions/create", tags=["🖥️ Admin Questions"])
 async def admin_questions_create(
     request: Request,
     current_admin = Depends(admin_required),
@@ -781,7 +906,7 @@ async def admin_questions_create(
     return RedirectResponse(url=f"/admin/questions?bank_id={data['bank_id']}", status_code=303)
 
 
-@app.get("/admin/questions/{question_id}/preview", response_class=HTMLResponse)
+@app.get("/admin/questions/{question_id}/preview", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
 async def admin_questions_preview(
     request: Request,
     question_id: str,
@@ -808,7 +933,7 @@ async def admin_questions_preview(
     })
 
 
-@app.get("/admin/questions/{question_id}/edit", response_class=HTMLResponse)
+@app.get("/admin/questions/{question_id}/edit", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
 async def admin_questions_edit_form(
     request: Request,
     question_id: str,
@@ -844,7 +969,7 @@ async def admin_questions_edit_form(
     })
 
 
-@app.post("/admin/questions/{question_id}/edit")
+@app.post("/admin/questions/{question_id}/edit", tags=["🖥️ Admin Questions"])
 async def admin_questions_edit(
     request: Request,
     question_id: str,
@@ -915,18 +1040,22 @@ async def admin_questions_edit(
             form_data = await request.form()
             option_contents = []
             correct_options = []
-            
+
             for key in form_data:
                 if key.startswith("option_content_"):
                     idx = int(key.replace("option_content_", ""))
                     option_contents.append((idx, form_data[key]))
-                elif key == "correct_option":
+                elif key == "option_correct_single":
+                    # Single choice - radio button
                     correct_options = [int(form_data[key])]
-                elif key == "correct_options":
-                    correct_options = [int(x) for x in form_data.getlist(key)]
-            
+                elif key.startswith("option_correct_"):
+                    # Multiple choice - checkboxes
+                    if key != "option_correct_single":
+                        idx = int(key.replace("option_correct_", ""))
+                        correct_options.append(idx)
+
             option_contents.sort(key=lambda x: x[0])
-            
+
             for i, (idx, content) in enumerate(option_contents):
                 if content:
                     option = QuestionOptionV2(
@@ -980,7 +1109,7 @@ async def admin_questions_edit(
     return RedirectResponse(url=f"/admin/questions?bank_id={question.bank_id}", status_code=303)
 
 
-@app.post("/admin/questions/{question_id}/delete")
+@app.post("/admin/questions/{question_id}/delete", tags=["🖥️ Admin Questions"])
 async def admin_questions_delete(
     question_id: str,
     current_admin = Depends(admin_required),
@@ -988,17 +1117,164 @@ async def admin_questions_delete(
 ):
     """Delete question"""
     question = qbank_db.query(QuestionV2).filter(QuestionV2.id == question_id).first()
-    
+
     if not question:
         raise HTTPException(status_code=404, detail="题目不存在")
-    
+
     bank_id = question.bank_id
-    
+
     # Delete question (cascades to options)
     qbank_db.delete(question)
     qbank_db.commit()
-    
+
     return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
+
+
+@app.post("/admin/questions/{question_id}/resources/upload", tags=["🖥️ Admin Questions"])
+async def admin_upload_resource(
+    question_id: str,
+    file: UploadFile = File(...),
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """Upload resource for a question (images, videos, audio)"""
+    import uuid
+    import shutil
+    from pathlib import Path
+    import mimetypes
+    from app.models.question_models import QuestionResource
+
+    # Validate file type
+    ALLOWED_EXTENSIONS = {
+        'image': {'.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp'},
+        'video': {'.mp4', '.webm', '.avi', '.mov', '.mkv'},
+        'audio': {'.mp3', '.wav', '.ogg', '.m4a', '.flac'},
+        'document': {'.pdf', '.doc', '.docx', '.txt', '.tex', '.md'}
+    }
+
+    MAX_FILE_SIZES = {
+        'image': 10 * 1024 * 1024,      # 10MB
+        'video': 100 * 1024 * 1024,     # 100MB
+        'audio': 20 * 1024 * 1024,      # 20MB
+        'document': 20 * 1024 * 1024    # 20MB
+    }
+
+    # Get file type from extension
+    file_ext = Path(file.filename).suffix.lower()
+    file_type = None
+    for ftype, extensions in ALLOWED_EXTENSIONS.items():
+        if file_ext in extensions:
+            file_type = ftype
+            break
+
+    if not file_type:
+        return JSONResponse(
+            status_code=400,
+            content={"error": f"不支持的文件类型: {file_ext}"}
+        )
+
+    # Check file size
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+
+    if file_size > MAX_FILE_SIZES[file_type]:
+        max_size_mb = MAX_FILE_SIZES[file_type] / (1024 * 1024)
+        return JSONResponse(
+            status_code=400,
+            content={"error": f"文件太大，{file_type}类型最大{max_size_mb}MB"}
+        )
+
+    # Check question exists
+    question = qbank_db.query(QuestionV2).filter(QuestionV2.id == question_id).first()
+    if not question:
+        return JSONResponse(status_code=404, content={"error": "题目不存在"})
+
+    # Generate unique filename
+    resource_id = str(uuid.uuid4())
+    safe_filename = f"{resource_id}{file_ext}"
+
+    # Create directory structure
+    base_storage = Path("storage")
+    resource_dir = base_storage / file_type / question.bank_id
+    resource_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save file
+    file_path = resource_dir / safe_filename
+    try:
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"文件保存失败: {str(e)}"}
+        )
+
+    # Get MIME type
+    mime_type, _ = mimetypes.guess_type(str(file_path))
+
+    # Create database record
+    resource = QuestionResource(
+        id=resource_id,
+        question_id=question_id,
+        resource_type=file_type,
+        file_path=str(file_path.relative_to(base_storage)),
+        file_name=file.filename,
+        file_size=file_size,
+        mime_type=mime_type
+    )
+
+    qbank_db.add(resource)
+    qbank_db.commit()
+    qbank_db.refresh(resource)
+
+    # Return response matching ResourceResponse schema
+    return JSONResponse(content={
+        "id": resource.id,
+        "resource_type": resource.resource_type,
+        "file_name": resource.file_name,
+        "file_path": resource.file_path,
+        "file_size": resource.file_size,
+        "mime_type": resource.mime_type,
+        "url": f"/resources/{resource.id}",  # 使用公开访问路径
+        "created_at": resource.created_at.isoformat() if resource.created_at else None
+    })
+
+
+@app.get("/admin/questions/{question_id}/resources/{resource_id}/download", tags=["🖥️ Admin Questions"])
+async def admin_download_resource(
+    question_id: str,
+    resource_id: str,
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """管理后台资源下载端点"""
+    from fastapi.responses import FileResponse
+    from pathlib import Path
+    from app.models.question_models import QuestionResource
+
+    # 获取资源记录
+    resource = qbank_db.query(QuestionResource).filter(
+        QuestionResource.id == resource_id,
+        QuestionResource.question_id == question_id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="资源不存在")
+
+    # 构建文件路径
+    base_storage = Path("storage")
+    file_path = base_storage / resource.file_path
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="资源文件不存在")
+
+    # 返回文件
+    return FileResponse(
+        path=str(file_path),
+        filename=resource.file_name,
+        media_type=resource.mime_type or "application/octet-stream"
+    )
 
 
 @app.get("/admin/llm", response_class=HTMLResponse)
@@ -1052,6 +1328,420 @@ async def admin_imports(
     })
 
 
+# ==================== AI Configuration Management Routes ====================
+
+@app.get("/admin/ai-configs", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+async def admin_ai_configs(
+    request: Request,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """AI configurations management page"""
+    from app.models.ai_models import AIConfig, ChatSession, ChatMessage
+    from sqlalchemy import func, desc
+
+    # Get all AI configs
+    configs = main_db.query(AIConfig).order_by(desc(AIConfig.created_at)).all()
+
+    # Get statistics
+    total_configs = main_db.query(AIConfig).count()
+    total_sessions = main_db.query(ChatSession).count()
+    total_messages = main_db.query(ChatMessage).count()
+    total_tokens = main_db.query(func.sum(ChatSession.total_tokens)).scalar() or 0
+
+    # Get recent sessions
+    recent_sessions = main_db.query(ChatSession).order_by(
+        desc(ChatSession.last_activity_at)
+    ).limit(10).all()
+
+    return templates.TemplateResponse("admin/ai_configs.html", {
+        "request": request,
+        "current_user": current_admin,
+        "configs": configs,
+        "total_configs": total_configs,
+        "total_sessions": total_sessions,
+        "total_messages": total_messages,
+        "total_tokens": total_tokens,
+        "recent_sessions": recent_sessions
+    })
+
+
+@app.get("/admin/ai-configs/create", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+async def admin_ai_configs_create_form(
+    request: Request,
+    current_admin = Depends(admin_required)
+):
+    """Show create AI config form"""
+    return templates.TemplateResponse("admin/ai_config_form.html", {
+        "request": request,
+        "current_user": current_admin,
+        "config": None
+    })
+
+
+@app.post("/admin/ai-configs/create", tags=["🤖 AI Configuration"])
+async def admin_ai_configs_create(
+    request: Request,
+    name: str = Form(...),
+    provider: str = Form(...),
+    model_name: str = Form(...),
+    api_key: str = Form(...),
+    base_url: Optional[str] = Form(None),
+    temperature: float = Form(0.7),
+    max_tokens: int = Form(2000),
+    top_p: float = Form(1.0),
+    is_default: bool = Form(False),
+    description: Optional[str] = Form(None),
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """Create new AI config"""
+    from app.models.ai_models import AIConfig
+    import uuid
+
+    try:
+        # If setting as default, unset other defaults for this user
+        if is_default:
+            main_db.query(AIConfig).filter(
+                AIConfig.user_id == current_admin["id"],
+                AIConfig.is_default == True
+            ).update({"is_default": False})
+
+        # Create config
+        config = AIConfig(
+            id=str(uuid.uuid4()),
+            user_id=current_admin["id"],
+            name=name,
+            provider=provider,
+            model_name=model_name,
+            api_key=api_key,  # TODO: Encrypt this
+            base_url=base_url,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            is_default=is_default,
+            description=description
+        )
+
+        main_db.add(config)
+        main_db.commit()
+
+        return RedirectResponse(url="/admin/ai-configs", status_code=303)
+
+    except Exception as e:
+        main_db.rollback()
+        return templates.TemplateResponse("admin/ai_config_form.html", {
+            "request": request,
+            "current_user": current_admin,
+            "config": None,
+            "error": f"创建失败: {str(e)}"
+        })
+
+
+@app.get("/admin/ai-configs/{config_id}/edit", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+async def admin_ai_configs_edit_form(
+    request: Request,
+    config_id: str,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """Show edit AI config form"""
+    from app.models.ai_models import AIConfig
+
+    config = main_db.query(AIConfig).filter(AIConfig.id == config_id).first()
+
+    if not config:
+        raise HTTPException(status_code=404, detail="配置不存在")
+
+    return templates.TemplateResponse("admin/ai_config_form.html", {
+        "request": request,
+        "current_user": current_admin,
+        "config": config
+    })
+
+
+@app.post("/admin/ai-configs/{config_id}/edit", tags=["🤖 AI Configuration"])
+async def admin_ai_configs_edit(
+    request: Request,
+    config_id: str,
+    name: str = Form(...),
+    model_name: str = Form(...),
+    api_key: Optional[str] = Form(None),
+    base_url: Optional[str] = Form(None),
+    temperature: float = Form(0.7),
+    max_tokens: int = Form(2000),
+    top_p: float = Form(1.0),
+    is_default: bool = Form(False),
+    description: Optional[str] = Form(None),
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """Update AI config"""
+    from app.models.ai_models import AIConfig
+    from datetime import datetime
+
+    config = main_db.query(AIConfig).filter(AIConfig.id == config_id).first()
+
+    if not config:
+        raise HTTPException(status_code=404, detail="配置不存在")
+
+    try:
+        # If setting as default, unset other defaults for this user
+        if is_default and not config.is_default:
+            main_db.query(AIConfig).filter(
+                AIConfig.user_id == config.user_id,
+                AIConfig.is_default == True,
+                AIConfig.id != config_id
+            ).update({"is_default": False})
+
+        # Update config
+        config.name = name
+        config.model_name = model_name
+        if api_key and api_key != "••••••••":
+            config.api_key = api_key  # TODO: Encrypt this
+        config.base_url = base_url
+        config.temperature = temperature
+        config.max_tokens = max_tokens
+        config.top_p = top_p
+        config.is_default = is_default
+        config.description = description
+        config.updated_at = datetime.utcnow()
+
+        main_db.commit()
+
+        return RedirectResponse(url="/admin/ai-configs", status_code=303)
+
+    except Exception as e:
+        main_db.rollback()
+        return templates.TemplateResponse("admin/ai_config_form.html", {
+            "request": request,
+            "current_user": current_admin,
+            "config": config,
+            "error": f"更新失败: {str(e)}"
+        })
+
+
+@app.post("/admin/ai-configs/{config_id}/delete", tags=["🤖 AI Configuration"])
+async def admin_ai_configs_delete(
+    config_id: str,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """Delete AI config"""
+    from app.models.ai_models import AIConfig
+
+    config = main_db.query(AIConfig).filter(AIConfig.id == config_id).first()
+
+    if not config:
+        raise HTTPException(status_code=404, detail="配置不存在")
+
+    # Delete config (cascades to sessions and messages)
+    main_db.delete(config)
+    main_db.commit()
+
+    return RedirectResponse(url="/admin/ai-configs", status_code=303)
+
+
+@app.get("/admin/ai-sessions/{session_id}", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+async def admin_ai_session_detail(
+    request: Request,
+    session_id: str,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """AI session detail page"""
+    from app.models.ai_models import ChatSession, ChatMessage
+
+    session = main_db.query(ChatSession).filter(ChatSession.id == session_id).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    # Get messages
+    messages = main_db.query(ChatMessage).filter(
+        ChatMessage.session_id == session_id
+    ).order_by(ChatMessage.created_at).all()
+
+    return templates.TemplateResponse("admin/ai_session_detail.html", {
+        "request": request,
+        "current_user": current_admin,
+        "session": session,
+        "messages": messages
+    })
+
+
+@app.post("/admin/ai-sessions/{session_id}/delete", tags=["🤖 AI Configuration"])
+async def admin_ai_session_delete(
+    session_id: str,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """Delete AI session"""
+    from app.models.ai_models import ChatSession
+
+    session = main_db.query(ChatSession).filter(ChatSession.id == session_id).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    # Delete session (cascades to messages)
+    main_db.delete(session)
+    main_db.commit()
+
+    return RedirectResponse(url="/admin/ai-configs", status_code=303)
+
+
+@app.post("/admin/ai-configs/test-api", tags=["🤖 AI Configuration"])
+async def test_ai_api_connection(request: Request):
+    """Test AI API connection"""
+    import time
+    from app.services.ai.base import AIModelConfig, Message, MessageRole
+    from app.services.ai.openai_service import OpenAIService
+    from app.services.ai.claude_service import ClaudeService
+    from app.services.ai.zhipu_service import ZhipuService
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        data = await request.json()
+
+        # 详细日志：接收到的数据
+        logger.info("=" * 70)
+        logger.info("API测试请求")
+        logger.info(f"Provider: {data.get('provider')}")
+        logger.info(f"Model: {data.get('model_name')}")
+        logger.info(f"API Key: {data.get('api_key', '')[:15]}...{data.get('api_key', '')[-4:]}")
+        logger.info(f"Base URL: {data.get('base_url')}")
+        logger.info(f"Temperature: {data.get('temperature', 0.7)}")
+        logger.info(f"Max Tokens: {data.get('max_tokens', 2000)}")
+        logger.info("=" * 70)
+
+        # Create AI config
+        ai_config = AIModelConfig(
+            model_name=data['model_name'],
+            api_key=data['api_key'],
+            base_url=data.get('base_url'),
+            temperature=data.get('temperature', 0.7),
+            max_tokens=data.get('max_tokens', 2000),
+            top_p=data.get('top_p', 1.0)
+        )
+
+        logger.info(f"创建的AI配置 - Base URL: {ai_config.base_url}")
+
+        # Select service based on provider
+        provider = data['provider']
+        logger.info(f"选择服务提供商: {provider}")
+
+        if provider == 'openai':
+            service = OpenAIService(ai_config)
+        elif provider == 'claude':
+            service = ClaudeService(ai_config)
+        elif provider == 'zhipu':
+            service = ZhipuService(ai_config)
+        else:  # custom
+            # Try OpenAI format first (most compatible)
+            service = OpenAIService(ai_config)
+
+        logger.info(f"服务创建完成 - Service Base URL: {service.base_url}")
+        logger.info(f"服务创建完成 - Service API Key: {service.api_key[:15]}...{service.api_key[-4:]}")
+
+        # Test with a simple message
+        test_messages = [
+            Message(role=MessageRole.user, content="Hello! Please respond with 'OK' if you can read this.")
+        ]
+
+        logger.info("开始发送测试消息...")
+        start_time = time.time()
+
+        try:
+            response = await service.chat(test_messages)
+            response_time = f"{(time.time() - start_time):.2f}s"
+
+            logger.info(f"✅ API测试成功!")
+            logger.info(f"响应时间: {response_time}")
+            logger.info(f"响应内容: {response.content[:100]}")
+            logger.info("=" * 70)
+
+            return JSONResponse({
+                "success": True,
+                "response_time": response_time,
+                "model": data['model_name']
+            })
+        except Exception as api_error:
+            logger.error(f"❌ API调用失败: {str(api_error)}")
+            logger.error(f"错误类型: {type(api_error).__name__}")
+            logger.error("=" * 70)
+            raise
+
+    except Exception as e:
+        logger.error(f"❌ 测试路由异常: {str(e)}")
+        logger.error(f"异常类型: {type(e).__name__}")
+        import traceback
+        logger.error(f"堆栈跟踪:\n{traceback.format_exc()}")
+        logger.error("=" * 70)
+
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        })
+
+
+@app.post("/admin/ai-configs/test-chat", tags=["🤖 AI Configuration"])
+async def test_ai_chat(request: Request):
+    """Test AI chat conversation"""
+    from app.services.ai.base import AIModelConfig, Message, MessageRole
+    from app.services.ai.openai_service import OpenAIService
+    from app.services.ai.claude_service import ClaudeService
+    from app.services.ai.zhipu_service import ZhipuService
+
+    try:
+        data = await request.json()
+        config_data = data['config']
+        user_message = data['message']
+
+        # Create AI config
+        ai_config = AIModelConfig(
+            model_name=config_data['model_name'],
+            api_key=config_data['api_key'],
+            base_url=config_data.get('base_url'),
+            temperature=config_data.get('temperature', 0.7),
+            max_tokens=config_data.get('max_tokens', 2000),
+            top_p=config_data.get('top_p', 1.0)
+        )
+
+        # Select service based on provider
+        provider = config_data['provider']
+        if provider == 'openai':
+            service = OpenAIService(ai_config)
+        elif provider == 'claude':
+            service = ClaudeService(ai_config)
+        elif provider == 'zhipu':
+            service = ZhipuService(ai_config)
+        else:  # custom
+            service = OpenAIService(ai_config)
+
+        # Send user message
+        messages = [
+            Message(role=MessageRole.user, content=user_message)
+        ]
+
+        response = await service.chat(messages)
+
+        return JSONResponse({
+            "success": True,
+            "content": response.content
+        })
+
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        })
+
+
+# ==================== Question Import/Export Routes ====================
+
 @app.post("/admin/imports/csv")
 async def admin_import_csv(
     request: Request,
@@ -1061,15 +1751,175 @@ async def admin_import_csv(
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Import questions from CSV or JSON file"""
+    """Import questions from CSV, JSON, or ZIP file (with multimedia)"""
     import csv
     import io
     import json
     import uuid
+    import shutil
+    from pathlib import Path
+    from app.models.question_models import QuestionResource
     
     # Check file type and handle accordingly
     filename = file.filename.lower()
-    if filename.endswith('.json'):
+
+    if filename.endswith('.zip'):
+        # Handle ZIP import (with multimedia resources)
+        try:
+            import tempfile
+            import os
+
+            # Create temporary directory for extraction
+            temp_dir = tempfile.mkdtemp()
+            zip_path = os.path.join(temp_dir, file.filename)
+
+            # Save uploaded ZIP file
+            content = await file.read()
+            with open(zip_path, 'wb') as f:
+                f.write(content)
+
+            # Extract ZIP
+            import zipfile
+            with zipfile.ZipFile(zip_path, 'r') as zipf:
+                zipf.extractall(temp_dir)
+
+            # Read questions.json
+            questions_json_path = os.path.join(temp_dir, 'questions.json')
+            if not os.path.exists(questions_json_path):
+                raise HTTPException(status_code=400, detail="ZIP文件中缺少questions.json")
+
+            with open(questions_json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            imported_count = 0
+            resources_dir = os.path.join(temp_dir, 'resources')
+
+            for q_data in data.get('questions', []):
+                question_id = str(uuid.uuid4())
+
+                # Determine question type
+                q_type = q_data.get('type', 'single')
+
+                # Get meta_data
+                meta_data = q_data.get('meta_data')
+
+                question = QuestionV2(
+                    id=question_id,
+                    bank_id=bank_id,
+                    question_number=q_data.get('number'),
+                    stem=q_data.get('stem', ''),
+                    stem_format='text',
+                    type=q_type,
+                    difficulty=q_data.get('difficulty', 'medium'),
+                    category=q_data.get('category', ''),
+                    explanation=q_data.get('explanation', ''),
+                    meta_data=meta_data if meta_data else None
+                )
+                qbank_db.add(question)
+
+                # Add options for choice questions
+                if q_type in ['single', 'multiple']:
+                    for i, opt_data in enumerate(q_data.get('options', [])):
+                        option = QuestionOptionV2(
+                            id=str(uuid.uuid4()),
+                            question_id=question_id,
+                            option_label=opt_data.get('label', chr(65 + i)),
+                            option_content=opt_data.get('content', ''),
+                            option_format='text',
+                            is_correct=opt_data.get('is_correct', False),
+                            sort_order=i
+                        )
+                        qbank_db.add(option)
+
+                # Import resources
+                for res_data in q_data.get('resources', []):
+                    old_resource_id = res_data.get('id')
+                    new_resource_id = str(uuid.uuid4())
+
+                    # Find resource file in extracted ZIP
+                    resource_file_pattern = f"{old_resource_id}_{res_data.get('file_name')}"
+                    resource_file_path = os.path.join(resources_dir, resource_file_pattern)
+
+                    if os.path.exists(resource_file_path):
+                        # Determine storage path based on resource type
+                        resource_type = res_data.get('resource_type', 'image')
+                        storage_base = Path("storage") / "question_banks" / bank_id / resource_type
+                        storage_base.mkdir(parents=True, exist_ok=True)
+
+                        # Copy file to storage
+                        file_ext = Path(res_data.get('file_name')).suffix
+                        new_file_name = f"{new_resource_id}{file_ext}"
+                        new_file_path = storage_base / new_file_name
+
+                        shutil.copy2(resource_file_path, new_file_path)
+
+                        # Update stem and options to use new resource ID
+                        old_url_pattern = f"/resources/{old_resource_id}"
+                        new_url = f"/resources/{new_resource_id}"
+
+                        # Update question stem
+                        if old_url_pattern in question.stem:
+                            question.stem = question.stem.replace(old_url_pattern, new_url)
+
+                        # Update question explanation
+                        if question.explanation and old_url_pattern in question.explanation:
+                            question.explanation = question.explanation.replace(old_url_pattern, new_url)
+
+                        # Update options content
+                        if q_type in ['single', 'multiple']:
+                            options = qbank_db.query(QuestionOptionV2).filter(
+                                QuestionOptionV2.question_id == question_id
+                            ).all()
+                            for opt in options:
+                                if old_url_pattern in opt.option_content:
+                                    opt.option_content = opt.option_content.replace(old_url_pattern, new_url)
+
+                        # Create resource record
+                        relative_path = str(new_file_path.relative_to(Path("storage")))
+
+                        # Build meta_data with width, height, duration
+                        meta_data = {}
+                        if res_data.get('width'):
+                            meta_data['width'] = res_data.get('width')
+                        if res_data.get('height'):
+                            meta_data['height'] = res_data.get('height')
+                        if res_data.get('duration'):
+                            meta_data['duration'] = res_data.get('duration')
+
+                        resource = QuestionResource(
+                            id=new_resource_id,
+                            question_id=question_id,
+                            file_name=res_data.get('file_name'),
+                            file_path=relative_path,
+                            file_size=res_data.get('file_size', 0),
+                            mime_type=res_data.get('mime_type'),
+                            resource_type=resource_type,
+                            meta_data=meta_data if meta_data else None
+                        )
+                        qbank_db.add(resource)
+
+                imported_count += 1
+
+            qbank_db.commit()
+
+            # Clean up temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+            return RedirectResponse(
+                url=f"/admin/imports?success=imported_{imported_count}_questions_with_resources",
+                status_code=303
+            )
+
+        except Exception as e:
+            qbank_db.rollback()
+            if 'temp_dir' in locals():
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            return RedirectResponse(
+                url=f"/admin/imports?error={str(e)}",
+                status_code=303
+            )
+
+    elif filename.endswith('.json'):
         # Handle JSON import
         try:
             content = await file.read()
@@ -1283,17 +2133,22 @@ async def admin_export_bank(
     current_admin = Depends(admin_required),
     qbank_db: Session = Depends(get_qbank_db)
 ):
-    """Export question bank to CSV or JSON"""
-    from fastapi.responses import Response
+    """Export question bank to CSV, JSON, or ZIP (with multimedia)"""
+    from fastapi.responses import Response, FileResponse
     import csv
     import io
     import json
-    
+    import zipfile
+    import tempfile
+    import shutil
+    from pathlib import Path
+    from app.models.question_models import QuestionResource
+
     # Get bank using V2
     bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
     if not bank:
         raise HTTPException(status_code=404, detail="题库不存在")
-    
+
     # Get questions with options
     questions = qbank_db.query(QuestionV2).filter(
         QuestionV2.bank_id == bank_id
@@ -1415,9 +2270,112 @@ async def admin_export_bank(
             }
         )
 
+    elif format == "zip":
+        # Export as ZIP with multimedia resources
+        # Create a temporary directory for the ZIP file
+        temp_dir = tempfile.mkdtemp()
+        zip_path = Path(temp_dir) / f"{bank.name}_export.zip"
+
+        try:
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Create JSON data with resource information
+                export_data = {
+                    "bank_info": {
+                        "id": bank.id,
+                        "name": bank.name,
+                        "description": bank.description,
+                        "category": bank.category
+                    },
+                    "questions": []
+                }
+
+                # Track which resources we've added to avoid duplicates
+                added_resources = set()
+
+                for question in questions:
+                    # Get question options
+                    options = qbank_db.query(QuestionOptionV2).filter(
+                        QuestionOptionV2.question_id == question.id
+                    ).order_by(QuestionOptionV2.sort_order).all()
+
+                    # Get question resources
+                    resources = qbank_db.query(QuestionResource).filter(
+                        QuestionResource.question_id == question.id
+                    ).all()
+
+                    q_data = {
+                        "id": question.id,
+                        "number": question.question_number,
+                        "stem": question.stem,
+                        "type": question.type,
+                        "difficulty": question.difficulty,
+                        "category": question.category,
+                        "explanation": question.explanation,
+                        "meta_data": question.meta_data,
+                        "options": [
+                            {
+                                "label": opt.option_label,
+                                "content": opt.option_content,
+                                "is_correct": opt.is_correct
+                            }
+                            for opt in options
+                        ],
+                        "resources": []
+                    }
+
+                    # Add resources to ZIP and track them
+                    for resource in resources:
+                        if resource.id not in added_resources:
+                            # Copy resource file to ZIP
+                            resource_path = Path("storage") / resource.file_path
+                            if resource_path.exists():
+                                # Use original filename but keep it unique with resource ID
+                                zip_resource_name = f"resources/{resource.id}_{resource.file_name}"
+                                zipf.write(resource_path, zip_resource_name)
+                                added_resources.add(resource.id)
+
+                        # Add resource metadata to question
+                        # Extract width, height, duration from meta_data if available
+                        meta = resource.meta_data or {}
+                        q_data["resources"].append({
+                            "id": resource.id,
+                            "file_name": resource.file_name,
+                            "resource_type": resource.resource_type,
+                            "mime_type": resource.mime_type,
+                            "file_size": resource.file_size,
+                            "width": meta.get("width"),
+                            "height": meta.get("height"),
+                            "duration": meta.get("duration")
+                        })
+
+                    export_data["questions"].append(q_data)
+
+                # Add questions.json to ZIP
+                questions_json = json.dumps(export_data, ensure_ascii=False, indent=2)
+                zipf.writestr("questions.json", questions_json)
+
+            # Return the ZIP file
+            from urllib.parse import quote
+            safe_filename = quote(f"{bank.name}_export.zip")
+
+            return FileResponse(
+                path=str(zip_path),
+                media_type='application/zip',
+                filename=f"{bank.name}_export.zip",
+                headers={
+                    'Content-Disposition': f"attachment; filename*=UTF-8''{safe_filename}"
+                },
+                background=lambda: shutil.rmtree(temp_dir, ignore_errors=True)
+            )
+
+        except Exception as e:
+            # Clean up on error
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
 
 # API endpoints
-@app.get("/")
+@app.get("/", tags=["🔧 System Status"])
 async def root():
     """Root endpoint"""
     return {
@@ -1430,7 +2388,7 @@ async def root():
 
 
 # V2 Import/Export Routes
-@app.post("/admin/v2/imports/{bank_id}")
+@app.post("/admin/v2/imports/{bank_id}", tags=["📥 Legacy Import/Export"])
 async def admin_import_v2(
     bank_id: str,
     file: UploadFile = File(...),
@@ -1458,7 +2416,7 @@ async def admin_import_v2(
         os.unlink(tmp_path)
 
 
-@app.get("/admin/v2/exports/{bank_id}")
+@app.get("/admin/v2/exports/{bank_id}", tags=["📥 Legacy Import/Export"])
 async def admin_export_v2(
     bank_id: str,
     format: str = "json",
@@ -1489,7 +2447,167 @@ async def admin_export_v2(
     )
 
 
-@app.get("/health")
+@app.get("/health", tags=["🔧 System Status"])
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+
+@app.get("/resources/{resource_id}", tags=["📁 Public Resources"])
+async def get_public_resource(
+    resource_id: str,
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """公开资源访问端点 - 用于学生答题时访问媒体资源"""
+    from fastapi.responses import FileResponse
+    from pathlib import Path
+    from app.models.question_models import QuestionResource
+
+    # 获取资源记录
+    resource = qbank_db.query(QuestionResource).filter(
+        QuestionResource.id == resource_id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="资源不存在")
+
+    # 构建文件路径
+    base_storage = Path("storage")
+    file_path = base_storage / resource.file_path
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="资源文件不存在")
+
+    # 返回文件
+    return FileResponse(
+        path=str(file_path),
+        filename=resource.file_name,
+        media_type=resource.mime_type or "application/octet-stream",
+        headers={
+            "Cache-Control": "public, max-age=31536000",  # 缓存1年
+            "Access-Control-Allow-Origin": "*"  # 允许跨域访问
+        }
+    )
+
+# ==================== Agent Testing ====================
+
+@app.get("/admin/agent-test", response_class=HTMLResponse, tags=["🤖 Agent Testing"])
+async def admin_agent_test(
+    request: Request,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db)
+):
+    """Agent测试页面"""
+    from app.models.ai_models import AIConfig
+    
+    # 获取所有AI配置
+    configs = main_db.query(AIConfig).filter(
+        AIConfig.user_id == current_admin['id']
+    ).all()
+    
+    return templates.TemplateResponse("admin/agent_test.html", {
+        "request": request,
+        "current_admin": current_admin,
+        "configs": configs
+    })
+
+
+@app.post("/admin/agent-test/chat", tags=["🤖 Agent Testing"])
+async def admin_agent_test_chat(
+    request: Request,
+    current_admin = Depends(admin_required),
+    main_db: Session = Depends(get_main_db),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """Agent对话API"""
+    from app.models.ai_models import AIConfig
+    from app.services.ai.base import AIModelConfig, Message, MessageRole
+    from app.services.ai.openai_service import OpenAIService
+    from app.services.ai.agent_service import AgentService
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        data = await request.json()
+        config_id = data['config_id']
+        user_message = data['message']
+        enable_agent = data.get('enable_agent', True)
+        
+        # 获取AI配置
+        ai_config_db = main_db.query(AIConfig).filter(
+            AIConfig.id == config_id,
+            AIConfig.user_id == current_admin['id']
+        ).first()
+        
+        if not ai_config_db:
+            return JSONResponse({
+                "success": False,
+                "error": "AI配置不存在"
+            })
+        
+        # 创建AI服务配置
+        ai_model_config = AIModelConfig(
+            model_name=ai_config_db.model_name,
+            api_key=ai_config_db.api_key,
+            base_url=ai_config_db.base_url,
+            temperature=ai_config_db.temperature,
+            max_tokens=ai_config_db.max_tokens,
+            top_p=ai_config_db.top_p
+        )
+        
+        # 创建AI服务
+        if ai_config_db.provider == "openai" or ai_config_db.provider == "custom":
+            ai_service = OpenAIService(ai_model_config)
+        else:
+            return JSONResponse({
+                "success": False,
+                "error": f"暂不支持的提供商: {ai_config_db.provider}"
+            })
+        
+        # 如果启用Agent，创建Agent服务
+        if enable_agent:
+            agent = AgentService(
+                ai_service=ai_service,
+                qbank_db=qbank_db,
+                user_id=current_admin['id'],
+                max_tool_iterations=getattr(ai_config_db, 'max_tool_iterations', 5)
+            )
+            
+            messages = [Message(role=MessageRole.user, content=user_message)]
+            
+            result = await agent.chat_with_tools(
+                messages=messages,
+                provider=ai_config_db.provider,
+                enable_tools=True
+            )
+            
+            return JSONResponse({
+                "success": True,
+                "response": result['content'],
+                "tool_calls": result['tool_calls'],
+                "total_iterations": result['total_iterations'],
+                "agent_enabled": True
+            })
+        else:
+            # 不使用Agent，直接对话
+            messages = [Message(role=MessageRole.user, content=user_message)]
+            response = await ai_service.chat(messages)
+            
+            return JSONResponse({
+                "success": True,
+                "response": response.content,
+                "tool_calls": [],
+                "total_iterations": 0,
+                "agent_enabled": False
+            })
+            
+    except Exception as e:
+        logger.error(f"Agent测试失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        })

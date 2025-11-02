@@ -1,0 +1,456 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Agent测试 - 管理面板{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        display: flex;
+        height: calc(100vh - 200px);
+        gap: 20px;
+    }
+
+    .chat-sidebar {
+        width: 300px;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .chat-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .chat-header {
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .chat-messages {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        background: #f5f7fa;
+    }
+
+    .chat-input-area {
+        padding: 20px;
+        border-top: 1px solid #eee;
+        background: white;
+    }
+
+    .message {
+        margin-bottom: 16px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .message-user {
+        text-align: right;
+    }
+
+    .message-content {
+        display: inline-block;
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        word-wrap: break-word;
+    }
+
+    .message-user .message-content {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .message-assistant .message-content {
+        background: white;
+        color: #333;
+        border: 1px solid #e0e0e0;
+    }
+
+    .tool-call {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        font-size: 0.9em;
+    }
+
+    .tool-call-header {
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 4px;
+    }
+
+    .tool-call-details {
+        color: #666;
+        font-size: 0.85em;
+    }
+
+    .config-select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+
+    .agent-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 16px;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: #667eea;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+
+    .chat-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        resize: vertical;
+        min-height: 60px;
+        font-family: inherit;
+    }
+
+    .send-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: transform 0.2s;
+    }
+
+    .send-button:hover {
+        transform: translateY(-2px);
+    }
+
+    .send-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        font-size: 0.9em;
+    }
+
+    .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .stats {
+        margin-top: 8px;
+        font-size: 0.85em;
+        color: #666;
+    }
+
+    .clear-button {
+        width: 100%;
+        padding: 10px;
+        background: #f44336;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🤖 Agent测试</h1>
+    <p>测试AI Agent的工具调用能力</p>
+</div>
+
+<div class="chat-container">
+    <!-- 侧边栏 -->
+    <div class="chat-sidebar">
+        <h3 style="margin-top: 0;">配置</h3>
+
+        <label style="display: block; margin-bottom: 8px; color: #666;">选择AI配置</label>
+        <select id="configSelect" class="config-select">
+            {% if configs %}
+                {% for config in configs %}
+                <option value="{{ config.id }}">
+                    {{ config.name }} ({{ config.model_name }})
+                </option>
+                {% endfor %}
+            {% else %}
+                <option value="">暂无配置</option>
+            {% endif %}
+        </select>
+
+        <div class="agent-toggle">
+            <label class="switch">
+                <input type="checkbox" id="agentToggle" checked>
+                <span class="slider"></span>
+            </label>
+            <span>启用Agent工具</span>
+        </div>
+
+        <div class="info-box">
+            <strong>💡 提示：</strong><br>
+            启用Agent后，AI可以主动调用工具访问题库数据。尝试问："我有哪些题库？"
+        </div>
+
+        <div id="statsBox" class="stats" style="display: none;">
+            <div><strong>统计：</strong></div>
+            <div>工具调用次数: <span id="toolCallCount">0</span></div>
+            <div>迭代次数: <span id="iterationCount">0</span></div>
+        </div>
+
+        <button class="clear-button" onclick="clearChat()">清空对话</button>
+    </div>
+
+    <!-- 主聊天区 -->
+    <div class="chat-main">
+        <div class="chat-header">
+            <h2 style="margin: 0;">Agent对话测试</h2>
+            <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 0.9em;">
+                测试MCP工具调用功能
+            </p>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message message-assistant">
+                <div class="message-content">
+                    👋 你好！我是AI助手，现在具备了访问题库系统的能力。<br><br>
+                    你可以问我：<br>
+                    • "我有哪些题库？"<br>
+                    • "帮我查看错题"<br>
+                    • "显示我的学习统计"<br>
+                    • 或任何其他问题！
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea id="messageInput" class="chat-input" placeholder="输入消息... (Shift+Enter换行，Enter发送)"></textarea>
+            <button id="sendButton" class="send-button" onclick="sendMessage()">
+                发送消息
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let isLoading = false;
+
+// 监听Enter键
+document.getElementById('messageInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+function addMessage(role, content) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${role}`;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.textContent = content;
+
+    messageDiv.appendChild(contentDiv);
+    messagesDiv.appendChild(messageDiv);
+
+    // 滚动到底部
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function addToolCalls(toolCalls) {
+    if (!toolCalls || toolCalls.length === 0) return;
+
+    const messagesDiv = document.getElementById('chatMessages');
+
+    toolCalls.forEach(call => {
+        const toolDiv = document.createElement('div');
+        toolDiv.className = 'tool-call';
+        toolDiv.innerHTML = `
+            <div class="tool-call-header">
+                🔧 工具调用: ${call.tool_name}
+            </div>
+            <div class="tool-call-details">
+                迭代 #${call.iteration} |
+                状态: ${call.success ? '✅ 成功' : '❌ 失败'}
+            </div>
+        `;
+        messagesDiv.appendChild(toolDiv);
+    });
+
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function updateStats(toolCallCount, iterationCount) {
+    document.getElementById('toolCallCount').textContent = toolCallCount;
+    document.getElementById('iterationCount').textContent = iterationCount;
+    document.getElementById('statsBox').style.display = 'block';
+}
+
+async function sendMessage() {
+    if (isLoading) return;
+
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    const configId = document.getElementById('configSelect').value;
+    if (!configId) {
+        alert('请先选择AI配置');
+        return;
+    }
+
+    const enableAgent = document.getElementById('agentToggle').checked;
+
+    // 添加用户消息
+    addMessage('user', message);
+    input.value = '';
+
+    // 显示加载状态
+    isLoading = true;
+    const sendButton = document.getElementById('sendButton');
+    sendButton.disabled = true;
+    sendButton.innerHTML = '<span class="loading"></span> 思考中...';
+
+    try {
+        const response = await fetch('/admin/agent-test/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                config_id: configId,
+                message: message,
+                enable_agent: enableAgent
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // 显示工具调用
+            if (data.tool_calls && data.tool_calls.length > 0) {
+                addToolCalls(data.tool_calls);
+                updateStats(data.tool_calls.length, data.total_iterations);
+            }
+
+            // 添加AI回复
+            addMessage('assistant', data.response);
+        } else {
+            addMessage('assistant', `❌ 错误: ${data.error}`);
+        }
+    } catch (error) {
+        console.error('发送消息失败:', error);
+        addMessage('assistant', `❌ 请求失败: ${error.message}`);
+    } finally {
+        isLoading = false;
+        sendButton.disabled = false;
+        sendButton.textContent = '发送消息';
+    }
+}
+
+function clearChat() {
+    const messagesDiv = document.getElementById('chatMessages');
+    messagesDiv.innerHTML = `
+        <div class="message message-assistant">
+            <div class="message-content">
+                👋 对话已清空。有什么我可以帮你的吗？
+            </div>
+        </div>
+    `;
+    document.getElementById('statsBox').style.display = 'none';
+}
+</script>
+{% endblock %}

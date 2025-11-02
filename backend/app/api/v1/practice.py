@@ -1,0 +1,613 @@
+"""
+Practice Session API - 答题会话管理
+"""
+
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, or_
+from datetime import datetime
+import uuid
+import random
+
+from app.core.database import get_qbank_db
+from app.core.security import get_current_user
+from app.models.user_models import User
+from app.models.user_practice import (
+    PracticeSession, UserAnswerRecord, UserFavorite, UserWrongQuestion,
+    PracticeMode, SessionStatus
+)
+from app.models.question_models_v2 import QuestionV2, QuestionType
+from app.models.activation import UserBankAccess
+from app.schemas.practice_schemas import (
+    PracticeSessionCreate,
+    PracticeSessionUpdate,
+    PracticeSessionResponse,
+    PracticeSessionListResponse,
+    AnswerSubmit,
+    AnswerResult,
+    UserAnswerRecordResponse,
+    AnswerHistoryResponse,
+    PracticeQuestionWithProgress,
+    SessionStatistics
+)
+
+router = APIRouter()
+
+
+# ==================== Helper Functions ====================
+
+def check_bank_access(db: Session, user_id: int, bank_id: str) -> bool:
+    """检查用户是否有权限访问题库"""
+    access = db.query(UserBankAccess).filter(
+        and_(
+            UserBankAccess.user_id == user_id,
+            UserBankAccess.bank_id == bank_id,
+            UserBankAccess.is_active == True
+        )
+    ).first()
+
+    if not access:
+        return False
+
+    # 检查是否过期
+    if access.is_expired():
+        return False
+
+    return True
+
+
+def get_question_ids_for_session(
+    db: Session,
+    bank_id: str,
+    user_id: int,
+    mode: PracticeMode,
+    question_types: Optional[List[str]] = None,
+    difficulty: Optional[str] = None
+) -> List[str]:
+    """根据模式和筛选条件获取题目ID列表"""
+
+    if mode == PracticeMode.wrong_only:
+        # 错题模式：只获取错题
+        query = db.query(UserWrongQuestion.question_id).filter(
+            and_(
+                UserWrongQuestion.user_id == user_id,
+                UserWrongQuestion.bank_id == bank_id,
+                UserWrongQuestion.corrected == False
+            )
+        )
+        question_ids = [q[0] for q in query.all()]
+
+    elif mode == PracticeMode.favorite_only:
+        # 收藏模式：只获取收藏题目
+        query = db.query(UserFavorite.question_id).filter(
+            and_(
+                UserFavorite.user_id == user_id,
+                UserFavorite.bank_id == bank_id
+            )
+        )
+        question_ids = [q[0] for q in query.all()]
+
+    else:
+        # 顺序或随机模式：获取所有符合条件的题目
+        query = db.query(QuestionV2.id).filter(
+            QuestionV2.bank_id == bank_id
+        )
+
+        # 应用筛选条件
+        if question_types:
+            query = query.filter(QuestionV2.type.in_(question_types))
+        if difficulty:
+            query = query.filter(QuestionV2.difficulty == difficulty)
+
+        question_ids = [q[0] for q in query.all()]
+
+    # 随机模式：打乱顺序
+    if mode == PracticeMode.random:
+        random.shuffle(question_ids)
+
+    return question_ids
+
+
+# ==================== Practice Session Endpoints ====================
+
+@router.post("/sessions", response_model=PracticeSessionResponse, tags=["📝 Practice"])
+async def create_practice_session(
+    session_data: PracticeSessionCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """创建答题会话"""
+
+    # 检查题库访问权限
+    if not check_bank_access(db, current_user.id, session_data.bank_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="您没有访问该题库的权限"
+        )
+
+    # 获取题目列表
+    question_ids = get_question_ids_for_session(
+        db=db,
+        bank_id=session_data.bank_id,
+        user_id=current_user.id,
+        mode=session_data.mode,
+        question_types=session_data.question_types,
+        difficulty=session_data.difficulty
+    )
+
+    if not question_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="没有找到符合条件的题目"
+        )
+
+    # 创建会话
+    session = PracticeSession(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        bank_id=session_data.bank_id,
+        mode=session_data.mode,
+        question_types=session_data.question_types,
+        difficulty=session_data.difficulty,
+        total_questions=len(question_ids),
+        question_ids=question_ids,
+        current_index=0,
+        completed_count=0,
+        correct_count=0,
+        status=SessionStatus.in_progress,
+        started_at=datetime.utcnow()
+    )
+
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    return session
+
+
+@router.get("/sessions", response_model=PracticeSessionListResponse, tags=["📝 Practice"])
+async def list_practice_sessions(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    bank_id: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """获取用户的答题会话列表"""
+
+    query = db.query(PracticeSession).filter(
+        PracticeSession.user_id == current_user.id
+    )
+
+    # 筛选条件
+    if bank_id:
+        query = query.filter(PracticeSession.bank_id == bank_id)
+    if status_filter:
+        query = query.filter(PracticeSession.status == status_filter)
+
+    # 按最后活动时间倒序
+    query = query.order_by(PracticeSession.last_activity_at.desc())
+
+    total = query.count()
+    sessions = query.offset(skip).limit(limit).all()
+
+    return PracticeSessionListResponse(sessions=sessions, total=total)
+
+
+@router.get("/sessions/{session_id}", response_model=PracticeSessionResponse, tags=["📝 Practice"])
+async def get_practice_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """获取答题会话详情"""
+
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    return session
+
+
+@router.put("/sessions/{session_id}", response_model=PracticeSessionResponse, tags=["📝 Practice"])
+async def update_practice_session(
+    session_id: str,
+    session_update: PracticeSessionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """更新答题会话进度"""
+
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    # 更新字段
+    if session_update.current_index is not None:
+        session.current_index = session_update.current_index
+    if session_update.status is not None:
+        session.status = session_update.status
+        if session_update.status == SessionStatus.completed:
+            session.completed_at = datetime.utcnow()
+
+    session.last_activity_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(session)
+
+    return session
+
+
+@router.delete("/sessions/{session_id}", tags=["📝 Practice"])
+async def delete_practice_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """删除答题会话"""
+
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    db.delete(session)
+    db.commit()
+
+    return {"success": True, "message": "会话已删除"}
+
+
+# ==================== Answer Submission Endpoints ====================
+
+@router.post("/sessions/{session_id}/submit", response_model=AnswerResult, tags=["📝 Practice"])
+async def submit_answer(
+    session_id: str,
+    answer_data: AnswerSubmit,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """提交答案"""
+
+    # 获取会话
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    # 获取题目
+    question = db.query(QuestionV2).filter(
+        QuestionV2.id == answer_data.question_id
+    ).first()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="题目不存在"
+        )
+
+    # 判断答案是否正确
+    is_correct = False
+    correct_answer = question.correct_answer or {}
+    user_answer = answer_data.user_answer
+
+    # 根据题型判断正确性
+    if question.type == QuestionType.single:
+        is_correct = user_answer.get("answer") == correct_answer.get("answer")
+    elif question.type == QuestionType.multiple:
+        user_ans = set(user_answer.get("answers", []))
+        correct_ans = set(correct_answer.get("answers", []))
+        is_correct = user_ans == correct_ans
+    elif question.type == QuestionType.judge:
+        is_correct = user_answer.get("answer") == correct_answer.get("answer")
+    # 填空题和问答题需要更复杂的判断逻辑，这里简化处理
+    elif question.type in [QuestionType.fill, QuestionType.essay]:
+        # 可以加入关键词匹配或AI判断
+        is_correct = False  # 默认需要人工评判
+
+    # 创建答题记录
+    record = UserAnswerRecord(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        question_id=answer_data.question_id,
+        session_id=session_id,
+        bank_id=session.bank_id,
+        user_answer=user_answer,
+        is_correct=is_correct,
+        time_spent=answer_data.time_spent,
+        question_snapshot={
+            "type": question.type.value,
+            "stem": question.stem,
+            "options": question.options
+        },
+        correct_answer=correct_answer,
+        created_at=datetime.utcnow()
+    )
+
+    db.add(record)
+
+    # 更新会话统计
+    session.completed_count += 1
+    if is_correct:
+        session.correct_count += 1
+    session.last_activity_at = datetime.utcnow()
+
+    # 如果答错，加入错题本
+    if not is_correct:
+        wrong_q = db.query(UserWrongQuestion).filter(
+            and_(
+                UserWrongQuestion.user_id == current_user.id,
+                UserWrongQuestion.question_id == answer_data.question_id,
+                UserWrongQuestion.bank_id == session.bank_id
+            )
+        ).first()
+
+        if wrong_q:
+            # 更新错误次数
+            wrong_q.error_count += 1
+            wrong_q.last_error_answer = user_answer
+            wrong_q.last_error_at = datetime.utcnow()
+            wrong_q.corrected = False
+        else:
+            # 创建新的错题记录
+            wrong_q = UserWrongQuestion(
+                id=str(uuid.uuid4()),
+                user_id=current_user.id,
+                question_id=answer_data.question_id,
+                bank_id=session.bank_id,
+                error_count=1,
+                last_error_answer=user_answer,
+                corrected=False,
+                first_error_at=datetime.utcnow(),
+                last_error_at=datetime.utcnow()
+            )
+            db.add(wrong_q)
+    else:
+        # 如果答对了，检查是否在错题本中，如果在则标记为已订正
+        wrong_q = db.query(UserWrongQuestion).filter(
+            and_(
+                UserWrongQuestion.user_id == current_user.id,
+                UserWrongQuestion.question_id == answer_data.question_id,
+                UserWrongQuestion.bank_id == session.bank_id
+            )
+        ).first()
+
+        if wrong_q and not wrong_q.corrected:
+            wrong_q.corrected = True
+            wrong_q.corrected_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(record)
+
+    return AnswerResult(
+        record_id=record.id,
+        question_id=record.question_id,
+        is_correct=is_correct,
+        correct_answer=correct_answer,
+        user_answer=user_answer,
+        explanation=question.explanation,
+        time_spent=answer_data.time_spent,
+        created_at=record.created_at
+    )
+
+
+# ==================== Practice Question Endpoints ====================
+
+@router.get("/sessions/{session_id}/current", response_model=PracticeQuestionWithProgress, tags=["📝 Practice"])
+async def get_current_question(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """获取当前题目（带进度信息）"""
+
+    # 获取会话
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    # 检查是否还有题目
+    if session.current_index >= len(session.question_ids):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="已完成所有题目"
+        )
+
+    # 获取当前题目ID
+    current_question_id = session.question_ids[session.current_index]
+
+    # 获取题目
+    question = db.query(QuestionV2).filter(
+        QuestionV2.id == current_question_id
+    ).first()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="题目不存在"
+        )
+
+    # 检查是否已收藏
+    is_favorite = db.query(UserFavorite).filter(
+        and_(
+            UserFavorite.user_id == current_user.id,
+            UserFavorite.question_id == current_question_id
+        )
+    ).first() is not None
+
+    # 检查是否曾经做错
+    is_wrong_before = db.query(UserWrongQuestion).filter(
+        and_(
+            UserWrongQuestion.user_id == current_user.id,
+            UserWrongQuestion.question_id == current_question_id
+        )
+    ).first() is not None
+
+    # 获取之前的答案（如果有）
+    previous_record = db.query(UserAnswerRecord).filter(
+        and_(
+            UserAnswerRecord.user_id == current_user.id,
+            UserAnswerRecord.question_id == current_question_id
+        )
+    ).order_by(UserAnswerRecord.created_at.desc()).first()
+
+    previous_answer = previous_record.user_answer if previous_record else None
+
+    # 构造响应（不包含正确答案）
+    return PracticeQuestionWithProgress(
+        id=question.id,
+        bank_id=question.bank_id,
+        type=question.type.value,
+        stem=question.stem,
+        options=question.options,
+        difficulty=question.difficulty.value if question.difficulty else None,
+        tags=question.tags,
+        has_image=question.has_image,
+        has_video=question.has_video,
+        has_audio=question.has_audio,
+        created_at=question.created_at,
+        current_index=session.current_index + 1,  # 从1开始
+        total_questions=session.total_questions,
+        is_favorite=is_favorite,
+        is_wrong_before=is_wrong_before,
+        previous_answer=previous_answer
+    )
+
+
+# ==================== Session Statistics Endpoints ====================
+
+@router.get("/sessions/{session_id}/statistics", response_model=SessionStatistics, tags=["📝 Practice"])
+async def get_session_statistics(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """获取会话统计信息"""
+
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    # 计算统计数据
+    wrong_count = session.completed_count - session.correct_count
+    accuracy_rate = (session.correct_count / session.completed_count * 100) if session.completed_count > 0 else 0.0
+
+    # 计算总用时和平均用时
+    total_time = db.query(func.sum(UserAnswerRecord.time_spent)).filter(
+        UserAnswerRecord.session_id == session_id
+    ).scalar() or 0
+
+    avg_time = (total_time / session.completed_count) if session.completed_count > 0 else 0.0
+
+    return SessionStatistics(
+        session_id=session.id,
+        total_questions=session.total_questions,
+        completed_count=session.completed_count,
+        correct_count=session.correct_count,
+        wrong_count=wrong_count,
+        accuracy_rate=accuracy_rate,
+        total_time_spent=total_time,
+        avg_time_per_question=avg_time,
+        started_at=session.started_at,
+        completed_at=session.completed_at
+    )
+
+
+# ==================== Answer History Endpoints ====================
+
+@router.get("/history", response_model=AnswerHistoryResponse, tags=["📝 Practice"])
+async def get_answer_history(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    bank_id: Optional[str] = None,
+    question_id: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """获取答题历史"""
+
+    query = db.query(UserAnswerRecord).filter(
+        UserAnswerRecord.user_id == current_user.id
+    )
+
+    # 筛选条件
+    if bank_id:
+        query = query.filter(UserAnswerRecord.bank_id == bank_id)
+    if question_id:
+        query = query.filter(UserAnswerRecord.question_id == question_id)
+
+    # 按时间倒序
+    query = query.order_by(UserAnswerRecord.created_at.desc())
+
+    total = query.count()
+    records = query.offset(skip).limit(limit).all()
+
+    # 计算正确率
+    correct_count = db.query(func.count(UserAnswerRecord.id)).filter(
+        and_(
+            UserAnswerRecord.user_id == current_user.id,
+            UserAnswerRecord.is_correct == True
+        )
+    ).scalar() or 0
+
+    accuracy_rate = (correct_count / total * 100) if total > 0 else 0.0
+
+    return AnswerHistoryResponse(
+        records=records,
+        total=total,
+        correct_count=correct_count,
+        accuracy_rate=accuracy_rate
+    )

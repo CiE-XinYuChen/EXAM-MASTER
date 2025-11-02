@@ -26,12 +26,12 @@ from app.schemas.qbank_schemas_v2 import (
     QuestionExportRequest
 )
 
-router = APIRouter(tags=["Question Bank"])
+router = APIRouter()
 
 
 # ==================== 题库管理 ====================
 
-@router.post("/banks", response_model=QuestionBankResponse)
+@router.post("/banks", response_model=QuestionBankResponse, tags=["📚 Bank Management"])
 async def create_question_bank(
     bank_data: QuestionBankCreate,
     current_user: User = Depends(get_current_user),
@@ -50,7 +50,7 @@ async def create_question_bank(
     return bank
 
 
-@router.get("/banks", response_model=List[QuestionBankResponse])
+@router.get("/banks", response_model=List[QuestionBankResponse], tags=["📚 Bank Management"])
 async def list_question_banks(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -81,7 +81,7 @@ async def list_question_banks(
     return banks
 
 
-@router.get("/banks/{bank_id}", response_model=QuestionBankResponse)
+@router.get("/banks/{bank_id}", response_model=QuestionBankResponse, tags=["📚 Bank Management"])
 async def get_question_bank(
     bank_id: str,
     current_user: User = Depends(get_current_user),
@@ -101,7 +101,7 @@ async def get_question_bank(
     return bank
 
 
-@router.put("/banks/{bank_id}", response_model=QuestionBankResponse)
+@router.put("/banks/{bank_id}", response_model=QuestionBankResponse, tags=["📚 Bank Management"])
 async def update_question_bank(
     bank_id: str,
     bank_data: QuestionBankUpdate,
@@ -126,7 +126,7 @@ async def update_question_bank(
     return bank
 
 
-@router.delete("/banks/{bank_id}")
+@router.delete("/banks/{bank_id}", tags=["📚 Bank Management"])
 async def delete_question_bank(
     bank_id: str,
     current_user: User = Depends(get_current_user),
@@ -150,7 +150,7 @@ async def delete_question_bank(
 
 # ==================== 题目管理 ====================
 
-@router.post("/banks/{bank_id}/questions", response_model=QuestionResponse)
+@router.post("/banks/{bank_id}/questions", response_model=QuestionResponse, tags=["❓ Question Management"])
 async def add_question(
     bank_id: str,
     question_data: QuestionCreate,
@@ -185,7 +185,7 @@ async def add_question(
     return question
 
 
-@router.get("/banks/{bank_id}/questions", response_model=List[QuestionResponse])
+@router.get("/banks/{bank_id}/questions", response_model=List[QuestionResponse], tags=["❓ Question Management"])
 async def list_questions(
     bank_id: str,
     skip: int = Query(0, ge=0),
@@ -217,7 +217,7 @@ async def list_questions(
     return questions
 
 
-@router.get("/questions/{question_id}", response_model=QuestionResponse)
+@router.get("/questions/{question_id}", response_model=QuestionResponse, tags=["❓ Question Management"])
 async def get_question(
     question_id: str,
     current_user: User = Depends(get_current_user),
@@ -237,7 +237,7 @@ async def get_question(
     return question
 
 
-@router.put("/questions/{question_id}", response_model=QuestionResponse)
+@router.put("/questions/{question_id}", response_model=QuestionResponse, tags=["❓ Question Management"])
 async def update_question(
     question_id: str,
     question_data: QuestionUpdate,
@@ -268,7 +268,7 @@ async def update_question(
     return question
 
 
-@router.delete("/questions/{question_id}")
+@router.delete("/questions/{question_id}", tags=["❓ Question Management"])
 async def delete_question(
     question_id: str,
     current_user: User = Depends(get_current_user),
@@ -296,7 +296,7 @@ async def delete_question(
 
 # ==================== 资源管理 ====================
 
-@router.post("/questions/{question_id}/images")
+@router.post("/questions/{question_id}/images", tags=["🖼️ Media & Resources"])
 async def upload_question_image(
     question_id: str,
     file: UploadFile = File(...),
@@ -333,7 +333,7 @@ async def upload_question_image(
     }
 
 
-@router.get("/resources/{resource_id}")
+@router.get("/resources/{resource_id}", tags=["🖼️ Media & Resources"])
 async def get_resource(
     resource_id: str,
     db: Session = Depends(get_qbank_db)
@@ -362,7 +362,7 @@ async def get_resource(
 
 # ==================== 导入导出 ====================
 
-@router.post("/banks/{bank_id}/export")
+@router.post("/banks/{bank_id}/export", tags=["📤 Export Operations"])
 async def export_question_bank(
     bank_id: str,
     format: str = Query("zip", regex="^(json|zip|csv)$"),
@@ -403,7 +403,7 @@ async def export_question_bank(
     )
 
 
-@router.post("/import")
+@router.post("/import", tags=["📥 Import Operations"])
 async def import_question_bank(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -436,7 +436,7 @@ async def import_question_bank(
         os.unlink(tmp_path)
 
 
-@router.post("/banks/{bank_id}/duplicate")
+@router.post("/banks/{bank_id}/duplicate", tags=["📚 Bank Management"])
 async def duplicate_question_bank(
     bank_id: str,
     new_name: str = Form(...),
@@ -473,7 +473,7 @@ async def duplicate_question_bank(
 
 # ==================== 统计信息 ====================
 
-@router.get("/banks/{bank_id}/stats")
+@router.get("/banks/{bank_id}/stats", tags=["📊 Statistics"])
 async def get_bank_statistics(
     bank_id: str,
     current_user: User = Depends(get_current_user),
@@ -519,7 +519,7 @@ async def get_bank_statistics(
     }
 
 
-@router.get("/categories")
+@router.get("/categories", tags=["📊 Statistics"])
 async def get_categories(
     db: Session = Depends(get_qbank_db)
 ):
@@ -528,7 +528,7 @@ async def get_categories(
     return [cat[0] for cat in categories if cat[0]]
 
 
-@router.get("/search")
+@router.get("/search", tags=["🔍 Search"])
 async def search_questions(
     q: str = Query(..., min_length=2),
     bank_id: Optional[str] = None,
@@ -569,7 +569,7 @@ async def search_questions(
 
 # ==================== Dashboard统计 ====================
 
-@router.get("/stats/users")
+@router.get("/stats/users", tags=["📊 Statistics"])
 async def get_users_stats(
     db: Session = Depends(get_qbank_db)
 ):
@@ -584,7 +584,7 @@ async def get_users_stats(
         main_db.close()
 
 
-@router.get("/stats/banks") 
+@router.get("/stats/banks", tags=["📊 Statistics"]) 
 async def get_banks_stats(
     db: Session = Depends(get_qbank_db)
 ):
@@ -593,7 +593,7 @@ async def get_banks_stats(
     return {"total": total}
 
 
-@router.get("/stats/questions")
+@router.get("/stats/questions", tags=["📊 Statistics"])
 async def get_questions_stats(
     db: Session = Depends(get_qbank_db)
 ):

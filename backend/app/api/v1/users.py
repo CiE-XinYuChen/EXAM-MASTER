@@ -13,7 +13,7 @@ from app.schemas.user_schemas import UserResponse, UserUpdate, UserWithPermissio
 router = APIRouter()
 
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("/", response_model=List[UserResponse], tags=["👥 User Management"])
 async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -34,7 +34,7 @@ async def get_users(
     return users
 
 
-@router.get("/{user_id}", response_model=UserWithPermissions)
+@router.get("/{user_id}", response_model=UserWithPermissions, tags=["👥 User Management"])
 async def get_user(
     user_id: int,
     current_user: User = Depends(get_current_admin_user),
@@ -50,7 +50,7 @@ async def get_user(
     return user
 
 
-@router.put("/{user_id}", response_model=UserResponse)
+@router.put("/{user_id}", response_model=UserResponse, tags=["👥 User Management"])
 async def update_user(
     user_id: int,
     user_update: UserUpdate,
@@ -75,7 +75,7 @@ async def update_user(
     return user
 
 
-@router.delete("/{user_id}", response_model=dict)
+@router.delete("/{user_id}", response_model=dict, tags=["👥 User Management"])
 async def delete_user(
     user_id: int,
     current_user: User = Depends(get_current_admin_user),
@@ -101,7 +101,7 @@ async def delete_user(
     return {"message": "User deleted successfully"}
 
 
-@router.get("/{user_id}/permissions", response_model=List[BankPermission])
+@router.get("/{user_id}/permissions", response_model=List[BankPermission], tags=["🔑 User Permissions"])
 async def get_user_permissions(
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -122,7 +122,7 @@ async def get_user_permissions(
     return permissions
 
 
-@router.post("/{user_id}/permissions", response_model=BankPermission, status_code=status.HTTP_201_CREATED)
+@router.post("/{user_id}/permissions", response_model=BankPermission, status_code=status.HTTP_201_CREATED, tags=["🔑 User Permissions"])
 async def grant_permission(
     user_id: int,
     bank_id: str,
@@ -168,7 +168,7 @@ async def grant_permission(
     return new_permission
 
 
-@router.delete("/{user_id}/permissions/{bank_id}", response_model=dict)
+@router.delete("/{user_id}/permissions/{bank_id}", response_model=dict, tags=["🔑 User Permissions"])
 async def revoke_permission(
     user_id: int,
     bank_id: str,
