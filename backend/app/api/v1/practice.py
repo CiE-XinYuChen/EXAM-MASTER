@@ -525,6 +525,17 @@ async def submit_answer(
         session.correct_count += 1
     session.last_activity_at = datetime.utcnow()
 
+    # 自动推进到下一题
+    # 找到当前题目在question_ids中的位置
+    try:
+        current_question_idx = session.question_ids.index(answer_data.question_id)
+        # 如果不是最后一题，则推进索引
+        if current_question_idx < len(session.question_ids) - 1:
+            session.current_index = current_question_idx + 1
+    except ValueError:
+        # 如果题目不在列表中，不更新索引
+        pass
+
     # 如果答错，加入错题本
     if not is_correct:
         wrong_q = db.query(UserWrongQuestion).filter(

@@ -144,18 +144,29 @@ class PracticeProvider with ChangeNotifier {
                 (questionResponse) {
                   AppLogger.info('Questions loaded: ${questionResponse.questions.length}');
 
-                  // If session has specific question IDs, filter the questions
+                  // If session has specific question IDs, filter and order the questions
+                  // to match the session's question_ids order (important for resume functionality)
                   if (session.questionIds != null && session.questionIds!.isNotEmpty) {
-                    _questions = questionResponse.questions
-                        .where((q) => session.questionIds!.contains(q.id))
+                    // Create a map for quick lookup
+                    final questionsMap = {
+                      for (var q in questionResponse.questions) q.id: q
+                    };
+
+                    // Build questions list in the order specified by session.questionIds
+                    _questions = session.questionIds!
+                        .where((id) => questionsMap.containsKey(id))
+                        .map((id) => questionsMap[id]!)
                         .toList();
+
+                    AppLogger.info('Questions ordered by session.questionIds: ${_questions.length}');
                   } else {
                     _questions = questionResponse.questions;
-                  }
 
-                  // Apply mode-specific filtering or shuffling
-                  if (mode == PracticeMode.random && _questions.isNotEmpty) {
-                    _questions.shuffle();
+                    // Only shuffle if this is a NEW random mode session (not resuming)
+                    // The backend already shuffled question_ids for resumed sessions
+                    if (mode == PracticeMode.random && _questions.isNotEmpty) {
+                      _questions.shuffle();
+                    }
                   }
 
                   _currentQuestionIndex = session.currentIndex;
