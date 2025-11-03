@@ -2606,8 +2606,222 @@ async def admin_agent_test_chat(
         logger.error(f"Agent测试失败: {str(e)}")
         import traceback
         traceback.print_exc()
-        
+
         return JSONResponse({
             "success": False,
             "error": str(e)
         })
+
+
+# ==================== Admin Activation Code API Endpoints (Session Auth) ====================
+
+@app.get("/admin/api/activation-codes", tags=["🔑 Admin Activation API"])
+async def admin_api_get_activation_codes(
+    request: Request,
+    skip: int = 0,
+    limit: int = 50,
+    bank_id: Optional[str] = None,
+    is_used: Optional[bool] = None,
+    expire_type: Optional[str] = None,
+    search: Optional[str] = None,
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """获取激活码列表（Admin Panel API with Session Auth）"""
+    from app.models.activation import ActivationCode
+    from app.models.question_models_v2 import QuestionBankV2
+    from sqlalchemy import or_, func
+
+    query = qbank_db.query(ActivationCode)
+
+    # 筛选条件
+    if bank_id:
+        query = query.filter(ActivationCode.bank_id == bank_id)
+    if is_used is not None:
+        query = query.filter(ActivationCode.is_used == is_used)
+    if expire_type:
+        query = query.filter(ActivationCode.expire_type == expire_type)
+    if search:
+        query = query.filter(
+            or_(
+                ActivationCode.code.contains(search),
+                ActivationCode.description.contains(search)
+            )
+        )
+
+    # 按创建时间倒序
+    query = query.order_by(ActivationCode.created_at.desc())
+
+    total = query.count()
+    codes = query.offset(skip).limit(limit).all()
+
+    # 统计已使用/未使用数量
+    used_count = qbank_db.query(func.count(ActivationCode.id)).filter(
+        ActivationCode.is_used == True
+    ).scalar() or 0
+    unused_count = total - used_count
+
+    # 获取题库名称
+    bank_ids = list(set(c.bank_id for c in codes))
+    banks = qbank_db.query(QuestionBankV2).filter(
+        QuestionBankV2.id.in_(bank_ids)
+    ).all()
+    bank_names = {b.id: b.name for b in banks}
+
+    # 构造响应
+    response_list = [
+        {
+            "id": code.id,
+            "code": code.code,
+            "bank_id": code.bank_id,
+            "bank_name": bank_names.get(code.bank_id),
+            "created_by": code.created_by,
+            "created_at": code.created_at.isoformat(),
+            "expire_type": code.expire_type.value,
+            "expire_days": code.expire_days,
+            "is_used": code.is_used,
+            "used_by": code.used_by,
+            "used_at": code.used_at.isoformat() if code.used_at else None,
+            "description": code.description
+        }
+        for code in codes
+    ]
+
+    return {
+        "codes": response_list,
+        "total": total,
+        "used_count": used_count,
+        "unused_count": unused_count
+    }
+
+
+@app.post("/admin/api/activation-codes", tags=["🔑 Admin Activation API"])
+async def admin_api_create_activation_codes(
+    request: Request,
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """创建激活码（Admin Panel API with Session Auth）"""
+    from app.models.activation import ActivationCode, ExpireType
+    from app.models.question_models_v2 import QuestionBankV2
+    import uuid
+    import random
+    import string
+
+    data = await request.json()
+
+    # 验证必填字段
+    if not data.get('bank_id'):
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "题库ID不能为空"}
+        )
+
+    # 检查题库是否存在
+    bank = qbank_db.query(QuestionBankV2).filter(
+        QuestionBankV2.id == data['bank_id']
+    ).first()
+
+    if not bank:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "题库不存在"}
+        )
+
+    # 如果是临时激活码，必须指定天数
+    expire_type = data.get('expire_type', 'permanent')
+    expire_days = data.get('expire_days')
+
+    if expire_type == 'temporary' and not expire_days:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "临时激活码必须指定有效天数"}
+        )
+
+    # 生成激活码的辅助函数
+    def generate_activation_code(length: int = 16) -> str:
+        chars = string.ascii_uppercase.replace('O', '').replace('I', '').replace('L', '') + string.digits.replace('0', '').replace('1', '')
+        return ''.join(random.choice(chars) for _ in range(length))
+
+    # 批量生成激活码
+    count = data.get('count', 1)
+    created_codes = []
+
+    for _ in range(count):
+        # 生成唯一激活码
+        while True:
+            new_code = generate_activation_code()
+            existing = qbank_db.query(ActivationCode).filter(
+                ActivationCode.code == new_code
+            ).first()
+            if not existing:
+                break
+
+        # 创建激活码记录
+        activation_code = ActivationCode(
+            id=str(uuid.uuid4()),
+            code=new_code,
+            bank_id=data['bank_id'],
+            created_by=current_admin['id'],
+            created_at=datetime.utcnow(),
+            expire_type=ExpireType(expire_type),
+            expire_days=expire_days,
+            is_used=False,
+            description=data.get('description')
+        )
+
+        qbank_db.add(activation_code)
+        created_codes.append(activation_code)
+
+    qbank_db.commit()
+
+    # 构造响应
+    return [
+        {
+            "id": code.id,
+            "code": code.code,
+            "bank_id": code.bank_id,
+            "bank_name": bank.name,
+            "created_by": code.created_by,
+            "created_at": code.created_at.isoformat(),
+            "expire_type": code.expire_type.value,
+            "expire_days": code.expire_days,
+            "is_used": code.is_used,
+            "used_by": code.used_by,
+            "used_at": code.used_at.isoformat() if code.used_at else None,
+            "description": code.description
+        }
+        for code in created_codes
+    ]
+
+
+@app.delete("/admin/api/activation-codes/{code_id}", tags=["🔑 Admin Activation API"])
+async def admin_api_delete_activation_code(
+    code_id: str,
+    current_admin = Depends(admin_required),
+    qbank_db: Session = Depends(get_qbank_db)
+):
+    """删除激活码（Admin Panel API with Session Auth）"""
+    from app.models.activation import ActivationCode
+
+    code = qbank_db.query(ActivationCode).filter(
+        ActivationCode.id == code_id
+    ).first()
+
+    if not code:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "激活码不存在"}
+        )
+
+    # 如果已被使用，不允许删除
+    if code.is_used:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "已使用的激活码不能删除"}
+        )
+
+    qbank_db.delete(code)
+    qbank_db.commit()
+
+    return {"success": True, "message": "激活码已删除"}

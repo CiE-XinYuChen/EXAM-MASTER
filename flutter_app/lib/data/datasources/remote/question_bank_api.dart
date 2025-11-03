@@ -136,6 +136,7 @@ class QuestionBankApi {
       AppLogger.info('QuestionBankApi.getQuestions: bankId=$bankId, page=$page');
 
       final queryParams = <String, dynamic>{
+        'bank_id': bankId,
         'skip': (page - 1) * pageSize,
         'limit': pageSize,
       };
@@ -148,7 +149,7 @@ class QuestionBankApi {
       }
 
       final response = await _dioClient.get(
-        ApiConstants.bankQuestions(bankId),
+        ApiConstants.questionBankQuestions,
         queryParameters: queryParams,
       );
 

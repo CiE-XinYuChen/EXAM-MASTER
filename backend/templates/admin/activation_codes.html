@@ -191,10 +191,8 @@ function loadCodes(page = 1) {
         ...currentFilters
     });
 
-    fetch(`/api/v1/activation/admin/codes?${params}`, {
-        headers: {
-            'Authorization': 'Bearer ' + localStorage.getItem('token')
-        }
+    fetch(`/admin/api/activation-codes?${params}`, {
+        credentials: 'include'  // 包含session cookie
     })
     .then(response => response.json())
     .then(data => {
@@ -345,12 +343,12 @@ function generateCodes(event) {
         data.description = formData.get('description');
     }
 
-    fetch('/api/v1/activation/admin/codes', {
+    fetch('/admin/api/activation-codes', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + localStorage.getItem('token')
+            'Content-Type': 'application/json'
         },
+        credentials: 'include',  // 包含session cookie
         body: JSON.stringify(data)
     })
     .then(response => response.json())
@@ -398,11 +396,9 @@ function deleteCode(codeId) {
         return;
     }
 
-    fetch(`/api/v1/activation/admin/codes/${codeId}`, {
+    fetch(`/admin/api/activation-codes/${codeId}`, {
         method: 'DELETE',
-        headers: {
-            'Authorization': 'Bearer ' + localStorage.getItem('token')
-        }
+        credentials: 'include'  // 包含session cookie
     })
     .then(response => response.json())
     .then(result => {

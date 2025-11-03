@@ -34,11 +34,10 @@ class ApiConstants {
   static const String currentUser = '/auth/me';
 
   // ==================== 题库相关 ====================
-  static const String questionBanks = '/qbanks';
-  static String questionBankDetail(String bankId) => '/qbanks/$bankId';
-  static String questionBankQuestions(String bankId) => '/qbanks/$bankId/questions';
-  static String questionDetail(String bankId, String questionId) =>
-      '/qbanks/$bankId/questions/$questionId';
+  static const String questionBanks = '/qbank/banks';
+  static String questionBankDetail(String bankId) => '/qbank/banks/$bankId';
+  static const String questionBankQuestions = '/qbank/questions';
+  static String questionDetail(String questionId) => '/qbank/questions/$questionId';
 
   // ==================== 答题练习相关 ====================
   static const String practiceSessions = '/practice/sessions';
@@ -127,9 +126,8 @@ class ApiConstants {
   static String wrongQuestionById(String wrongQuestionId) => wrongQuestionDetail(wrongQuestionId);
   static const String myAccess = activationMyAccess;
   static const String activateCode = activationActivate;
-  static String bankQuestions(String bankId) => questionBankQuestions(bankId);
   static String questionBankById(String bankId) => questionBankDetail(bankId);
-  static String questionById(String questionId) => '/questions/$questionId'; // Direct access
+  static String questionById(String questionId) => questionDetail(questionId);
   static String practiceSessionById(String sessionId) => practiceSessionDetail(sessionId);
   static String practiceSessionHistory(String sessionId) => '$practiceSessionDetail(sessionId)/history';
   static String practiceSessionPause(String sessionId) => '$practiceSessionDetail(sessionId)/pause';
