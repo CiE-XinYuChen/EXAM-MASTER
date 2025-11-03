@@ -3,7 +3,7 @@ Enhanced Question Bank Models with File System Integration
 题库模型 v2.0 - 支持文件系统集成
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, JSON, Float, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, ForeignKey, JSON, Float, Text, event
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -35,6 +35,17 @@ class QuestionType(str, enum.Enum):
     fill = "fill"           # 填空题
     essay = "essay"         # 问答题
     composite = "composite"  # 复合题（包含子题）
+
+    @classmethod
+    def _missing_(cls, value):
+        """Handle missing enum values by cleaning the prefix"""
+        if isinstance(value, str) and value.startswith('QuestionType.'):
+            # Remove prefix and try again
+            clean_value = value.replace('QuestionType.', '')
+            for member in cls:
+                if member.value == clean_value:
+                    return member
+        return None
 
 
 class QuestionBankV2(BaseQBank):
@@ -306,3 +317,4 @@ class QuestionBankExport(BaseQBank):
     exported_at = Column(DateTime, default=datetime.utcnow)
     download_count = Column(Integer, default=0)
     expire_at = Column(DateTime)  # 过期时间
+
