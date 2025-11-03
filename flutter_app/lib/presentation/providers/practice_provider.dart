@@ -233,11 +233,21 @@ class PracticeProvider with ChangeNotifier {
       } else if (userAnswer is List) {
         if (userAnswer.isEmpty) {
           answerMap = {'answers': []};
-        } else if (userAnswer.first is String && userAnswer.length == 1 && userAnswer.first.length < 10) {
-          // Might be multiple choice answers like ['A', 'B']
-          answerMap = {'answers': userAnswer};
+        } else if (userAnswer.first is String) {
+          // Check if all elements are short strings (likely option labels like 'A', 'B', 'C')
+          final allShortStrings = userAnswer.every((item) =>
+            item is String && item.length <= 2
+          );
+
+          if (allShortStrings) {
+            // Multiple choice answers like ['A', 'B', 'C', 'D']
+            answerMap = {'answers': userAnswer};
+          } else {
+            // Fill in the blank answers (longer text strings)
+            answerMap = {'fill_answers': userAnswer};
+          }
         } else {
-          // Fill in the blank answers
+          // Non-string list items, treat as fill-in-blank
           answerMap = {'fill_answers': userAnswer};
         }
       } else if (userAnswer is bool) {

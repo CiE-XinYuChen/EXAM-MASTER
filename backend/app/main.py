@@ -2482,7 +2482,43 @@ async def get_public_resource(
         ).first()
 
     if not resource:
-        raise HTTPException(status_code=404, detail="资源不存在")
+        # Fallback: Try to find file directly in storage by searching for the resource_id
+        # This handles cases where resources were imported but database records weren't created
+        import glob
+        base_storage = Path("storage")
+
+        # Try to find files containing the resource_id in their name
+        patterns = [
+            f"**/*{resource_id}*",  # Any file with resource_id in name
+            f"**/images/*{resource_id[:8]}*",  # Shortened ID in images folder
+            f"**/audio/*{resource_id[:8]}*",   # Shortened ID in audio folder
+            f"**/video/*{resource_id[:8]}*",   # Shortened ID in video folder
+        ]
+
+        file_path = None
+        for pattern in patterns:
+            matches = list(base_storage.glob(pattern))
+            if matches:
+                # Use first match
+                file_path = matches[0]
+                break
+
+        if not file_path or not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"资源不存在: {resource_id}")
+
+        # Infer MIME type from file extension
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(str(file_path))
+
+        return FileResponse(
+            path=str(file_path),
+            filename=file_path.name,
+            media_type=mime_type or "application/octet-stream",
+            headers={
+                "Cache-Control": "public, max-age=31536000",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
 
     # 构建文件路径
     base_storage = Path("storage")
