@@ -30,6 +30,9 @@ class _QuestionCardState extends State<QuestionCard> {
   // Track favorite loading state
   bool _isFavoriteLoading = false;
 
+  // Track submit loading state
+  bool _isSubmitting = false;
+
   // For single choice
   String? _selectedOption;
 
@@ -127,20 +130,63 @@ class _QuestionCardState extends State<QuestionCard> {
 
     if (currentAnswer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先选择答案')),
+        const SnackBar(
+          content: Text('请先选择答案'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     final success = await provider.submitAnswer(
       questionId: widget.question.id,
       userAnswer: currentAnswer,
     );
 
-    if (success && mounted) {
+    if (mounted) {
       setState(() {
-        _isAnswerSubmitted = true;
+        _isSubmitting = false;
+        if (success) {
+          _isAnswerSubmitted = true;
+        }
       });
+
+      if (success) {
+        // Show success feedback
+        final answerResult = provider.getAnswerResult(widget.question.id);
+        if (answerResult != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(
+                    answerResult.isCorrect ? Icons.check_circle : Icons.cancel,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(answerResult.isCorrect ? '回答正确！' : '回答错误'),
+                ],
+              ),
+              backgroundColor: answerResult.isCorrect ? Colors.green : Colors.orange,
+              duration: const Duration(milliseconds: 1500),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        // Show error feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage ?? '提交失败，请稍后重试'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -175,9 +221,21 @@ class _QuestionCardState extends State<QuestionCard> {
                   width: double.infinity,
                   height: 48,
                   child: FilledButton.icon(
-                    onPressed: _submitAnswer,
-                    icon: const Icon(Icons.send),
-                    label: const Text('提交答案', style: TextStyle(fontSize: 16)),
+                    onPressed: _isSubmitting ? null : _submitAnswer,
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.send),
+                    label: Text(
+                      _isSubmitting ? '提交中...' : '提交答案',
+                      style: const TextStyle(fontSize: 16),
+                    ),
                   ),
                 ),
               ],

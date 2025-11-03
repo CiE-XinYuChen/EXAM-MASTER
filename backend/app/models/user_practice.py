@@ -16,6 +16,7 @@ class PracticeMode(str, enum.Enum):
     random = "random"          # 随机答题
     wrong_only = "wrong_only"  # 只做错题
     favorite_only = "favorite_only"  # 只做收藏
+    unpracticed = "unpracticed"  # 未练习的题目
 
 
 class SessionStatus(str, enum.Enum):
