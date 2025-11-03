@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 import '../../core/utils/logger.dart';
 import '../../data/repositories/practice_repository.dart';
 import '../../data/repositories/question_bank_repository.dart';
+import '../../data/repositories/favorites_repository.dart';
 import '../../data/models/practice_session_model.dart';
 import '../../data/models/question_model.dart';
 import '../../data/models/answer_record_model.dart';
+import '../../data/models/favorite_model.dart';
 import '../../core/errors/failures.dart';
 
 /// Practice Provider
@@ -12,14 +14,17 @@ import '../../core/errors/failures.dart';
 class PracticeProvider with ChangeNotifier {
   final PracticeRepository _repository;
   final QuestionBankRepository _questionBankRepository;
+  final FavoritesRepository _favoritesRepository;
   final int? Function() _getUserId;
 
   PracticeProvider({
     required PracticeRepository repository,
     required QuestionBankRepository questionBankRepository,
+    required FavoritesRepository favoritesRepository,
     required int? Function() getUserId,
   })  : _repository = repository,
         _questionBankRepository = questionBankRepository,
+        _favoritesRepository = favoritesRepository,
         _getUserId = getUserId;
 
   // State
@@ -465,6 +470,101 @@ class PracticeProvider with ChangeNotifier {
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  /// Add question to favorites
+  Future<bool> addFavorite(String questionId) async {
+    try {
+      final userId = _getUserId();
+      if (userId == null) {
+        _errorMessage = '未找到用户信息';
+        notifyListeners();
+        return false;
+      }
+
+      AppLogger.info('PracticeProvider.addFavorite: questionId=$questionId');
+
+      final request = AddFavoriteRequest(
+        userId: userId,
+        questionId: questionId,
+      );
+
+      final result = await _favoritesRepository.addFavorite(request);
+
+      return result.fold(
+        (failure) {
+          AppLogger.error('Failed to add favorite: ${failure.message}');
+          _errorMessage = _getErrorMessage(failure);
+          notifyListeners();
+          return false;
+        },
+        (response) {
+          AppLogger.info('Favorite added: ${response.favoriteId}');
+
+          // Update the question's favorite status in the local list
+          _updateQuestionFavoriteStatus(questionId, true);
+
+          _errorMessage = null;
+          notifyListeners();
+          return true;
+        },
+      );
+    } catch (e) {
+      AppLogger.error('Unexpected error adding favorite: $e');
+      _errorMessage = '收藏失败，请稍后重试';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Remove question from favorites
+  Future<bool> removeFavorite(String questionId) async {
+    try {
+      AppLogger.info('PracticeProvider.removeFavorite: questionId=$questionId');
+
+      final result = await _favoritesRepository.removeFavorite(questionId);
+
+      return result.fold(
+        (failure) {
+          AppLogger.error('Failed to remove favorite: ${failure.message}');
+          _errorMessage = _getErrorMessage(failure);
+          notifyListeners();
+          return false;
+        },
+        (_) {
+          AppLogger.info('Favorite removed');
+
+          // Update the question's favorite status in the local list
+          _updateQuestionFavoriteStatus(questionId, false);
+
+          _errorMessage = null;
+          notifyListeners();
+          return true;
+        },
+      );
+    } catch (e) {
+      AppLogger.error('Unexpected error removing favorite: $e');
+      _errorMessage = '取消收藏失败，请稍后重试';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Toggle favorite status for a question
+  Future<bool> toggleFavorite(String questionId, bool currentStatus) async {
+    if (currentStatus) {
+      return await removeFavorite(questionId);
+    } else {
+      return await addFavorite(questionId);
+    }
+  }
+
+  /// Update question's favorite status in local list
+  void _updateQuestionFavoriteStatus(String questionId, bool isFavorite) {
+    final index = _questions.indexWhere((q) => q.id == questionId);
+    if (index != -1) {
+      _questions[index] = _questions[index].copyWith(isFavorite: isFavorite);
+    }
   }
 
   /// Convert Failure to user-friendly error message

@@ -7,9 +7,11 @@ import 'core/constants/api_constants.dart';
 import 'data/datasources/remote/auth_api.dart';
 import 'data/datasources/remote/question_bank_api.dart';
 import 'data/datasources/remote/practice_api.dart';
+import 'data/datasources/remote/favorites_api.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/question_bank_repository.dart';
 import 'data/repositories/practice_repository.dart';
+import 'data/repositories/favorites_repository.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/question_bank_provider.dart';
 import 'presentation/providers/practice_provider.dart';
@@ -56,6 +58,9 @@ class MyApp extends StatelessWidget {
     final practiceRepository = PracticeRepository(
       api: PracticeApi(dioClient),
     );
+    final favoritesRepository = FavoritesRepository(
+      api: FavoritesApi(dioClient),
+    );
 
     return MultiProvider(
       providers: [
@@ -71,11 +76,13 @@ class MyApp extends StatelessWidget {
           create: (context) => PracticeProvider(
             repository: practiceRepository,
             questionBankRepository: questionBankRepository,
+            favoritesRepository: favoritesRepository,
             getUserId: () => context.read<AuthProvider>().currentUser?.id,
           ),
           update: (context, authProvider, previousProvider) => PracticeProvider(
             repository: practiceRepository,
             questionBankRepository: questionBankRepository,
+            favoritesRepository: favoritesRepository,
             getUserId: () => authProvider.currentUser?.id,
           ),
         ),

@@ -27,6 +27,9 @@ class _QuestionCardState extends State<QuestionCard> {
   // Track if answer is submitted
   bool _isAnswerSubmitted = false;
 
+  // Track favorite loading state
+  bool _isFavoriteLoading = false;
+
   // For single choice
   String? _selectedOption;
 
@@ -324,13 +327,59 @@ class _QuestionCardState extends State<QuestionCard> {
     final isFavorite = widget.question.isFavorite ?? false;
 
     return IconButton(
-      icon: Icon(
-        isFavorite ? Icons.star : Icons.star_border,
-        color: isFavorite ? Colors.amber : Colors.grey,
-      ),
-      onPressed: () {
-        // TODO: Toggle favorite
-      },
+      icon: _isFavoriteLoading
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isFavorite ? Colors.amber : Colors.grey,
+                ),
+              ),
+            )
+          : Icon(
+              isFavorite ? Icons.star : Icons.star_border,
+              color: isFavorite ? Colors.amber : Colors.grey,
+            ),
+      onPressed: _isFavoriteLoading
+          ? null
+          : () async {
+              setState(() {
+                _isFavoriteLoading = true;
+              });
+
+              final provider = context.read<PracticeProvider>();
+              final success = await provider.toggleFavorite(
+                widget.question.id,
+                isFavorite,
+              );
+
+              if (mounted) {
+                setState(() {
+                  _isFavoriteLoading = false;
+                });
+
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isFavorite ? '已取消收藏' : '已添加到收藏'),
+                      duration: const Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(provider.errorMessage ?? '操作失败'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
     );
   }
 
