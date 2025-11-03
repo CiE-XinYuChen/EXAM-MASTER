@@ -113,6 +113,9 @@ class _QuestionCardState extends State<QuestionCard> {
         case QuestionType.essay:
           _essayController.text = savedAnswer as String? ?? '';
           break;
+        case QuestionType.composite:
+          // Composite questions don't have simple answers
+          break;
       }
     });
   }
