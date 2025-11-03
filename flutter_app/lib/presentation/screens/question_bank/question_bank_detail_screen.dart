@@ -39,6 +39,19 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('题库详情'),
+        actions: [
+          // Info icon to show statistics and details
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              final provider = context.read<QuestionBankProvider>();
+              final bank = provider.currentQuestionBank;
+              if (bank != null) {
+                _showBankInfoDialog(context, bank);
+              }
+            },
+          ),
+        ],
       ),
       body: Consumer<QuestionBankProvider>(
         builder: (context, provider, child) {
@@ -92,14 +105,14 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
                 // Header
                 _buildHeader(bank, context),
 
+                // Progress Bar
+                _buildProgressBar(bank),
+
                 // Practice Options
                 _buildPracticeOptions(bank, context),
 
-                // Statistics
-                _buildStatistics(bank),
-
-                // Details
-                _buildDetails(bank),
+                // Wrong Questions Statistics (placeholder)
+                _buildWrongQuestionStats(),
               ],
             ),
           );
@@ -246,7 +259,7 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
             icon: Icons.new_releases_outlined,
             title: '未练习题目',
             subtitle: '只练习从未做过的题目',
-            color: Colors.red,
+            color: Colors.pink,
             onTap: () {
               Navigator.pushNamed(
                 context,
@@ -258,108 +271,272 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
               );
             },
           ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildStatistics(QuestionBankModel bank) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            '题库统计',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.quiz_outlined,
-                  label: '总题数',
-                  value: '${bank.totalQuestions ?? 0}',
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.check_circle_outline,
-                  label: '已练习',
-                  value: '0',
-                  color: Colors.green,
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.star_outline,
-                  label: '收藏',
-                  value: '0',
-                  color: Colors.amber,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.error_outline,
-                  label: '错题',
-                  value: '0',
-                  color: Colors.red,
-                ),
-              ),
-            ],
+
+          // Wrong Questions
+          _PracticeOptionCard(
+            icon: Icons.error_outline,
+            title: '错题本',
+            subtitle: '查看和练习做错的题目',
+            color: Colors.red,
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/wrong-questions',
+                arguments: {
+                  'bankId': bank.id,
+                },
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Favorites
+          _PracticeOptionCard(
+            icon: Icons.star_outline,
+            title: '收藏列表',
+            subtitle: '查看收藏的题目',
+            color: Colors.amber,
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/favorites',
+                arguments: {
+                  'bankId': bank.id,
+                },
+              );
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // Browse Mode
+          _PracticeOptionCard(
+            icon: Icons.visibility_outlined,
+            title: '浏览题目',
+            subtitle: '直接查看题目和答案，无需作答',
+            color: Colors.purple,
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/browse-questions',
+                arguments: {
+                  'bankId': bank.id,
+                },
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetails(QuestionBankModel bank) {
+  Widget _buildProgressBar(QuestionBankModel bank) {
+    // TODO: Get actual progress from provider
+    final totalQuestions = bank.totalQuestions ?? 0;
+    final practicedQuestions = 0; // Placeholder
+    final progress = totalQuestions > 0 ? practicedQuestions / totalQuestions : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '学习进度',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              Text(
+                '$practicedQuestions/$totalQuestions',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${(progress * 100).toStringAsFixed(0)}% 已完成',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWrongQuestionStats() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '题库信息',
+            '错题统计',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
           const SizedBox(height: 16),
-          _DetailRow(
-            label: '题库ID',
-            value: bank.id,
-          ),
-          _DetailRow(
-            label: '可见性',
-            value: bank.isPublic == true ? '公开' : '私有',
-          ),
-          if (bank.createdAt != null)
-            _DetailRow(
-              label: '创建时间',
-              value: DateFormatter.formatDateTime(
-                DateTime.parse(bank.createdAt!),
-              ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
             ),
-          if (bank.updatedAt != null)
-            _DetailRow(
-              label: '更新时间',
-              value: DateFormatter.formatDateTime(
-                DateTime.parse(bank.updatedAt!),
-              ),
+            child: Text(
+              '功能开发中...',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+              textAlign: TextAlign.center,
             ),
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showBankInfoDialog(BuildContext context, QuestionBankModel bank) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Title
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '题库信息',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Statistics Section
+                Text(
+                  '题库统计',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.quiz_outlined,
+                        label: '总题数',
+                        value: '${bank.totalQuestions ?? 0}',
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.check_circle_outline,
+                        label: '已练习',
+                        value: '0',
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.star_outline,
+                        label: '收藏',
+                        value: '0',
+                        color: Colors.amber,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.error_outline,
+                        label: '错题',
+                        value: '0',
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+                const Divider(),
+                const SizedBox(height: 24),
+
+                // Details Section
+                Text(
+                  '详细信息',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                _DetailRow(
+                  label: '题库ID',
+                  value: bank.id,
+                ),
+                _DetailRow(
+                  label: '可见性',
+                  value: bank.isPublic == true ? '公开' : '私有',
+                ),
+                if (bank.createdAt != null)
+                  _DetailRow(
+                    label: '创建时间',
+                    value: DateFormatter.formatDateTime(
+                      DateTime.parse(bank.createdAt!),
+                    ),
+                  ),
+                if (bank.updatedAt != null)
+                  _DetailRow(
+                    label: '更新时间',
+                    value: DateFormatter.formatDateTime(
+                      DateTime.parse(bank.updatedAt!),
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('关闭'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

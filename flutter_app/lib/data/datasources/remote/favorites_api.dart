@@ -88,7 +88,13 @@ class FavoritesApi {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         AppLogger.debug('Add favorite successful');
-        return AddFavoriteResponse.fromJson(response.data);
+        // Backend returns FavoriteResponse, adapt to AddFavoriteResponse
+        final data = response.data as Map<String, dynamic>;
+        return AddFavoriteResponse(
+          success: true,
+          favoriteId: data['id'] as String,
+          message: '收藏成功',
+        );
       } else {
         throw ServerException(
           message: 'Failed to add favorite',
@@ -134,6 +140,43 @@ class FavoritesApi {
       }
     } on DioException catch (e) {
       AppLogger.error('Remove favorite error: ${e.message}');
+      throw _handleException(e);
+    } catch (e) {
+      AppLogger.error('Unexpected error: $e');
+      throw UnknownException(message: 'Unexpected error: $e');
+    }
+  }
+
+  /// Remove a favorite by question ID
+  /// 通过题目ID移除收藏
+  ///
+  /// [questionId] - Question ID
+  ///
+  /// Requires authentication
+  ///
+  /// Throws:
+  /// - [ServerException]
+  /// - [NetworkException]
+  /// - [AuthenticationException]
+  /// - [NotFoundException]
+  Future<void> removeFavoriteByQuestion(String questionId) async {
+    try {
+      AppLogger.info('FavoritesApi.removeFavoriteByQuestion: $questionId');
+
+      final response = await _dioClient.delete(
+        '${ApiConstants.favorites}/question/$questionId',
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        AppLogger.debug('Remove favorite by question successful');
+      } else {
+        throw ServerException(
+          message: 'Failed to remove favorite',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Remove favorite by question error: ${e.message}');
       throw _handleException(e);
     } catch (e) {
       AppLogger.error('Unexpected error: $e');
@@ -204,7 +247,7 @@ class FavoritesApi {
 
       if (response.statusCode == 200) {
         AppLogger.debug('Check favorited successful');
-        return response.data['is_favorited'] ?? false;
+        return response.data['is_favorite'] ?? false;
       } else {
         throw ServerException(
           message: 'Failed to check favorite status',
@@ -213,6 +256,48 @@ class FavoritesApi {
       }
     } on DioException catch (e) {
       AppLogger.error('Check favorited error: ${e.message}');
+      throw _handleException(e);
+    } catch (e) {
+      AppLogger.error('Unexpected error: $e');
+      throw UnknownException(message: 'Unexpected error: $e');
+    }
+  }
+
+  /// Batch check if questions are favorited
+  /// 批量检查题目是否已收藏
+  ///
+  /// [questionIds] - List of question IDs
+  ///
+  /// Requires authentication
+  ///
+  /// Returns a map of question ID to favorite status
+  ///
+  /// Throws:
+  /// - [ServerException]
+  /// - [NetworkException]
+  /// - [AuthenticationException]
+  Future<Map<String, bool>> batchCheckFavorites(List<String> questionIds) async {
+    try {
+      AppLogger.info('FavoritesApi.batchCheckFavorites: ${questionIds.length} questions');
+
+      final response = await _dioClient.post(
+        '${ApiConstants.favorites}/check/batch',
+        data: {'question_ids': questionIds},
+      );
+
+      if (response.statusCode == 200) {
+        AppLogger.debug('Batch check favorites successful');
+        final data = response.data as Map<String, dynamic>;
+        final favorites = data['favorites'] as Map<String, dynamic>;
+        return favorites.map((key, value) => MapEntry(key, value as bool));
+      } else {
+        throw ServerException(
+          message: 'Failed to batch check favorites',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Batch check favorites error: ${e.message}');
       throw _handleException(e);
     } catch (e) {
       AppLogger.error('Unexpected error: $e');

@@ -21,6 +21,9 @@ import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/home/main_screen.dart';
 import 'presentation/screens/question_bank/question_bank_detail_screen.dart';
 import 'presentation/screens/practice/practice_screen.dart';
+import 'presentation/screens/favorites/favorites_list_screen.dart';
+import 'presentation/screens/wrong_questions/wrong_questions_list_screen.dart';
+import 'presentation/screens/browse/browse_questions_screen.dart';
 import 'data/models/practice_session_model.dart';
 
 void main() async {
@@ -123,6 +126,33 @@ class MyApp extends StatelessWidget {
               builder: (context) => PracticeScreen(
                 bankId: args['bankId'] as String,
                 mode: args['mode'] as PracticeMode,
+              ),
+            );
+          }
+
+          if (settings.name == '/favorites') {
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (context) => FavoritesListScreen(
+                bankId: args['bankId'] as String,
+              ),
+            );
+          }
+
+          if (settings.name == '/wrong-questions') {
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (context) => WrongQuestionsListScreen(
+                bankId: args['bankId'] as String,
+              ),
+            );
+          }
+
+          if (settings.name == '/browse-questions') {
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (context) => BrowseQuestionsScreen(
+                bankId: args['bankId'] as String,
               ),
             );
           }

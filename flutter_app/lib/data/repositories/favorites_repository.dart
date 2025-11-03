@@ -61,6 +61,21 @@ class FavoritesRepository {
     }
   }
 
+  Future<Either<Failure, void>> removeFavoriteByQuestion(String questionId) async {
+    try {
+      await _api.removeFavoriteByQuestion(questionId);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } on TimeoutException catch (e) {
+      return Left(TimeoutFailure(message: e.message));
+    } catch (e) {
+      return Left(UnknownFailure(message: 'Unexpected error: $e'));
+    }
+  }
+
   Future<Either<Failure, void>> updateNote(String favoriteId, UpdateFavoriteNoteRequest request) async {
     try {
       await _api.updateNote(favoriteId, request);
@@ -79,6 +94,21 @@ class FavoritesRepository {
   Future<Either<Failure, bool>> isFavorited(String questionId) async {
     try {
       final result = await _api.isFavorited(questionId);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } on TimeoutException catch (e) {
+      return Left(TimeoutFailure(message: e.message));
+    } catch (e) {
+      return Left(UnknownFailure(message: 'Unexpected error: $e'));
+    }
+  }
+
+  Future<Either<Failure, Map<String, bool>>> batchCheckFavorites(List<String> questionIds) async {
+    try {
+      final result = await _api.batchCheckFavorites(questionIds);
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));

@@ -141,7 +141,7 @@ class PracticeProvider with ChangeNotifier {
                   _setLoading(false);
                   return false;
                 },
-                (questionResponse) {
+                (questionResponse) async {
                   AppLogger.info('Questions loaded: ${questionResponse.questions.length}');
 
                   // If session has specific question IDs, filter and order the questions
@@ -168,6 +168,9 @@ class PracticeProvider with ChangeNotifier {
                       _questions.shuffle();
                     }
                   }
+
+                  // Batch load favorite status for all questions
+                  await _loadFavoriteStatus();
 
                   _currentQuestionIndex = session.currentIndex;
                   _userAnswers = {};
@@ -554,7 +557,7 @@ class PracticeProvider with ChangeNotifier {
     try {
       AppLogger.info('PracticeProvider.removeFavorite: questionId=$questionId');
 
-      final result = await _favoritesRepository.removeFavorite(questionId);
+      final result = await _favoritesRepository.removeFavoriteByQuestion(questionId);
 
       return result.fold(
         (failure) {
@@ -596,6 +599,38 @@ class PracticeProvider with ChangeNotifier {
     final index = _questions.indexWhere((q) => q.id == questionId);
     if (index != -1) {
       _questions[index] = _questions[index].copyWith(isFavorite: isFavorite);
+    }
+  }
+
+  /// Load favorite status for all questions in the current session
+  Future<void> _loadFavoriteStatus() async {
+    if (_questions.isEmpty) return;
+
+    try {
+      final questionIds = _questions.map((q) => q.id).toList();
+      AppLogger.info('Loading favorite status for ${questionIds.length} questions');
+
+      final result = await _favoritesRepository.batchCheckFavorites(questionIds);
+
+      result.fold(
+        (failure) {
+          AppLogger.error('Failed to load favorite status: ${failure.message}');
+          // Don't show error to user, favorite status is not critical
+        },
+        (favoriteStatus) {
+          AppLogger.info('Favorite status loaded: ${favoriteStatus.length} questions');
+
+          // Update each question's favorite status
+          for (var i = 0; i < _questions.length; i++) {
+            final questionId = _questions[i].id;
+            final isFavorite = favoriteStatus[questionId] ?? false;
+            _questions[i] = _questions[i].copyWith(isFavorite: isFavorite);
+          }
+        },
+      );
+    } catch (e) {
+      AppLogger.error('Unexpected error loading favorite status: $e');
+      // Don't show error to user, favorite status is not critical
     }
   }
 
