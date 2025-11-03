@@ -2462,18 +2462,31 @@ async def get_public_resource(
     from fastapi.responses import FileResponse
     from pathlib import Path
     from app.models.question_models import QuestionResource
+    from app.models.question_models_v2 import QuestionResourceV2, QuestionBankResource
 
-    # 获取资源记录
-    resource = qbank_db.query(QuestionResource).filter(
-        QuestionResource.id == resource_id
+    # 先尝试从V2资源表查找
+    resource = qbank_db.query(QuestionResourceV2).filter(
+        QuestionResourceV2.id == resource_id
     ).first()
+
+    # 如果没找到，尝试从题库级别资源表查找
+    if not resource:
+        resource = qbank_db.query(QuestionBankResource).filter(
+            QuestionBankResource.id == resource_id
+        ).first()
+
+    # 如果还是没找到，尝试从旧的资源表查找
+    if not resource:
+        resource = qbank_db.query(QuestionResource).filter(
+            QuestionResource.id == resource_id
+        ).first()
 
     if not resource:
         raise HTTPException(status_code=404, detail="资源不存在")
 
     # 构建文件路径
     base_storage = Path("storage")
-    file_path = base_storage / resource.file_path
+    file_path = base_storage / resource.resource_path if hasattr(resource, 'resource_path') else base_storage / resource.file_path
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="资源文件不存在")

@@ -15,6 +15,8 @@ enum QuestionType {
   fill,
   @JsonValue('essay')
   essay,
+  @JsonValue('composite')
+  composite,
 }
 
 /// Question Difficulty Enum
@@ -178,6 +180,8 @@ class QuestionModel extends Equatable {
         return answers?.join(', ');
       case QuestionType.essay:
         return correctAnswer!['essay_answer'] as String?;
+      case QuestionType.composite:
+        return '复合题（请查看子题）';
     }
   }
 
@@ -197,6 +201,7 @@ class QuestionModel extends Equatable {
         return userAnswer.toString() == correctAnswer!['answer'];
       case QuestionType.fill:
       case QuestionType.essay:
+      case QuestionType.composite:
         // These require server-side validation
         return false;
     }

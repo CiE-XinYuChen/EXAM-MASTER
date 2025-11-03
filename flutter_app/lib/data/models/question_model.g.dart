@@ -70,6 +70,7 @@ const _$QuestionTypeEnumMap = {
   QuestionType.judge: 'judge',
   QuestionType.fill: 'fill',
   QuestionType.essay: 'essay',
+  QuestionType.composite: 'composite',
 };
 
 const _$QuestionDifficultyEnumMap = {

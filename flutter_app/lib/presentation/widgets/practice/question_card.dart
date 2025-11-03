@@ -330,6 +330,10 @@ class _QuestionCardState extends State<QuestionCard> {
         typeText = '问答';
         color = Colors.red;
         break;
+      case QuestionType.composite:
+        typeText = '复合';
+        color = Colors.teal;
+        break;
     }
 
     return Container(
@@ -500,7 +504,43 @@ class _QuestionCardState extends State<QuestionCard> {
         return _buildFillInTheBlank();
       case QuestionType.essay:
         return _buildEssay();
+      case QuestionType.composite:
+        return _buildComposite();
     }
+  }
+
+  Widget _buildComposite() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.account_tree, size: 48, color: Colors.blue.shade700),
+          const SizedBox(height: 12),
+          Text(
+            '复合题',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '此题包含多个子题，请查看完整题目内容',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.blue.shade700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSingleChoice() {
