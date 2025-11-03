@@ -15,6 +15,7 @@ class PracticeModeEnum(str, Enum):
     random = "random"          # 随机答题
     wrong_only = "wrong_only"  # 只做错题
     favorite_only = "favorite_only"  # 只做收藏
+    unpracticed = "unpracticed"  # 只做未练习的题目
 
 
 class SessionStatusEnum(str, Enum):
@@ -88,6 +89,11 @@ class AnswerResult(BaseModel):
     explanation: Optional[str] = None
     time_spent: Optional[int]
     created_at: datetime
+    # 新增：显示选项内容（用于前端显示完整答案）
+    options: Optional[List[Dict[str, Any]]] = None
+    # 新增：题目信息
+    question_type: Optional[str] = None
+    question_stem: Optional[str] = None
 
     class Config:
         from_attributes = True

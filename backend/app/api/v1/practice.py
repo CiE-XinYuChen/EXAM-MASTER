@@ -102,6 +102,33 @@ def get_question_ids_for_session(
         )
         question_ids = [q[0] for q in query.all()]
 
+    elif mode == PracticeMode.unpracticed:
+        # 未练习模式：获取用户从未答过的题目
+        # 先获取所有题目ID
+        all_questions_query = db.query(QuestionV2.id).filter(
+            QuestionV2.bank_id == bank_id
+        )
+
+        # 应用筛选条件
+        if question_types:
+            all_questions_query = all_questions_query.filter(QuestionV2.type.in_(question_types))
+        if difficulty:
+            all_questions_query = all_questions_query.filter(QuestionV2.difficulty == difficulty)
+
+        all_question_ids = set(q[0] for q in all_questions_query.all())
+
+        # 获取用户已答过的题目ID
+        answered_query = db.query(UserAnswerRecord.question_id).filter(
+            and_(
+                UserAnswerRecord.user_id == user_id,
+                UserAnswerRecord.bank_id == bank_id
+            )
+        ).distinct()
+        answered_ids = set(q[0] for q in answered_query.all())
+
+        # 未练习的题目 = 所有题目 - 已答过的题目
+        question_ids = list(all_question_ids - answered_ids)
+
     else:
         # 顺序或随机模式：获取所有符合条件的题目
         query = db.query(QuestionV2.id).filter(
@@ -429,6 +456,16 @@ async def submit_answer(
     db.commit()
     db.refresh(record)
 
+    # 构造选项信息（包含label和content）
+    options_data = []
+    if question.options:
+        for opt in question.options:
+            options_data.append({
+                "label": opt.option_label,
+                "content": opt.option_content,
+                "is_correct": opt.is_correct
+            })
+
     return AnswerResult(
         record_id=record.id,
         question_id=record.question_id,
@@ -437,7 +474,11 @@ async def submit_answer(
         user_answer=user_answer,
         explanation=question.explanation,
         time_spent=answer_data.time_spent,
-        created_at=record.created_at
+        created_at=record.created_at,
+        # 新增返回字段
+        options=options_data if options_data else None,
+        question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),
+        question_stem=question.stem
     )
 
 
