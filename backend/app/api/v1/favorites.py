@@ -84,7 +84,7 @@ async def add_favorite(
 @router.get("", response_model=FavoriteListResponse, tags=["⭐ Favorites"])
 async def list_favorites(
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     bank_id: Optional[str] = None,
     question_type: Optional[str] = None,
     difficulty: Optional[str] = None,

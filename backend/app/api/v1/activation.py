@@ -312,7 +312,7 @@ async def create_activation_codes(
 @router.get("/admin/codes", response_model=ActivationCodeListResponse, tags=["🔑 Activation - Admin"])
 async def list_activation_codes(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=10000),
     bank_id: Optional[str] = None,
     is_used: Optional[bool] = None,
     expire_type: Optional[str] = None,
@@ -435,7 +435,7 @@ async def delete_activation_code(
 @router.get("/admin/access", tags=["🔑 Activation - Admin"])
 async def list_user_access(
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=10000),
     user_id: Optional[int] = None,
     bank_id: Optional[str] = None,
     is_active: Optional[bool] = None,

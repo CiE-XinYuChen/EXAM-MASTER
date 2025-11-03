@@ -53,7 +53,7 @@ async def create_question_bank(
 @router.get("/banks", response_model=List[QuestionBankResponse], tags=["📚 Bank Management"])
 async def list_question_banks(
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     category: Optional[str] = None,
     search: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -189,7 +189,7 @@ async def add_question(
 async def list_questions(
     bank_id: str,
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=10000),
     type: Optional[QuestionType] = None,
     difficulty: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -534,7 +534,7 @@ async def search_questions(
     bank_id: Optional[str] = None,
     type: Optional[QuestionType] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_qbank_db)
 ):

@@ -16,7 +16,7 @@ router = APIRouter()
 @router.get("/", response_model=List[UserResponse], tags=["👥 User Management"])
 async def get_users(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=10000),
     role: Optional[str] = None,
     is_active: Optional[bool] = None,
     current_user: User = Depends(get_current_admin_user),

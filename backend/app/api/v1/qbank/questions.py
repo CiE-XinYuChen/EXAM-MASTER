@@ -74,7 +74,7 @@ async def get_questions(
     tags: Optional[str] = None,
     search: Optional[str] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=10000),
     current_user: User = Depends(get_current_user),
     qbank_db: Session = Depends(get_qbank_db),
     main_db: Session = Depends(get_main_db)

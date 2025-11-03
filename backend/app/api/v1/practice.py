@@ -184,7 +184,7 @@ async def create_practice_session(
 @router.get("/sessions", response_model=PracticeSessionListResponse, tags=["📝 Practice"])
 async def list_practice_sessions(
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     bank_id: Optional[str] = None,
     status_filter: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -586,7 +586,7 @@ async def get_session_statistics(
 @router.get("/history", response_model=AnswerHistoryResponse, tags=["📝 Practice"])
 async def get_answer_history(
     skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=10000),
     bank_id: Optional[str] = None,
     question_id: Optional[str] = None,
     current_user: User = Depends(get_current_user),

@@ -88,7 +88,7 @@ async def get_daily_statistics(
     start_date: Optional[date] = Query(None, description="开始日期"),
     end_date: Optional[date] = Query(None, description="结束日期"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(30, ge=1, le=90),
+    limit: int = Query(30, ge=1, le=10000),
     current_user: User = Depends(get_current_user),
     main_db: Session = Depends(get_main_db)
 ):
