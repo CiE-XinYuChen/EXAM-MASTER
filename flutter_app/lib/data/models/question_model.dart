@@ -33,7 +33,9 @@ enum QuestionDifficulty {
 /// 题目选项模型
 @JsonSerializable()
 class QuestionOptionModel extends Equatable {
+  @JsonKey(name: 'option_label')
   final String label;
+  @JsonKey(name: 'option_content')
   final String content;
   @JsonKey(name: 'is_correct')
   final bool? isCorrect;

@@ -8,16 +8,16 @@ part of 'question_model.dart';
 
 QuestionOptionModel _$QuestionOptionModelFromJson(Map<String, dynamic> json) =>
     QuestionOptionModel(
-      label: json['label'] as String,
-      content: json['content'] as String,
+      label: json['option_label'] as String,
+      content: json['option_content'] as String,
       isCorrect: json['is_correct'] as bool?,
     );
 
 Map<String, dynamic> _$QuestionOptionModelToJson(
   QuestionOptionModel instance,
 ) => <String, dynamic>{
-  'label': instance.label,
-  'content': instance.content,
+  'option_label': instance.label,
+  'option_content': instance.content,
   'is_correct': instance.isCorrect,
 };
 
