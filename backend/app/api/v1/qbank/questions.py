@@ -9,7 +9,9 @@ import uuid
 from app.core.database import get_qbank_db, get_main_db
 from app.core.security import get_current_user
 from app.models.question_models import Question, QuestionOption, QuestionBank, QuestionVersion
+from app.models.question_models_v2 import QuestionV2, QuestionBankV2
 from app.models.user_models import User, UserBankPermission
+from app.models.activation import UserBankAccess
 from app.schemas.question_schemas import (
     QuestionCreate,
     QuestionUpdate,
@@ -17,6 +19,7 @@ from app.schemas.question_schemas import (
     QuestionOptionCreate
 )
 import json
+from datetime import datetime
 
 router = APIRouter()
 
@@ -30,22 +33,35 @@ def check_bank_permission(
     """Check if user has permission for a question bank"""
     if user.role == "admin":
         return True
-    
+
+    # Check UserBankPermission (legacy)
     perm = db.query(UserBankPermission).filter(
         UserBankPermission.user_id == user.id,
         UserBankPermission.bank_id == bank_id
     ).first()
-    
-    if not perm:
-        return False
-    
-    if permission == "read":
-        return perm.permission in ["read", "write", "admin"]
-    elif permission == "write":
-        return perm.permission in ["write", "admin"]
-    elif permission == "admin":
-        return perm.permission == "admin"
-    
+
+    if perm:
+        if permission == "read":
+            return perm.permission in ["read", "write", "admin"]
+        elif permission == "write":
+            return perm.permission in ["write", "admin"]
+        elif permission == "admin":
+            return perm.permission == "admin"
+
+    # Check UserBankAccess (new activation system)
+    access = db.query(UserBankAccess).filter(
+        UserBankAccess.user_id == user.id,
+        UserBankAccess.bank_id == bank_id,
+        UserBankAccess.is_active == True
+    ).first()
+
+    if access:
+        # Check if not expired
+        if access.expire_at is None or access.expire_at > datetime.utcnow():
+            # UserBankAccess grants read permission
+            if permission == "read":
+                return True
+
     return False
 
 
@@ -64,47 +80,55 @@ async def get_questions(
     main_db: Session = Depends(get_main_db)
 ):
     """Get list of questions with filters"""
-    query = qbank_db.query(Question)
-    
+    # Query from QuestionV2 (new table)
+    query = qbank_db.query(QuestionV2)
+
     # Filter by bank_id if provided
     if bank_id:
-        # Check permission for the bank
-        bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+        # Check permission for the bank using V2 model
+        bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
         if not bank:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Question bank not found"
             )
-        
+
+        # Ensure is_public has a default value
+        if bank.is_public is None:
+            bank.is_public = False
+
         if not bank.is_public and not check_bank_permission(bank_id, "read", current_user, main_db):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No permission to access this question bank"
             )
-        
-        query = query.filter(Question.bank_id == bank_id)
-    
+
+        query = query.filter(QuestionV2.bank_id == bank_id)
+
     # Apply filters
     if type:
-        query = query.filter(Question.type == type)
+        query = query.filter(QuestionV2.type == type)
     if difficulty:
-        query = query.filter(Question.difficulty == difficulty)
+        query = query.filter(QuestionV2.difficulty == difficulty)
     if category:
-        query = query.filter(Question.category == category)
+        query = query.filter(QuestionV2.category == category)
     if search:
-        query = query.filter(Question.stem.contains(search))
-    
+        query = query.filter(QuestionV2.stem.contains(search))
+
     # TODO: Filter by tags (requires JSON search)
-    
+
     questions = query.offset(skip).limit(limit).all()
-    
+
     # Filter questions based on bank permissions
     accessible_questions = []
     for question in questions:
-        bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == question.bank_id).first()
-        if bank and (bank.is_public or check_bank_permission(question.bank_id, "read", current_user, main_db)):
-            accessible_questions.append(question)
-    
+        bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == question.bank_id).first()
+        if bank:
+            if bank.is_public is None:
+                bank.is_public = False
+            if bank.is_public or check_bank_permission(question.bank_id, "read", current_user, main_db):
+                accessible_questions.append(question)
+
     return accessible_questions
 
 
