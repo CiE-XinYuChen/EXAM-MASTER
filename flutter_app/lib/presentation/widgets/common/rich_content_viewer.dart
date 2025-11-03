@@ -190,6 +190,8 @@ class AudioPlayerWidget extends StatefulWidget {
 class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   late AudioPlayer _audioPlayer;
   bool _isPlaying = false;
+  bool _hasError = false;
+  String? _errorMessage;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
 
@@ -202,32 +204,66 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
-    _audioPlayer.setSourceUrl(widget.url);
+    _initializeAudioPlayer();
+  }
 
-    // Subscribe to streams with proper cleanup
-    _durationSubscription = _audioPlayer.onDurationChanged.listen((duration) {
+  Future<void> _initializeAudioPlayer() async {
+    try {
+      // Configure audio context for iOS/macOS
+      await _audioPlayer.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: [
+              AVAudioSessionOptions.defaultToSpeaker,
+              AVAudioSessionOptions.mixWithOthers,
+            ],
+          ),
+          android: AudioContextAndroid(
+            isSpeakerphoneOn: false,
+            stayAwake: true,
+            contentType: AndroidContentType.music,
+            usageType: AndroidUsageType.media,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+        ),
+      );
+
+      // Set source with error handling
+      await _audioPlayer.setSourceUrl(widget.url);
+
+      // Subscribe to streams with proper cleanup
+      _durationSubscription = _audioPlayer.onDurationChanged.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _duration = duration;
+          });
+        }
+      });
+
+      _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
+        if (mounted) {
+          setState(() {
+            _position = position;
+          });
+        }
+      });
+
+      _stateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = state == PlayerState.playing;
+          });
+        }
+      });
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _duration = duration;
+          _hasError = true;
+          _errorMessage = e.toString();
         });
       }
-    });
-
-    _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
-      if (mounted) {
-        setState(() {
-          _position = position;
-        });
-      }
-    });
-
-    _stateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = state == PlayerState.playing;
-        });
-      }
-    });
+    }
   }
 
   @override
@@ -246,6 +282,49 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (_hasError) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.red.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red.shade700),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '音频加载失败',
+                    style: TextStyle(
+                      color: Colors.red.shade900,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red.shade700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -257,11 +336,20 @@ class _AudioPlayerWidgetState extends State<AudioPlayerWidget> {
         children: [
           IconButton(
             icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-            onPressed: () {
-              if (_isPlaying) {
-                _audioPlayer.pause();
-              } else {
-                _audioPlayer.play(UrlSource(widget.url));
+            onPressed: () async {
+              try {
+                if (_isPlaying) {
+                  await _audioPlayer.pause();
+                } else {
+                  await _audioPlayer.play(UrlSource(widget.url));
+                }
+              } catch (e) {
+                if (mounted) {
+                  setState(() {
+                    _hasError = true;
+                    _errorMessage = e.toString();
+                  });
+                }
               }
             },
             color: Theme.of(context).colorScheme.primary,

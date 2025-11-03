@@ -9,6 +9,7 @@ from sqlalchemy import func, and_, or_
 from datetime import datetime
 import uuid
 import random
+import json
 
 from app.core.database import get_qbank_db, get_main_db
 from app.core.security import get_current_user
@@ -365,7 +366,10 @@ async def submit_answer(
 
     # 判断答案是否正确
     is_correct = False
-    correct_answer = question.correct_answer or {}
+    # 确保correct_answer是纯字典，避免包含ORM对象
+    correct_answer_raw = question.correct_answer or {}
+    # 深拷贝并确保所有值都是可序列化的
+    correct_answer = json.loads(json.dumps(correct_answer_raw, default=str))
     user_answer = answer_data.user_answer
 
     # 根据题型判断正确性
@@ -383,6 +387,16 @@ async def submit_answer(
         is_correct = False  # 默认需要人工评判
 
     # 创建答题记录
+    # 序列化选项为字典列表
+    options_snapshot = []
+    if question.options:
+        for opt in question.options:
+            options_snapshot.append({
+                "label": opt.option_label,
+                "content": opt.option_content,
+                "is_correct": opt.is_correct
+            })
+
     record = UserAnswerRecord(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
@@ -395,7 +409,7 @@ async def submit_answer(
         question_snapshot={
             "type": question.type.value,
             "stem": question.stem,
-            "options": question.options
+            "options": options_snapshot
         },
         correct_answer=correct_answer,
         created_at=datetime.utcnow()
