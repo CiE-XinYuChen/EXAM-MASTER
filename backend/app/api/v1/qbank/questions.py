@@ -121,12 +121,17 @@ async def get_questions(
 
     # Filter questions based on bank permissions
     accessible_questions = []
+    valid_difficulties = {"easy", "medium", "hard", "expert"}
+
     for question in questions:
         bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == question.bank_id).first()
         if bank:
             if bank.is_public is None:
                 bank.is_public = False
             if bank.is_public or check_bank_permission(question.bank_id, "read", current_user, main_db):
+                # Sanitize difficulty - set to None if not in valid set
+                if question.difficulty and question.difficulty not in valid_difficulties:
+                    question.difficulty = None
                 accessible_questions.append(question)
 
     return accessible_questions
