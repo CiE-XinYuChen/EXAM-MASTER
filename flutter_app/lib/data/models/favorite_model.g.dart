@@ -32,15 +32,15 @@ Map<String, dynamic> _$FavoriteModelToJson(FavoriteModel instance) =>
 
 AddFavoriteRequest _$AddFavoriteRequestFromJson(Map<String, dynamic> json) =>
     AddFavoriteRequest(
-      userId: (json['user_id'] as num).toInt(),
       questionId: json['question_id'] as String,
+      bankId: json['bank_id'] as String,
       note: json['note'] as String?,
     );
 
 Map<String, dynamic> _$AddFavoriteRequestToJson(AddFavoriteRequest instance) =>
     <String, dynamic>{
-      'user_id': instance.userId,
       'question_id': instance.questionId,
+      'bank_id': instance.bankId,
       'note': instance.note,
     };
 

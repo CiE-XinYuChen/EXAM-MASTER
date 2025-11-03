@@ -156,6 +156,7 @@ def get_question_ids_for_session(
 @router.post("/sessions", response_model=PracticeSessionResponse, tags=["📝 Practice"])
 async def create_practice_session(
     session_data: PracticeSessionCreate,
+    resume_if_exists: bool = Query(False, description="如果存在未完成的会话，是否继续该会话"),
     current_user: User = Depends(get_current_user),
     qbank_db: Session = Depends(get_qbank_db),
     main_db: Session = Depends(get_main_db)
@@ -168,6 +169,25 @@ async def create_practice_session(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="您没有访问该题库的权限"
         )
+
+    # Check for existing unfinished session if resume_if_exists is True
+    if resume_if_exists:
+        existing_session = qbank_db.query(PracticeSession).filter(
+            and_(
+                PracticeSession.user_id == current_user.id,
+                PracticeSession.bank_id == session_data.bank_id,
+                PracticeSession.mode == session_data.mode,
+                PracticeSession.status.in_([SessionStatus.in_progress, SessionStatus.paused])
+            )
+        ).order_by(PracticeSession.last_activity_at.desc()).first()
+
+        if existing_session:
+            # Resume existing session
+            existing_session.status = SessionStatus.in_progress
+            existing_session.last_activity_at = datetime.utcnow()
+            qbank_db.commit()
+            qbank_db.refresh(existing_session)
+            return existing_session
 
     # 获取题目列表
     question_ids = get_question_ids_for_session(

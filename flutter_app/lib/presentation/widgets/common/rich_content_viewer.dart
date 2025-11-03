@@ -172,6 +172,16 @@ class RichContentViewer extends StatelessWidget {
       return url;
     }
 
+    // Normalize admin resource URLs to public endpoint
+    // Convert: /admin/questions/{question_id}/resources/{resource_id}/download
+    // To: /resources/{resource_id}
+    final adminResourcePattern = RegExp(r'/admin/questions/[^/]+/resources/([^/]+)/download');
+    final match = adminResourcePattern.firstMatch(url);
+    if (match != null) {
+      final resourceId = match.group(1);
+      url = '/resources/$resourceId';
+    }
+
     // Otherwise, construct full URL from base
     return '${ApiConstants.baseUrl}$url';
   }

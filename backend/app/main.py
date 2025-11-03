@@ -1005,12 +1005,23 @@ async def admin_questions_edit(
     # Update question fields
     question.bank_id = data.get("bank_id", question.bank_id)
     question.stem = data.get("stem", question.stem)
-    question.type = data.get("type", question.type)
+
+    # Handle type field - clean up enum format if needed
+    if "type" in data:
+        type_value = data["type"]
+        # Remove 'QuestionType.' prefix if present
+        if isinstance(type_value, str) and type_value.startswith("QuestionType."):
+            type_value = type_value.replace("QuestionType.", "")
+        question.type = type_value
+
     question.difficulty = data.get("difficulty", question.difficulty)
     question.category = data.get("category", question.category)
     question.tags = data.get("tags", question.tags)
     question.explanation = data.get("explanation", question.explanation)
-    
+
+    # Save bank_id before any database operations that might expire the object
+    bank_id = question.bank_id
+
     # Update meta_data based on question type
     if data.get("meta_data"):
         question.meta_data = data["meta_data"]
@@ -1101,12 +1112,12 @@ async def admin_questions_edit(
             }
     
     qbank_db.commit()
-    
+
     # Return appropriate response
     if "application/json" in request.headers.get("content-type", ""):
         return JSONResponse({"success": True, "question_id": question_id})
-    
-    return RedirectResponse(url=f"/admin/questions?bank_id={question.bank_id}", status_code=303)
+
+    return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
 
 
 @app.post("/admin/questions/{question_id}/delete", tags=["🖥️ Admin Questions"])

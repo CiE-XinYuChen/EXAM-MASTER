@@ -791,14 +791,33 @@ class _QuestionCardState extends State<QuestionCard> {
           Color? statusIconColor;
 
           if (_isAnswerSubmitted && isCorrectOption != null) {
-            if (isCorrectOption) {
-              // Correct option - always show green
-              backgroundColor = Colors.green.shade50;
-              borderColor = Colors.green.shade400;
-              textColor = Colors.green.shade900;
-              statusIcon = Icons.check_circle;
-              statusIconColor = Colors.green.shade700;
-            } else if (isUserSelectedOption && !isCorrectOption) {
+            // Check if answer is fully correct or partially correct
+            final isFullyCorrect = answerResult?.isCorrect ?? false;
+
+            if (isCorrectOption && isUserSelectedOption) {
+              if (isFullyCorrect) {
+                // Fully correct answer - show green
+                backgroundColor = Colors.green.shade50;
+                borderColor = Colors.green.shade400;
+                textColor = Colors.green.shade900;
+                statusIcon = Icons.check_circle;
+                statusIconColor = Colors.green.shade700;
+              } else {
+                // Partially correct (user selected correct option but missed others) - show yellow
+                backgroundColor = Colors.orange.shade50;
+                borderColor = Colors.orange.shade400;
+                textColor = Colors.orange.shade900;
+                statusIcon = Icons.check_circle;
+                statusIconColor = Colors.orange.shade700;
+              }
+            } else if (isCorrectOption && !isUserSelectedOption) {
+              // Missed correct option - show yellow outline
+              backgroundColor = Colors.orange.shade50;
+              borderColor = Colors.orange.shade400;
+              textColor = Colors.orange.shade900;
+              statusIcon = Icons.warning;
+              statusIconColor = Colors.orange.shade700;
+            } else if (!isCorrectOption && isUserSelectedOption) {
               // User selected wrong option - show red
               backgroundColor = Colors.red.shade50;
               borderColor = Colors.red.shade400;
@@ -806,7 +825,7 @@ class _QuestionCardState extends State<QuestionCard> {
               statusIcon = Icons.cancel;
               statusIconColor = Colors.red.shade700;
             } else {
-              // Other options - neutral
+              // Other options (not correct, not selected) - neutral
               backgroundColor = Colors.grey.shade50;
               borderColor = Colors.grey.shade300;
               textColor = Colors.black87;

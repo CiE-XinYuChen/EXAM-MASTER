@@ -70,15 +70,15 @@ class FavoriteModel extends Equatable {
 /// Add Favorite Request
 @JsonSerializable()
 class AddFavoriteRequest {
-  @JsonKey(name: 'user_id')
-  final int userId;
   @JsonKey(name: 'question_id')
   final String questionId;
+  @JsonKey(name: 'bank_id')
+  final String bankId;
   final String? note;
 
   const AddFavoriteRequest({
-    required this.userId,
     required this.questionId,
+    required this.bankId,
     this.note,
   });
 

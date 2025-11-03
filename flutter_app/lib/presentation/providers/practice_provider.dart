@@ -492,11 +492,22 @@ class PracticeProvider with ChangeNotifier {
         return false;
       }
 
-      AppLogger.info('PracticeProvider.addFavorite: questionId=$questionId');
+      // Get bank ID from current session or question
+      String? bankId = _currentSession?.bankId;
+      if (bankId == null) {
+        // Try to get from question
+        final question = _questions.firstWhere(
+          (q) => q.id == questionId,
+          orElse: () => _questions.first,
+        );
+        bankId = question.bankId;
+      }
+
+      AppLogger.info('PracticeProvider.addFavorite: questionId=$questionId, bankId=$bankId');
 
       final request = AddFavoriteRequest(
-        userId: userId,
         questionId: questionId,
+        bankId: bankId,
       );
 
       final result = await _favoritesRepository.addFavorite(request);

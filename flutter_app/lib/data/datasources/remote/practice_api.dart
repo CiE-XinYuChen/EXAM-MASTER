@@ -17,6 +17,7 @@ class PracticeApi {
   /// 创建新的答题会话
   ///
   /// [request] - Create practice session request
+  /// [resumeIfExists] - If true, resume existing unfinished session instead of creating new one
   ///
   /// Requires authentication
   ///
@@ -26,14 +27,18 @@ class PracticeApi {
   /// - [AuthenticationException]
   /// - [ValidationException]
   Future<CreatePracticeSessionResponse> createSession(
-    CreatePracticeSessionRequest request,
-  ) async {
+    CreatePracticeSessionRequest request, {
+    bool resumeIfExists = true,
+  }) async {
     try {
-      AppLogger.info('PracticeApi.createSession: bankId=${request.bankId}, mode=${request.mode}');
+      AppLogger.info('PracticeApi.createSession: bankId=${request.bankId}, mode=${request.mode}, resumeIfExists=$resumeIfExists');
 
       final response = await _dioClient.post(
         ApiConstants.practiceSessions,
         data: request.toJson(),
+        queryParameters: {
+          'resume_if_exists': resumeIfExists,
+        },
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
