@@ -9,12 +9,15 @@ import uuid
 from app.core.database import get_qbank_db, get_main_db
 from app.core.security import get_current_user, get_current_teacher_user
 from app.models.question_models import QuestionBank, Question
+from app.models.question_models_v2 import QuestionBankV2, QuestionV2
 from app.models.user_models import User, UserBankPermission
+from app.models.activation import UserBankAccess
 from app.schemas.question_schemas import (
-    QuestionBankCreate, 
-    QuestionBankUpdate, 
+    QuestionBankCreate,
+    QuestionBankUpdate,
     QuestionBankResponse
 )
+from datetime import datetime
 
 router = APIRouter()
 
@@ -28,22 +31,35 @@ def check_bank_permission(
     """Check if user has permission for a question bank"""
     if user.role == "admin":
         return True
-    
+
+    # Check UserBankPermission (legacy)
     perm = db.query(UserBankPermission).filter(
         UserBankPermission.user_id == user.id,
         UserBankPermission.bank_id == bank_id
     ).first()
-    
-    if not perm:
-        return False
-    
-    if permission == "read":
-        return perm.permission in ["read", "write", "admin"]
-    elif permission == "write":
-        return perm.permission in ["write", "admin"]
-    elif permission == "admin":
-        return perm.permission == "admin"
-    
+
+    if perm:
+        if permission == "read":
+            return perm.permission in ["read", "write", "admin"]
+        elif permission == "write":
+            return perm.permission in ["write", "admin"]
+        elif permission == "admin":
+            return perm.permission == "admin"
+
+    # Check UserBankAccess (new activation system)
+    access = db.query(UserBankAccess).filter(
+        UserBankAccess.user_id == user.id,
+        UserBankAccess.bank_id == bank_id,
+        UserBankAccess.is_active == True
+    ).first()
+
+    if access:
+        # Check if not expired
+        if access.expire_at is None or access.expire_at > datetime.utcnow():
+            # UserBankAccess grants read permission
+            if permission == "read":
+                return True
+
     return False
 
 
@@ -58,28 +74,32 @@ async def get_question_banks(
     main_db: Session = Depends(get_main_db)
 ):
     """Get list of accessible question banks"""
-    query = qbank_db.query(QuestionBank)
-    
+    # Query from QuestionBankV2 (new table used by activation system)
+    query = qbank_db.query(QuestionBankV2)
+
     # Filter by category if provided
     if category:
-        query = query.filter(QuestionBank.category == category)
-    
+        query = query.filter(QuestionBankV2.category == category)
+
     # Filter by public status if provided
     if is_public is not None:
-        query = query.filter(QuestionBank.is_public == is_public)
-    
+        query = query.filter(QuestionBankV2.is_public == is_public)
+
     banks = query.offset(skip).limit(limit).all()
-    
+
     # Filter banks based on user permissions
     accessible_banks = []
     for bank in banks:
         if bank.is_public or check_bank_permission(bank.id, "read", current_user, main_db):
-            # Add question count
-            bank.question_count = qbank_db.query(Question).filter(
-                Question.bank_id == bank.id
+            # Add question count from V2 table
+            bank.question_count = qbank_db.query(QuestionV2).filter(
+                QuestionV2.bank_id == bank.id
             ).count()
+            # Set metadata fields for compatibility
+            if not hasattr(bank, 'metadata') or bank.metadata is None:
+                bank.metadata = bank.meta_data
             accessible_banks.append(bank)
-    
+
     return accessible_banks
 
 
@@ -129,26 +149,31 @@ async def get_question_bank(
     main_db: Session = Depends(get_main_db)
 ):
     """Get question bank details"""
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
-    
+    # Query from QuestionBankV2
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
+
     if not bank:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Question bank not found"
         )
-    
+
     # Check permission
     if not bank.is_public and not check_bank_permission(bank_id, "read", current_user, main_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to access this question bank"
         )
-    
-    # Add question count
-    bank.question_count = qbank_db.query(Question).filter(
-        Question.bank_id == bank_id
+
+    # Add question count from V2 table
+    bank.question_count = qbank_db.query(QuestionV2).filter(
+        QuestionV2.bank_id == bank_id
     ).count()
-    
+
+    # Set metadata fields for compatibility
+    if not hasattr(bank, 'metadata') or bank.metadata is None:
+        bank.metadata = bank.meta_data
+
     return bank
 
 

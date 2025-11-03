@@ -58,7 +58,16 @@ class QuestionBankApi {
 
       if (response.statusCode == 200) {
         AppLogger.debug('Get question banks successful');
-        return QuestionBankListResponse.fromJson(response.data);
+
+        // Backend returns List<QuestionBankModel> directly, not wrapped in object
+        final List<dynamic> banksJson = response.data as List<dynamic>;
+        final banks = banksJson.map((json) => QuestionBankModel.fromJson(json)).toList();
+
+        // Create response with banks and total
+        return QuestionBankListResponse(
+          banks: banks,
+          total: banks.length,
+        );
       } else {
         throw ServerException(
           message: 'Failed to get question banks',
@@ -155,7 +164,16 @@ class QuestionBankApi {
 
       if (response.statusCode == 200) {
         AppLogger.debug('Get questions successful');
-        return QuestionListResponse.fromJson(response.data);
+
+        // Backend returns List<QuestionModel> directly, not wrapped in object
+        final List<dynamic> questionsJson = response.data as List<dynamic>;
+        final questions = questionsJson.map((json) => QuestionModel.fromJson(json)).toList();
+
+        // Create response with questions and total
+        return QuestionListResponse(
+          questions: questions,
+          total: questions.length,
+        );
       } else {
         throw ServerException(
           message: 'Failed to get questions',
