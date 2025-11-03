@@ -21,6 +21,7 @@ class PracticeModeEnum(str, Enum):
 class SessionStatusEnum(str, Enum):
     """会话状态"""
     in_progress = "in_progress"  # 进行中
+    paused = "paused"             # 已暂停
     completed = "completed"       # 已完成
     abandoned = "abandoned"       # 已放弃
 

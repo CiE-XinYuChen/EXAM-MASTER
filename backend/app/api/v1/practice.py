@@ -328,6 +328,88 @@ async def delete_practice_session(
     return {"success": True, "message": "会话已删除"}
 
 
+@router.post("/sessions/{session_id}/pause", tags=["📝 Practice"])
+async def pause_practice_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """暂停答题会话"""
+
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    # 只有进行中的会话才能暂停
+    if session.status != SessionStatus.in_progress:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"会话状态为 {session.status.value}，无法暂停"
+        )
+
+    session.status = SessionStatus.paused
+    session.last_activity_at = datetime.utcnow()
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "success": True,
+        "message": "会话已暂停",
+        "session_id": session.id,
+        "status": session.status.value
+    }
+
+
+@router.post("/sessions/{session_id}/resume", tags=["📝 Practice"])
+async def resume_practice_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_qbank_db)
+):
+    """恢复答题会话"""
+
+    session = db.query(PracticeSession).filter(
+        and_(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id
+        )
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="会话不存在"
+        )
+
+    # 只有暂停的会话才能恢复
+    if session.status != SessionStatus.paused:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"会话状态为 {session.status.value}，无法恢复"
+        )
+
+    session.status = SessionStatus.in_progress
+    session.last_activity_at = datetime.utcnow()
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "success": True,
+        "message": "会话已恢复",
+        "session_id": session.id,
+        "status": session.status.value
+    }
+
+
 # ==================== Answer Submission Endpoints ====================
 
 @router.post("/sessions/{session_id}/submit", response_model=AnswerResult, tags=["📝 Practice"])

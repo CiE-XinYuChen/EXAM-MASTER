@@ -2,7 +2,7 @@
 /// 定义所有API端点和配置
 class ApiConstants {
   // Environment configuration
-  static const bool useProduction = false; // 切换为 false 使用本地开发环境
+  static const bool useProduction = true; // 切换为 true 使用生产环境，false 使用本地开发环境
 
   // Base URLs
   static const String productionUrl = 'https://exam.shaynechen.tech';
