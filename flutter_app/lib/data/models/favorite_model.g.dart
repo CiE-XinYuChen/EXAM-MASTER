@@ -14,9 +14,15 @@ FavoriteModel _$FavoriteModelFromJson(Map<String, dynamic> json) =>
       bankId: json['bank_id'] as String,
       note: json['note'] as String?,
       createdAt: json['created_at'] as String,
-      question: json['question'] == null
-          ? null
-          : QuestionModel.fromJson(json['question'] as Map<String, dynamic>),
+      questionType: json['question_type'] as String,
+      questionStem: json['question_stem'] as String,
+      questionDifficulty: json['question_difficulty'] as String?,
+      questionTags: (json['question_tags'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      hasImage: json['has_image'] as bool?,
+      hasVideo: json['has_video'] as bool?,
+      hasAudio: json['has_audio'] as bool?,
     );
 
 Map<String, dynamic> _$FavoriteModelToJson(FavoriteModel instance) =>
@@ -27,7 +33,13 @@ Map<String, dynamic> _$FavoriteModelToJson(FavoriteModel instance) =>
       'bank_id': instance.bankId,
       'note': instance.note,
       'created_at': instance.createdAt,
-      'question': instance.question,
+      'question_type': instance.questionType,
+      'question_stem': instance.questionStem,
+      'question_difficulty': instance.questionDifficulty,
+      'question_tags': instance.questionTags,
+      'has_image': instance.hasImage,
+      'has_video': instance.hasVideo,
+      'has_audio': instance.hasAudio,
     };
 
 AddFavoriteRequest _$AddFavoriteRequestFromJson(Map<String, dynamic> json) =>

@@ -1,11 +1,10 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
-import 'question_model.dart';
 
 part 'favorite_model.g.dart';
 
 /// Favorite Model
-/// 收藏数据模型
+/// 收藏数据模型（带题目详细信息）
 @JsonSerializable()
 class FavoriteModel extends Equatable {
   final String id;
@@ -18,7 +17,22 @@ class FavoriteModel extends Equatable {
   final String? note;
   @JsonKey(name: 'created_at')
   final String createdAt;
-  final QuestionModel? question;
+
+  // Question details from backend
+  @JsonKey(name: 'question_type')
+  final String questionType;
+  @JsonKey(name: 'question_stem')
+  final String questionStem;
+  @JsonKey(name: 'question_difficulty')
+  final String? questionDifficulty;
+  @JsonKey(name: 'question_tags')
+  final List<String>? questionTags;
+  @JsonKey(name: 'has_image')
+  final bool? hasImage;
+  @JsonKey(name: 'has_video')
+  final bool? hasVideo;
+  @JsonKey(name: 'has_audio')
+  final bool? hasAudio;
 
   const FavoriteModel({
     required this.id,
@@ -27,7 +41,13 @@ class FavoriteModel extends Equatable {
     required this.bankId,
     this.note,
     required this.createdAt,
-    this.question,
+    required this.questionType,
+    required this.questionStem,
+    this.questionDifficulty,
+    this.questionTags,
+    this.hasImage,
+    this.hasVideo,
+    this.hasAudio,
   });
 
   factory FavoriteModel.fromJson(Map<String, dynamic> json) =>
@@ -43,7 +63,13 @@ class FavoriteModel extends Equatable {
         bankId,
         note,
         createdAt,
-        question,
+        questionType,
+        questionStem,
+        questionDifficulty,
+        questionTags,
+        hasImage,
+        hasVideo,
+        hasAudio,
       ];
 
   FavoriteModel copyWith({
@@ -53,7 +79,13 @@ class FavoriteModel extends Equatable {
     String? bankId,
     String? note,
     String? createdAt,
-    QuestionModel? question,
+    String? questionType,
+    String? questionStem,
+    String? questionDifficulty,
+    List<String>? questionTags,
+    bool? hasImage,
+    bool? hasVideo,
+    bool? hasAudio,
   }) {
     return FavoriteModel(
       id: id ?? this.id,
@@ -62,7 +94,13 @@ class FavoriteModel extends Equatable {
       bankId: bankId ?? this.bankId,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
-      question: question ?? this.question,
+      questionType: questionType ?? this.questionType,
+      questionStem: questionStem ?? this.questionStem,
+      questionDifficulty: questionDifficulty ?? this.questionDifficulty,
+      questionTags: questionTags ?? this.questionTags,
+      hasImage: hasImage ?? this.hasImage,
+      hasVideo: hasVideo ?? this.hasVideo,
+      hasAudio: hasAudio ?? this.hasAudio,
     );
   }
 }

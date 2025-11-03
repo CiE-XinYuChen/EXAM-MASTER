@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/practice_session_model.dart';
+import '../../../data/models/favorite_model.dart';
+import '../../../data/datasources/remote/favorites_api.dart';
+import '../../../data/repositories/favorites_repository.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/utils/logger.dart';
 
 /// Favorites List Screen
 /// 收藏列表页面
@@ -16,6 +21,14 @@ class FavoritesListScreen extends StatefulWidget {
 }
 
 class _FavoritesListScreenState extends State<FavoritesListScreen> {
+  final FavoritesRepository _repository = FavoritesRepository(
+    api: FavoritesApi(DioClient()),
+  );
+
+  List<FavoriteModel> _favorites = [];
+  bool _isLoading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -25,7 +38,61 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
   }
 
   Future<void> _loadFavorites() async {
-    // TODO: Implement favorites loading
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _repository.getFavorites(
+        page: 1,
+        pageSize: 1000,
+        bankId: widget.bankId,
+      );
+
+      result.fold(
+        (failure) {
+          setState(() {
+            _error = failure.message;
+            _isLoading = false;
+          });
+          AppLogger.error('Failed to load favorites: ${failure.message}');
+        },
+        (response) {
+          setState(() {
+            _favorites = response.favorites;
+            _isLoading = false;
+          });
+          AppLogger.info('Loaded ${_favorites.length} favorites');
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _error = '加载失败: $e';
+        _isLoading = false;
+      });
+      AppLogger.error('Unexpected error loading favorites: $e');
+    }
+  }
+
+  Future<void> _deleteFavorite(String favoriteId, int index) async {
+    final result = await _repository.removeFavorite(favoriteId);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败: ${failure.message}')),
+        );
+      },
+      (_) {
+        setState(() {
+          _favorites.removeAt(index);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已取消收藏')),
+        );
+      },
+    );
   }
 
   @override
@@ -34,40 +101,60 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
       appBar: AppBar(
         title: const Text('收藏列表'),
         actions: [
-          // Practice all favorites
-          IconButton(
-            icon: const Icon(Icons.play_arrow),
-            tooltip: '练习全部收藏',
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                '/practice',
-                arguments: {
-                  'bankId': widget.bankId,
-                  'mode': PracticeMode.favoriteOnly,
-                },
-              );
-            },
-          ),
+          // Practice favorites (both browsing and doing)
+          if (_favorites.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: '开始练习',
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/practice',
+                  arguments: {
+                    'bankId': widget.bankId,
+                    'mode': PracticeMode.favoriteOnly,
+                  },
+                );
+              },
+            ),
         ],
       ),
-      body: Column(
-        children: [
-          // Summary Card
-          _buildSummaryCard(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline,
+                          size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(_error!,
+                          style: TextStyle(color: Colors.grey.shade600)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadFavorites,
+                        child: const Text('重试'),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    // Summary Card
+                    _buildSummaryCard(),
 
-          // Favorites List
-          Expanded(
-            child: _buildFavoritesList(),
-          ),
-        ],
-      ),
+                    // Favorites List
+                    Expanded(
+                      child: _buildFavoritesList(),
+                    ),
+                  ],
+                ),
     );
   }
 
   Widget _buildSummaryCard() {
-    // TODO: Get actual count from provider
-    final favoritesCount = 0;
+    final favoritesCount = _favorites.length;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -124,13 +211,27 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
   }
 
   Widget _buildFavoritesList() {
-    // TODO: Implement actual list from provider
+    if (_favorites.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.star_outline, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text('还没有收藏题目',
+                style: TextStyle(fontSize: 18, color: Colors.grey.shade600)),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: 0, // Placeholder
+      itemCount: _favorites.length,
       itemBuilder: (context, index) {
+        final favorite = _favorites[index];
         return Dismissible(
-          key: Key('favorite_$index'),
+          key: Key(favorite.id),
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
@@ -144,46 +245,41 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
               color: Colors.white,
             ),
           ),
-          confirmDismiss: (direction) async {
-            return await showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('确认删除'),
-                content: const Text('确定要取消收藏此题目吗？'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('取消'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    child: const Text('删除'),
-                  ),
-                ],
-              ),
-            );
-          },
           onDismissed: (direction) {
-            // TODO: Remove from favorites
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('已取消收藏')),
-            );
+            _deleteFavorite(favorite.id, index);
           },
           child: _FavoriteQuestionCard(
             questionNumber: index + 1,
-            questionStem: '题目 ${index + 1}',
-            questionType: '单选题',
-            difficulty: '简单',
+            questionStem: favorite.questionStem,
+            questionType: _getQuestionTypeLabel(favorite.questionType),
+            difficulty: favorite.questionDifficulty ?? '未知',
             onTap: () {
               // TODO: Navigate to question detail or practice
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('题目详情功能待开发')),
+              );
             },
           ),
         );
       },
     );
+  }
+
+  String _getQuestionTypeLabel(String type) {
+    switch (type) {
+      case 'single':
+        return '单选题';
+      case 'multiple':
+        return '多选题';
+      case 'judge':
+        return '判断题';
+      case 'fill':
+        return '填空题';
+      case 'essay':
+        return '问答题';
+      default:
+        return type;
+    }
   }
 }
 

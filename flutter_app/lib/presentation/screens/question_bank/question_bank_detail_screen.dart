@@ -441,56 +441,12 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Statistics Section
-                Text(
-                  '题库统计',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.quiz_outlined,
-                        label: '总题数',
-                        value: '${bank.totalQuestions ?? 0}',
-                        color: Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.check_circle_outline,
-                        label: '已练习',
-                        value: '0',
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.star_outline,
-                        label: '收藏',
-                        value: '0',
-                        color: Colors.amber,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.error_outline,
-                        label: '错题',
-                        value: '0',
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
+                // Total Questions
+                _StatCard(
+                  icon: Icons.quiz_outlined,
+                  label: '总题数',
+                  value: '${bank.totalQuestions ?? 0}',
+                  color: Colors.blue,
                 ),
 
                 const SizedBox(height: 24),

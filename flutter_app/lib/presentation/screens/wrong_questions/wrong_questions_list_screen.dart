@@ -35,10 +35,10 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
       appBar: AppBar(
         title: const Text('错题本'),
         actions: [
-          // Practice all wrong questions
+          // Practice wrong questions
           IconButton(
-            icon: const Icon(Icons.play_arrow),
-            tooltip: '练习全部错题',
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: '开始练习',
             onPressed: () {
               Navigator.pushNamed(
                 context,
@@ -184,28 +184,6 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
               color: Colors.white,
             ),
           ),
-          confirmDismiss: (direction) async {
-            return await showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('确认删除'),
-                content: const Text('确定要从错题本中删除此题目吗？'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('取消'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    child: const Text('删除'),
-                  ),
-                ],
-              ),
-            );
-          },
           onDismissed: (direction) {
             // TODO: Remove from wrong questions
             ScaffoldMessenger.of(context).showSnackBar(
