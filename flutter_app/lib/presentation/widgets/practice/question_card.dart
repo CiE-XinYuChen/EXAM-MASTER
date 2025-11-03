@@ -240,10 +240,19 @@ class _QuestionCardState extends State<QuestionCard> {
                 ),
               ],
 
-              // Correct answer (if submitted)
-              if (_isAnswerSubmitted && widget.question.correctAnswer != null) ...[
-                const SizedBox(height: 24),
-                _buildCorrectAnswer(),
+              // Only show enhanced answer display for single/multiple choice
+              // For other question types, show the correct answer section
+              if (_isAnswerSubmitted) ...[
+                if (widget.question.type == QuestionType.single ||
+                    widget.question.type == QuestionType.multiple) ...[
+                  // For single/multiple choice, options already show the answer
+                  // Just show a summary card
+                  const SizedBox(height: 24),
+                  _buildAnswerSummary(),
+                ] else if (widget.question.correctAnswer != null) ...[
+                  const SizedBox(height: 24),
+                  _buildCorrectAnswer(),
+                ],
               ],
 
               // Explanation (if submitted and available)
@@ -497,9 +506,76 @@ class _QuestionCardState extends State<QuestionCard> {
   Widget _buildSingleChoice() {
     if (widget.question.options == null) return const SizedBox();
 
+    // Get answer result if submitted
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
+
     return Column(
       children: widget.question.options!.map((option) {
         final isSelected = _selectedOption == option.label;
+
+        // Determine if this option is correct/incorrect after submission
+        bool? isCorrectOption;
+        bool isUserSelectedOption = false;
+
+        if (_isAnswerSubmitted && answerResult != null) {
+          // Check if this option is the correct answer
+          if (answerResult.options != null && answerResult.options!.isNotEmpty) {
+            final matchingOption = answerResult.options!.firstWhere(
+              (opt) => opt.label == option.label,
+              orElse: () => answerResult.options!.first,
+            );
+            isCorrectOption = matchingOption.isCorrect;
+          } else {
+            // Fallback: check from correctAnswer
+            final correctAnswerLabel = answerResult.correctAnswer['answer'];
+            isCorrectOption = option.label == correctAnswerLabel;
+          }
+
+          // Check if user selected this option
+          isUserSelectedOption = isSelected;
+        }
+
+        // Determine colors based on submission state
+        Color backgroundColor;
+        Color borderColor;
+        Color textColor;
+        IconData? statusIcon;
+        Color? statusIconColor;
+
+        if (_isAnswerSubmitted && isCorrectOption != null) {
+          if (isCorrectOption) {
+            // Correct option - always show green
+            backgroundColor = Colors.green.shade50;
+            borderColor = Colors.green.shade400;
+            textColor = Colors.green.shade900;
+            statusIcon = Icons.check_circle;
+            statusIconColor = Colors.green.shade700;
+          } else if (isUserSelectedOption && !isCorrectOption) {
+            // User selected wrong option - show red
+            backgroundColor = Colors.red.shade50;
+            borderColor = Colors.red.shade400;
+            textColor = Colors.red.shade900;
+            statusIcon = Icons.cancel;
+            statusIconColor = Colors.red.shade700;
+          } else {
+            // Other options - neutral
+            backgroundColor = Colors.grey.shade50;
+            borderColor = Colors.grey.shade300;
+            textColor = Colors.black87;
+          }
+        } else {
+          // Before submission - use selection state
+          backgroundColor = isSelected
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Colors.grey.shade50;
+          borderColor = isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey.shade300;
+          textColor = isSelected
+              ? Theme.of(context).colorScheme.onPrimaryContainer
+              : Colors.black87;
+        }
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -514,38 +590,42 @@ class _QuestionCardState extends State<QuestionCard> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Colors.grey.shade50,
+                color: backgroundColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade300,
-                  width: isSelected ? 2 : 1,
+                  color: borderColor,
+                  width: (_isAnswerSubmitted && (isCorrectOption == true || isUserSelectedOption)) || isSelected ? 2 : 1,
                 ),
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.white,
-                      border: Border.all(
+                  // Left indicator
+                  if (_isAnswerSubmitted && statusIcon != null)
+                    Icon(
+                      statusIcon,
+                      color: statusIconColor,
+                      size: 24,
+                    )
+                  else
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.grey.shade400,
-                        width: 2,
+                            : Colors.white,
+                        border: Border.all(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.grey.shade400,
+                          width: 2,
+                        ),
                       ),
+                      child: isSelected
+                          ? const Icon(Icons.check, size: 16, color: Colors.white)
+                          : null,
                     ),
-                    child: isSelected
-                        ? const Icon(Icons.check, size: 16, color: Colors.white)
-                        : null,
-                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Row(
@@ -556,7 +636,7 @@ class _QuestionCardState extends State<QuestionCard> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                            color: textColor,
                           ),
                         ),
                         Expanded(
@@ -564,13 +644,49 @@ class _QuestionCardState extends State<QuestionCard> {
                             content: option.content,
                             textStyle: TextStyle(
                               fontSize: 16,
-                              color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                              color: textColor,
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  // Right label
+                  if (_isAnswerSubmitted && isCorrectOption == true) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade700,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '正确答案',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ] else if (_isAnswerSubmitted && isUserSelectedOption && isCorrectOption == false) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade700,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '你的选择',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -582,6 +698,10 @@ class _QuestionCardState extends State<QuestionCard> {
 
   Widget _buildMultipleChoice() {
     if (widget.question.options == null) return const SizedBox();
+
+    // Get answer result if submitted
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -597,6 +717,69 @@ class _QuestionCardState extends State<QuestionCard> {
         const SizedBox(height: 12),
         ...widget.question.options!.map((option) {
           final isSelected = _selectedOptions.contains(option.label);
+
+          // Determine if this option is correct/incorrect after submission
+          bool? isCorrectOption;
+          bool isUserSelectedOption = false;
+
+          if (_isAnswerSubmitted && answerResult != null) {
+            // Check if this option is the correct answer
+            if (answerResult.options != null && answerResult.options!.isNotEmpty) {
+              final matchingOption = answerResult.options!.firstWhere(
+                (opt) => opt.label == option.label,
+                orElse: () => answerResult.options!.first,
+              );
+              isCorrectOption = matchingOption.isCorrect;
+            } else {
+              // Fallback: check from correctAnswer
+              final correctAnswerLabels = answerResult.correctAnswer['answers'] as List?;
+              isCorrectOption = correctAnswerLabels?.contains(option.label) ?? false;
+            }
+
+            // Check if user selected this option
+            isUserSelectedOption = isSelected;
+          }
+
+          // Determine colors based on submission state
+          Color backgroundColor;
+          Color borderColor;
+          Color textColor;
+          IconData? statusIcon;
+          Color? statusIconColor;
+
+          if (_isAnswerSubmitted && isCorrectOption != null) {
+            if (isCorrectOption) {
+              // Correct option - always show green
+              backgroundColor = Colors.green.shade50;
+              borderColor = Colors.green.shade400;
+              textColor = Colors.green.shade900;
+              statusIcon = Icons.check_circle;
+              statusIconColor = Colors.green.shade700;
+            } else if (isUserSelectedOption && !isCorrectOption) {
+              // User selected wrong option - show red
+              backgroundColor = Colors.red.shade50;
+              borderColor = Colors.red.shade400;
+              textColor = Colors.red.shade900;
+              statusIcon = Icons.cancel;
+              statusIconColor = Colors.red.shade700;
+            } else {
+              // Other options - neutral
+              backgroundColor = Colors.grey.shade50;
+              borderColor = Colors.grey.shade300;
+              textColor = Colors.black87;
+            }
+          } else {
+            // Before submission - use selection state
+            backgroundColor = isSelected
+                ? Theme.of(context).colorScheme.primaryContainer
+                : Colors.grey.shade50;
+            borderColor = isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade300;
+            textColor = isSelected
+                ? Theme.of(context).colorScheme.onPrimaryContainer
+                : Colors.black87;
+          }
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -615,38 +798,42 @@ class _QuestionCardState extends State<QuestionCard> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : Colors.grey.shade50,
+                  color: backgroundColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey.shade300,
-                    width: isSelected ? 2 : 1,
+                    color: borderColor,
+                    width: (_isAnswerSubmitted && (isCorrectOption == true || isUserSelectedOption)) || isSelected ? 2 : 1,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.white,
-                        border: Border.all(
+                    // Left indicator
+                    if (_isAnswerSubmitted && statusIcon != null)
+                      Icon(
+                        statusIcon,
+                        color: statusIconColor,
+                        size: 24,
+                      )
+                    else
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
                           color: isSelected
                               ? Theme.of(context).colorScheme.primary
-                              : Colors.grey.shade400,
-                          width: 2,
+                              : Colors.white,
+                          border: Border.all(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.shade400,
+                            width: 2,
+                          ),
                         ),
+                        child: isSelected
+                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            : null,
                       ),
-                      child: isSelected
-                          ? const Icon(Icons.check, size: 16, color: Colors.white)
-                          : null,
-                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Row(
@@ -657,7 +844,7 @@ class _QuestionCardState extends State<QuestionCard> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                              color: textColor,
                             ),
                           ),
                           Expanded(
@@ -665,13 +852,49 @@ class _QuestionCardState extends State<QuestionCard> {
                               content: option.content,
                               textStyle: TextStyle(
                                 fontSize: 16,
-                                color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                                color: textColor,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    // Right label
+                    if (_isAnswerSubmitted && isCorrectOption == true) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade700,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '正确答案',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ] else if (_isAnswerSubmitted && isUserSelectedOption && isCorrectOption == false) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade700,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '你的选择',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -821,6 +1044,60 @@ class _QuestionCardState extends State<QuestionCard> {
       onChanged: (value) {
         _saveAnswer(value);
       },
+    );
+  }
+
+  Widget _buildAnswerSummary() {
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
+
+    if (answerResult == null) return const SizedBox();
+
+    final isCorrect = answerResult.isCorrect;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCorrect ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCorrect ? Colors.green.shade200 : Colors.red.shade200,
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isCorrect ? Icons.check_circle : Icons.cancel,
+            color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isCorrect ? '回答正确！' : '回答错误',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isCorrect ? '继续保持！' : '请查看上面标记的正确答案',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isCorrect ? Colors.green.shade600 : Colors.red.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
