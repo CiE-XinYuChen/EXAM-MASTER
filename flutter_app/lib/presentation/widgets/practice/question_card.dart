@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/question_model.dart';
+import '../../../data/models/answer_record_model.dart';
 import '../../providers/practice_provider.dart';
 import '../common/rich_content_viewer.dart';
 
@@ -111,19 +112,33 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   void _saveAnswer(dynamic answer) {
+    // Just save the answer locally, don't submit yet
     final provider = context.read<PracticeProvider>();
     provider.setAnswer(widget.question.id, answer);
+  }
 
-    // Mark as submitted
-    setState(() {
-      _isAnswerSubmitted = true;
-    });
+  Future<void> _submitAnswer() async {
+    // Submit answer to server
+    final provider = context.read<PracticeProvider>();
+    final currentAnswer = provider.getAnswer(widget.question.id);
 
-    // Also submit to server
-    provider.submitAnswer(
+    if (currentAnswer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先选择答案')),
+      );
+      return;
+    }
+
+    final success = await provider.submitAnswer(
       questionId: widget.question.id,
-      userAnswer: answer,
+      userAnswer: currentAnswer,
     );
+
+    if (success && mounted) {
+      setState(() {
+        _isAnswerSubmitted = true;
+      });
+    }
   }
 
   @override
@@ -149,6 +164,20 @@ class _QuestionCardState extends State<QuestionCard> {
 
               // Answer area based on question type
               _buildAnswerArea(),
+
+              // Submit button (only show if not submitted)
+              if (!_isAnswerSubmitted) ...[
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: _submitAnswer,
+                    icon: const Icon(Icons.send),
+                    label: const Text('提交答案', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
 
               // Correct answer (if submitted)
               if (_isAnswerSubmitted && widget.question.correctAnswer != null) ...[
@@ -368,7 +397,7 @@ class _QuestionCardState extends State<QuestionCard> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: InkWell(
-            onTap: () {
+            onTap: _isAnswerSubmitted ? null : () {
               setState(() {
                 _selectedOption = option.label;
               });
@@ -465,7 +494,7 @@ class _QuestionCardState extends State<QuestionCard> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: InkWell(
-              onTap: () {
+              onTap: _isAnswerSubmitted ? null : () {
                 setState(() {
                   if (isSelected) {
                     _selectedOptions.remove(option.label);
@@ -551,7 +580,7 @@ class _QuestionCardState extends State<QuestionCard> {
       children: [
         Expanded(
           child: InkWell(
-            onTap: () {
+            onTap: _isAnswerSubmitted ? null : () {
               setState(() {
                 _judgeAnswer = true;
               });
@@ -596,7 +625,7 @@ class _QuestionCardState extends State<QuestionCard> {
         const SizedBox(width: 16),
         Expanded(
           child: InkWell(
-            onTap: () {
+            onTap: _isAnswerSubmitted ? null : () {
               setState(() {
                 _judgeAnswer = false;
               });
@@ -655,6 +684,7 @@ class _QuestionCardState extends State<QuestionCard> {
             padding: const EdgeInsets.only(bottom: 12),
             child: TextField(
               controller: _fillControllers[index],
+              enabled: !_isAnswerSubmitted,
               decoration: InputDecoration(
                 labelText: '答案 ${index + 1}',
                 hintText: '请输入答案',
@@ -674,6 +704,7 @@ class _QuestionCardState extends State<QuestionCard> {
   Widget _buildEssay() {
     return TextField(
       controller: _essayController,
+      enabled: !_isAnswerSubmitted,
       maxLines: 8,
       decoration: const InputDecoration(
         labelText: '请作答',
@@ -687,11 +718,18 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Widget _buildCorrectAnswer() {
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
+
+    // If we have the enhanced answer result with options, use it
+    if (answerResult != null && answerResult.options != null && answerResult.options!.isNotEmpty) {
+      return _buildEnhancedAnswerDisplay(answerResult);
+    }
+
+    // Fallback to original display
     final correctAnswerText = widget.question.getCorrectAnswerText();
     if (correctAnswerText == null) return const SizedBox();
 
-    // Check if user's answer is correct
-    final provider = context.read<PracticeProvider>();
     final userAnswer = provider.getAnswer(widget.question.id);
     final isCorrect = widget.question.checkAnswer(userAnswer);
 
@@ -734,6 +772,200 @@ class _QuestionCardState extends State<QuestionCard> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Build enhanced answer display with all options and visual indicators
+  Widget _buildEnhancedAnswerDisplay(SubmitAnswerResponse answerResult) {
+    final isCorrect = answerResult.isCorrect;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCorrect ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCorrect ? Colors.green.shade200 : Colors.orange.shade200,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Result header
+          Row(
+            children: [
+              Icon(
+                isCorrect ? Icons.check_circle : Icons.cancel,
+                color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+                size: 28,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isCorrect ? '回答正确！' : '回答错误',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 12),
+
+          // Title for options display
+          Text(
+            '答案详情',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Display all options with indicators
+          ...answerResult.options!.map((option) {
+            final isCorrectOption = option.isCorrect;
+
+            // Get user's answer to check if this option was selected
+            final userAnswerData = answerResult.userAnswer;
+            bool isUserSelected = false;
+
+            if (userAnswerData['answer'] != null) {
+              // Single choice
+              isUserSelected = userAnswerData['answer'] == option.label;
+            } else if (userAnswerData['answers'] != null) {
+              // Multiple choice
+              final selectedAnswers = List<String>.from(userAnswerData['answers'] as List);
+              isUserSelected = selectedAnswers.contains(option.label);
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isCorrectOption
+                      ? Colors.green.shade50
+                      : (isUserSelected && !isCorrectOption)
+                          ? Colors.red.shade50
+                          : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isCorrectOption
+                        ? Colors.green.shade400
+                        : (isUserSelected && !isCorrectOption)
+                            ? Colors.red.shade400
+                            : Colors.grey.shade300,
+                    width: isCorrectOption || isUserSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Indicator icon
+                    if (isCorrectOption)
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.green.shade700,
+                        size: 20,
+                      )
+                    else if (isUserSelected)
+                      Icon(
+                        Icons.cancel,
+                        color: Colors.red.shade700,
+                        size: 20,
+                      )
+                    else
+                      Icon(
+                        Icons.radio_button_unchecked,
+                        color: Colors.grey.shade400,
+                        size: 20,
+                      ),
+
+                    const SizedBox(width: 8),
+
+                    // Option content
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${option.label}. ',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: isCorrectOption
+                                  ? Colors.green.shade900
+                                  : (isUserSelected && !isCorrectOption)
+                                      ? Colors.red.shade900
+                                      : Colors.black87,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              option.content,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: isCorrectOption
+                                    ? Colors.green.shade900
+                                    : (isUserSelected && !isCorrectOption)
+                                        ? Colors.red.shade900
+                                        : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Label tag
+                    if (isCorrectOption) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade700,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '正确答案',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ] else if (isUserSelected) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade700,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '你的选择',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ],
       ),
     );

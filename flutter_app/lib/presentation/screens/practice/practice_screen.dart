@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:card_swiper/card_swiper.dart';
@@ -25,6 +26,7 @@ class PracticeScreen extends StatefulWidget {
 class _PracticeScreenState extends State<PracticeScreen> {
   final SwiperController _swiperController = SwiperController();
   bool _isInitialized = false;
+  Timer? _progressSaveTimer;
 
   @override
   void initState() {
@@ -32,10 +34,17 @@ class _PracticeScreenState extends State<PracticeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initSession();
     });
+    // Auto-save progress every 30 seconds
+    _progressSaveTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _saveProgress(),
+    );
   }
 
   @override
   void dispose() {
+    _progressSaveTimer?.cancel();
+    _saveProgress(); // Save one last time before disposing
     _swiperController.dispose();
     super.dispose();
   }
@@ -65,6 +74,26 @@ class _PracticeScreenState extends State<PracticeScreen> {
   void _onIndexChanged(int index) {
     final provider = context.read<PracticeProvider>();
     provider.goToQuestion(index);
+  }
+
+  /// Auto-save progress periodically
+  Future<void> _saveProgress() async {
+    if (!mounted || !_isInitialized) return;
+
+    try {
+      final provider = context.read<PracticeProvider>();
+      if (provider.currentSession != null) {
+        // Progress is automatically saved through answer submissions
+        // The current index and answered questions are tracked in the session
+        // This method ensures the session state is persisted periodically
+        await provider.pauseSession();
+        // Immediately resume to keep the session active
+        await provider.resumeSession();
+      }
+    } catch (e) {
+      // Silently fail - auto-save should not interrupt user experience
+      // The data is still safe as answers are saved on submission
+    }
   }
 
   Future<void> _showExitDialog() async {

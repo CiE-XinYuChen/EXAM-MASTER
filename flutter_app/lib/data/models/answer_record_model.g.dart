@@ -51,26 +51,52 @@ Map<String, dynamic> _$SubmitAnswerRequestToJson(
   'time_spent': instance.timeSpent,
 };
 
+AnswerOptionResult _$AnswerOptionResultFromJson(Map<String, dynamic> json) =>
+    AnswerOptionResult(
+      label: json['label'] as String,
+      content: json['content'] as String,
+      isCorrect: json['is_correct'] as bool,
+    );
+
+Map<String, dynamic> _$AnswerOptionResultToJson(AnswerOptionResult instance) =>
+    <String, dynamic>{
+      'label': instance.label,
+      'content': instance.content,
+      'is_correct': instance.isCorrect,
+    };
+
 SubmitAnswerResponse _$SubmitAnswerResponseFromJson(
   Map<String, dynamic> json,
 ) => SubmitAnswerResponse(
-  success: json['success'] as bool,
+  recordId: json['record_id'] as String,
+  questionId: json['question_id'] as String,
   isCorrect: json['is_correct'] as bool,
   correctAnswer: json['correct_answer'] as Map<String, dynamic>,
+  userAnswer: json['user_answer'] as Map<String, dynamic>,
   explanation: json['explanation'] as String?,
   timeSpent: (json['time_spent'] as num?)?.toInt(),
-  recordId: json['record_id'] as String,
+  createdAt: json['created_at'] as String,
+  options: (json['options'] as List<dynamic>?)
+      ?.map((e) => AnswerOptionResult.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  questionType: json['question_type'] as String?,
+  questionStem: json['question_stem'] as String?,
 );
 
 Map<String, dynamic> _$SubmitAnswerResponseToJson(
   SubmitAnswerResponse instance,
 ) => <String, dynamic>{
-  'success': instance.success,
+  'record_id': instance.recordId,
+  'question_id': instance.questionId,
   'is_correct': instance.isCorrect,
   'correct_answer': instance.correctAnswer,
+  'user_answer': instance.userAnswer,
   'explanation': instance.explanation,
   'time_spent': instance.timeSpent,
-  'record_id': instance.recordId,
+  'created_at': instance.createdAt,
+  'options': instance.options,
+  'question_type': instance.questionType,
+  'question_stem': instance.questionStem,
 };
 
 AnswerHistoryResponse _$AnswerHistoryResponseFromJson(

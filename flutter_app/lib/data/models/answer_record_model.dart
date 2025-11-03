@@ -81,27 +81,68 @@ class SubmitAnswerRequest {
   Map<String, dynamic> toJson() => _$SubmitAnswerRequestToJson(this);
 }
 
+/// Answer Option Result
+/// 答案选项结果（用于显示所有选项及其正确性）
+@JsonSerializable()
+class AnswerOptionResult extends Equatable {
+  final String label;
+  final String content;
+  @JsonKey(name: 'is_correct')
+  final bool isCorrect;
+
+  const AnswerOptionResult({
+    required this.label,
+    required this.content,
+    required this.isCorrect,
+  });
+
+  factory AnswerOptionResult.fromJson(Map<String, dynamic> json) =>
+      _$AnswerOptionResultFromJson(json);
+
+  Map<String, dynamic> toJson() => _$AnswerOptionResultToJson(this);
+
+  @override
+  List<Object?> get props => [label, content, isCorrect];
+}
+
 /// Submit Answer Response
 @JsonSerializable()
 class SubmitAnswerResponse extends Equatable {
-  final bool success;
+  @JsonKey(name: 'record_id')
+  final String recordId;
+  @JsonKey(name: 'question_id')
+  final String questionId;
   @JsonKey(name: 'is_correct')
   final bool isCorrect;
   @JsonKey(name: 'correct_answer')
   final Map<String, dynamic> correctAnswer;
+  @JsonKey(name: 'user_answer')
+  final Map<String, dynamic> userAnswer;
   final String? explanation;
   @JsonKey(name: 'time_spent')
   final int? timeSpent;
-  @JsonKey(name: 'record_id')
-  final String recordId;
+  @JsonKey(name: 'created_at')
+  final String createdAt;
+
+  // New fields from enhanced API
+  final List<AnswerOptionResult>? options;
+  @JsonKey(name: 'question_type')
+  final String? questionType;
+  @JsonKey(name: 'question_stem')
+  final String? questionStem;
 
   const SubmitAnswerResponse({
-    required this.success,
+    required this.recordId,
+    required this.questionId,
     required this.isCorrect,
     required this.correctAnswer,
+    required this.userAnswer,
     this.explanation,
     this.timeSpent,
-    required this.recordId,
+    required this.createdAt,
+    this.options,
+    this.questionType,
+    this.questionStem,
   });
 
   factory SubmitAnswerResponse.fromJson(Map<String, dynamic> json) =>
@@ -111,12 +152,17 @@ class SubmitAnswerResponse extends Equatable {
 
   @override
   List<Object?> get props => [
-        success,
+        recordId,
+        questionId,
         isCorrect,
         correctAnswer,
+        userAnswer,
         explanation,
         timeSpent,
-        recordId,
+        createdAt,
+        options,
+        questionType,
+        questionStem,
       ];
 }
 

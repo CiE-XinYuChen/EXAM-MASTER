@@ -29,6 +29,7 @@ class PracticeProvider with ChangeNotifier {
   List<QuestionModel> _questions = [];
   int _currentQuestionIndex = 0;
   Map<String, dynamic> _userAnswers = {}; // questionId -> answer
+  Map<String, SubmitAnswerResponse> _answerResults = {}; // questionId -> result
 
   // Getters
   bool get isLoading => _isLoading;
@@ -37,6 +38,7 @@ class PracticeProvider with ChangeNotifier {
   List<QuestionModel> get questions => _questions;
   int get currentQuestionIndex => _currentQuestionIndex;
   Map<String, dynamic> get userAnswers => _userAnswers;
+  Map<String, SubmitAnswerResponse> get answerResults => _answerResults;
 
   QuestionModel? get currentQuestion {
     if (_currentQuestionIndex >= 0 && _currentQuestionIndex < _questions.length) {
@@ -267,6 +269,9 @@ class PracticeProvider with ChangeNotifier {
           // Update local answer
           _userAnswers[questionId] = userAnswer;
 
+          // Store the answer result for UI display
+          _answerResults[questionId] = response;
+
           _errorMessage = null;
           notifyListeners();
           return true;
@@ -289,6 +294,11 @@ class PracticeProvider with ChangeNotifier {
   /// Get answer for a question
   dynamic getAnswer(String questionId) {
     return _userAnswers[questionId];
+  }
+
+  /// Get answer result for a question (includes options with correctness)
+  SubmitAnswerResponse? getAnswerResult(String questionId) {
+    return _answerResults[questionId];
   }
 
   /// Clear answer for a question
@@ -440,6 +450,7 @@ class PracticeProvider with ChangeNotifier {
     _questions = [];
     _currentQuestionIndex = 0;
     _userAnswers = {};
+    _answerResults = {};
     _errorMessage = null;
     notifyListeners();
   }
