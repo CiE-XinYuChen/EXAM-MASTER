@@ -38,7 +38,15 @@ class PracticeApi {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         AppLogger.debug('Create session successful');
-        return CreatePracticeSessionResponse.fromJson(response.data);
+        // Backend returns PracticeSessionResponse, adapt to CreatePracticeSessionResponse
+        final sessionData = response.data as Map<String, dynamic>;
+        return CreatePracticeSessionResponse(
+          success: true,
+          sessionId: sessionData['id'] as String,
+          totalQuestions: sessionData['total_questions'] as int,
+          mode: sessionData['mode'] as String,
+          message: '会话创建成功',
+        );
       } else {
         throw ServerException(
           message: 'Failed to create session',

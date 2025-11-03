@@ -90,6 +90,10 @@ async def get_question_banks(
     # Filter banks based on user permissions
     accessible_banks = []
     for bank in banks:
+        # Ensure is_public has a default value
+        if bank.is_public is None:
+            bank.is_public = False
+
         if bank.is_public or check_bank_permission(bank.id, "read", current_user, main_db):
             # Add question count from V2 table
             bank.question_count = qbank_db.query(QuestionV2).filter(
@@ -98,6 +102,13 @@ async def get_question_banks(
             # Set metadata fields for compatibility
             if not hasattr(bank, 'metadata') or bank.metadata is None:
                 bank.metadata = bank.meta_data
+            # Ensure all boolean fields have defaults for schema compatibility
+            if bank.is_published is None:
+                bank.is_published = False
+            if bank.allow_download is None:
+                bank.allow_download = True
+            if bank.allow_fork is None:
+                bank.allow_fork = True
             accessible_banks.append(bank)
 
     return accessible_banks
@@ -158,6 +169,10 @@ async def get_question_bank(
             detail="Question bank not found"
         )
 
+    # Ensure is_public has a default value
+    if bank.is_public is None:
+        bank.is_public = False
+
     # Check permission
     if not bank.is_public and not check_bank_permission(bank_id, "read", current_user, main_db):
         raise HTTPException(
@@ -173,6 +188,14 @@ async def get_question_bank(
     # Set metadata fields for compatibility
     if not hasattr(bank, 'metadata') or bank.metadata is None:
         bank.metadata = bank.meta_data
+
+    # Ensure all boolean fields have defaults for schema compatibility
+    if bank.is_published is None:
+        bank.is_published = False
+    if bank.allow_download is None:
+        bank.allow_download = True
+    if bank.allow_fork is None:
+        bank.allow_fork = True
 
     return bank
 
