@@ -129,8 +129,8 @@ class ApiConstants {
   static String questionBankById(String bankId) => questionBankDetail(bankId);
   static String questionById(String questionId) => questionDetail(questionId);
   static String practiceSessionById(String sessionId) => practiceSessionDetail(sessionId);
-  static String practiceSessionHistory(String sessionId) => '$practiceSessionDetail(sessionId)/history';
-  static String practiceSessionPause(String sessionId) => '$practiceSessionDetail(sessionId)/pause';
+  static String practiceSessionHistory(String sessionId) => '${practiceSessionDetail(sessionId)}/history';
+  static String practiceSessionPause(String sessionId) => '${practiceSessionDetail(sessionId)}/pause';
   static const String statisticsByBank = statisticsBanks;
   static String statisticsBankById(String bankId) => statisticsBankDetail(bankId);
 }

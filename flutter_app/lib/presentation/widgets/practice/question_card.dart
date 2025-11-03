@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/question_model.dart';
 import '../../providers/practice_provider.dart';
+import '../common/rich_content_viewer.dart';
 
 /// Question Card Widget
 /// 题目卡片组件 - 支持多种题型
@@ -22,6 +23,9 @@ class QuestionCard extends StatefulWidget {
 }
 
 class _QuestionCardState extends State<QuestionCard> {
+  // Track if answer is submitted
+  bool _isAnswerSubmitted = false;
+
   // For single choice
   String? _selectedOption;
 
@@ -65,6 +69,9 @@ class _QuestionCardState extends State<QuestionCard> {
     final savedAnswer = provider.getAnswer(widget.question.id);
 
     setState(() {
+      // If there's a saved answer, mark as submitted
+      _isAnswerSubmitted = savedAnswer != null;
+
       switch (widget.question.type) {
         case QuestionType.single:
           _selectedOption = savedAnswer as String?;
@@ -107,6 +114,11 @@ class _QuestionCardState extends State<QuestionCard> {
     final provider = context.read<PracticeProvider>();
     provider.setAnswer(widget.question.id, answer);
 
+    // Mark as submitted
+    setState(() {
+      _isAnswerSubmitted = true;
+    });
+
     // Also submit to server
     provider.submitAnswer(
       questionId: widget.question.id,
@@ -138,9 +150,15 @@ class _QuestionCardState extends State<QuestionCard> {
               // Answer area based on question type
               _buildAnswerArea(),
 
-              // Explanation (if available)
-              if (widget.question.explanation != null) ...[
+              // Correct answer (if submitted)
+              if (_isAnswerSubmitted && widget.question.correctAnswer != null) ...[
                 const SizedBox(height: 24),
+                _buildCorrectAnswer(),
+              ],
+
+              // Explanation (if submitted and available)
+              if (_isAnswerSubmitted && widget.question.explanation != null) ...[
+                const SizedBox(height: 16),
                 _buildExplanation(),
               ],
             ],
@@ -288,26 +306,13 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Widget _buildQuestionStem() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.question.stem,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            height: 1.5,
-          ),
-        ),
-
-        // Media attachments
-        if (widget.question.hasImage == true ||
-            widget.question.hasVideo == true ||
-            widget.question.hasAudio == true) ...[
-          const SizedBox(height: 16),
-          _buildMediaAttachments(),
-        ],
-      ],
+    return RichContentViewer(
+      content: widget.question.stem,
+      textStyle: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        height: 1.5,
+      ),
     );
   }
 
@@ -407,12 +412,27 @@ class _QuestionCardState extends State<QuestionCard> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      '${option.label}. ${option.content}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
-                      ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${option.label}. ',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                          ),
+                        ),
+                        Expanded(
+                          child: RichContentViewer(
+                            content: option.content,
+                            textStyle: TextStyle(
+                              fontSize: 16,
+                              color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -493,12 +513,27 @@ class _QuestionCardState extends State<QuestionCard> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        '${option.label}. ${option.content}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
-                        ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${option.label}. ',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                            ),
+                          ),
+                          Expanded(
+                            child: RichContentViewer(
+                              content: option.content,
+                              textStyle: TextStyle(
+                                fontSize: 16,
+                                color: isSelected ? Theme.of(context).colorScheme.onPrimaryContainer : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -648,6 +683,59 @@ class _QuestionCardState extends State<QuestionCard> {
       onChanged: (value) {
         _saveAnswer(value);
       },
+    );
+  }
+
+  Widget _buildCorrectAnswer() {
+    final correctAnswerText = widget.question.getCorrectAnswerText();
+    if (correctAnswerText == null) return const SizedBox();
+
+    // Check if user's answer is correct
+    final provider = context.read<PracticeProvider>();
+    final userAnswer = provider.getAnswer(widget.question.id);
+    final isCorrect = widget.question.checkAnswer(userAnswer);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCorrect ? Colors.green.shade50 : Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCorrect ? Colors.green.shade200 : Colors.orange.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isCorrect ? Icons.check_circle : Icons.info_outline,
+                color: isCorrect ? Colors.green.shade700 : Colors.orange.shade700,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isCorrect ? '回答正确' : '正确答案',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isCorrect ? Colors.green.shade700 : Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+          if (!isCorrect) ...[
+            const SizedBox(height: 8),
+            Text(
+              correctAnswerText,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

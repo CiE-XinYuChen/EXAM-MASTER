@@ -10,9 +10,9 @@ from datetime import datetime
 import uuid
 import random
 
-from app.core.database import get_qbank_db
+from app.core.database import get_qbank_db, get_main_db
 from app.core.security import get_current_user
-from app.models.user_models import User
+from app.models.user_models import User, UserBankPermission
 from app.models.user_practice import (
     PracticeSession, UserAnswerRecord, UserFavorite, UserWrongQuestion,
     PracticeMode, SessionStatus
@@ -37,24 +37,38 @@ router = APIRouter()
 
 # ==================== Helper Functions ====================
 
-def check_bank_access(db: Session, user_id: int, bank_id: str) -> bool:
+def check_bank_access(main_db: Session, user: User, bank_id: str) -> bool:
     """检查用户是否有权限访问题库"""
-    access = db.query(UserBankAccess).filter(
+    # Admin users have access to all banks
+    if user.role == "admin":
+        return True
+
+    # Check UserBankPermission (legacy system)
+    perm = main_db.query(UserBankPermission).filter(
         and_(
-            UserBankAccess.user_id == user_id,
+            UserBankPermission.user_id == user.id,
+            UserBankPermission.bank_id == bank_id
+        )
+    ).first()
+
+    if perm and perm.permission in ["read", "write", "admin"]:
+        return True
+
+    # Check UserBankAccess (new activation system)
+    access = main_db.query(UserBankAccess).filter(
+        and_(
+            UserBankAccess.user_id == user.id,
             UserBankAccess.bank_id == bank_id,
             UserBankAccess.is_active == True
         )
     ).first()
 
-    if not access:
-        return False
+    if access:
+        # Check if not expired
+        if access.expire_at is None or access.expire_at > datetime.utcnow():
+            return True
 
-    # 检查是否过期
-    if access.is_expired():
-        return False
-
-    return True
+    return False
 
 
 def get_question_ids_for_session(
@@ -115,12 +129,13 @@ def get_question_ids_for_session(
 async def create_practice_session(
     session_data: PracticeSessionCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_qbank_db)
+    qbank_db: Session = Depends(get_qbank_db),
+    main_db: Session = Depends(get_main_db)
 ):
     """创建答题会话"""
 
     # 检查题库访问权限
-    if not check_bank_access(db, current_user.id, session_data.bank_id):
+    if not check_bank_access(main_db, current_user, session_data.bank_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="您没有访问该题库的权限"
@@ -128,7 +143,7 @@ async def create_practice_session(
 
     # 获取题目列表
     question_ids = get_question_ids_for_session(
-        db=db,
+        db=qbank_db,
         bank_id=session_data.bank_id,
         user_id=current_user.id,
         mode=session_data.mode,
@@ -159,9 +174,9 @@ async def create_practice_session(
         started_at=datetime.utcnow()
     )
 
-    db.add(session)
-    db.commit()
-    db.refresh(session)
+    qbank_db.add(session)
+    qbank_db.commit()
+    qbank_db.refresh(session)
 
     return session
 

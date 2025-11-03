@@ -119,10 +119,12 @@ class PracticeProvider with ChangeNotifier {
               _currentSession = session;
 
               // Get questions from the bank
+              // Use session's total questions count, or a large number if not specified
+              final pageSize = session.totalQuestions ?? 10000;
               final questionsResult = await _questionBankRepository.getQuestions(
                 bankId: bankId,
                 page: 1,
-                pageSize: 100, // Get enough questions for the session
+                pageSize: pageSize,
               );
 
               return questionsResult.fold(
