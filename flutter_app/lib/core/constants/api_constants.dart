@@ -65,7 +65,7 @@ class ApiConstants {
   static const String statisticsDaily = '/statistics/daily';
   static String statisticsDailyByDate(String date) => '/statistics/daily/$date';
   static const String statisticsBanks = '/statistics/banks';
-  static String statisticsBankDetail(String bankId) => '/statistics/banks/$bankId';
+  static String statisticsBankDetail(String bankId) => '/statistics/bank/$bankId';
 
   // ==================== 收藏相关 ====================
   static const String favorites = '/favorites';

@@ -1,6 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:equatable/equatable.dart';
-import 'question_model.dart';
 
 part 'wrong_question_model.g.dart';
 
@@ -26,7 +25,24 @@ class WrongQuestionModel extends Equatable {
   final String lastErrorAt;
   @JsonKey(name: 'corrected_at')
   final String? correctedAt;
-  final QuestionModel? question;
+
+  // Question details from backend (like FavoriteModel)
+  @JsonKey(name: 'question_type')
+  final String questionType;
+  @JsonKey(name: 'question_stem')
+  final String questionStem;
+  @JsonKey(name: 'question_difficulty')
+  final String? questionDifficulty;
+  @JsonKey(name: 'question_tags')
+  final List<String>? questionTags;
+  @JsonKey(name: 'has_image')
+  final bool? hasImage;
+  @JsonKey(name: 'has_video')
+  final bool? hasVideo;
+  @JsonKey(name: 'has_audio')
+  final bool? hasAudio;
+  @JsonKey(name: 'correct_answer')
+  final Map<String, dynamic>? correctAnswer;
 
   const WrongQuestionModel({
     required this.id,
@@ -39,7 +55,14 @@ class WrongQuestionModel extends Equatable {
     required this.firstErrorAt,
     required this.lastErrorAt,
     this.correctedAt,
-    this.question,
+    required this.questionType,
+    required this.questionStem,
+    this.questionDifficulty,
+    this.questionTags,
+    this.hasImage,
+    this.hasVideo,
+    this.hasAudio,
+    this.correctAnswer,
   });
 
   factory WrongQuestionModel.fromJson(Map<String, dynamic> json) =>
@@ -59,7 +82,14 @@ class WrongQuestionModel extends Equatable {
         firstErrorAt,
         lastErrorAt,
         correctedAt,
-        question,
+        questionType,
+        questionStem,
+        questionDifficulty,
+        questionTags,
+        hasImage,
+        hasVideo,
+        hasAudio,
+        correctAnswer,
       ];
 
   WrongQuestionModel copyWith({
@@ -73,7 +103,14 @@ class WrongQuestionModel extends Equatable {
     String? firstErrorAt,
     String? lastErrorAt,
     String? correctedAt,
-    QuestionModel? question,
+    String? questionType,
+    String? questionStem,
+    String? questionDifficulty,
+    List<String>? questionTags,
+    bool? hasImage,
+    bool? hasVideo,
+    bool? hasAudio,
+    Map<String, dynamic>? correctAnswer,
   }) {
     return WrongQuestionModel(
       id: id ?? this.id,
@@ -86,7 +123,14 @@ class WrongQuestionModel extends Equatable {
       firstErrorAt: firstErrorAt ?? this.firstErrorAt,
       lastErrorAt: lastErrorAt ?? this.lastErrorAt,
       correctedAt: correctedAt ?? this.correctedAt,
-      question: question ?? this.question,
+      questionType: questionType ?? this.questionType,
+      questionStem: questionStem ?? this.questionStem,
+      questionDifficulty: questionDifficulty ?? this.questionDifficulty,
+      questionTags: questionTags ?? this.questionTags,
+      hasImage: hasImage ?? this.hasImage,
+      hasVideo: hasVideo ?? this.hasVideo,
+      hasAudio: hasAudio ?? this.hasAudio,
+      correctAnswer: correctAnswer ?? this.correctAnswer,
     );
   }
 }
@@ -97,10 +141,13 @@ class WrongQuestionListResponse extends Equatable {
   @JsonKey(name: 'wrong_questions')
   final List<WrongQuestionModel> wrongQuestions;
   final int total;
+  @JsonKey(name: 'uncorrected_count')
+  final int uncorrectedCount;
 
   const WrongQuestionListResponse({
     required this.wrongQuestions,
     required this.total,
+    required this.uncorrectedCount,
   });
 
   factory WrongQuestionListResponse.fromJson(Map<String, dynamic> json) =>
@@ -109,7 +156,7 @@ class WrongQuestionListResponse extends Equatable {
   Map<String, dynamic> toJson() => _$WrongQuestionListResponseToJson(this);
 
   @override
-  List<Object?> get props => [wrongQuestions, total];
+  List<Object?> get props => [wrongQuestions, total, uncorrectedCount];
 }
 
 /// Wrong Question Analysis Model

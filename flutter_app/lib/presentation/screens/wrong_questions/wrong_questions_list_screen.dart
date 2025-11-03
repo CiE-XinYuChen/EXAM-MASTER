@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/practice_session_model.dart';
+import '../../../data/models/wrong_question_model.dart';
+import '../../../data/datasources/remote/wrong_questions_api.dart';
+import '../../../data/repositories/wrong_questions_repository.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/utils/logger.dart';
 
 /// Wrong Questions List Screen
 /// 错题本列表页面
@@ -17,6 +22,16 @@ class WrongQuestionsListScreen extends StatefulWidget {
 }
 
 class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
+  final WrongQuestionsRepository _repository = WrongQuestionsRepository(
+    api: WrongQuestionsApi(DioClient()),
+  );
+
+  List<WrongQuestionModel> _wrongQuestions = [];
+  bool _isLoading = true;
+  String? _error;
+  String _selectedFilter = 'all';
+  int _uncorrectedCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -26,7 +41,70 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
   }
 
   Future<void> _loadWrongQuestions() async {
-    // TODO: Implement wrong questions loading
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      bool? correctedFilter;
+      if (_selectedFilter == 'uncorrected') {
+        correctedFilter = false;
+      } else if (_selectedFilter == 'corrected') {
+        correctedFilter = true;
+      }
+
+      final result = await _repository.getWrongQuestions(
+        page: 1,
+        pageSize: 1000,
+        bankId: widget.bankId,
+        corrected: correctedFilter,
+      );
+
+      result.fold(
+        (failure) {
+          setState(() {
+            _error = failure.message;
+            _isLoading = false;
+          });
+          AppLogger.error('Failed to load wrong questions: ${failure.message}');
+        },
+        (response) {
+          setState(() {
+            _wrongQuestions = response.wrongQuestions;
+            _uncorrectedCount = response.uncorrectedCount;
+            _isLoading = false;
+          });
+          AppLogger.info('Loaded ${_wrongQuestions.length} wrong questions');
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _error = '加载失败: $e';
+        _isLoading = false;
+      });
+      AppLogger.error('Unexpected error loading wrong questions: $e');
+    }
+  }
+
+  Future<void> _deleteWrongQuestion(String wrongQuestionId, int index) async {
+    final result = await _repository.deleteWrongQuestion(wrongQuestionId);
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('删除失败: ${failure.message}')),
+        );
+      },
+      (_) {
+        setState(() {
+          _wrongQuestions.removeAt(index);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已从错题本删除')),
+        );
+      },
+    );
   }
 
   @override
@@ -36,43 +114,63 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
         title: const Text('错题本'),
         actions: [
           // Practice wrong questions
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: '开始练习',
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                '/practice',
-                arguments: {
-                  'bankId': widget.bankId,
-                  'mode': PracticeMode.wrongOnly,
-                },
-              );
-            },
-          ),
+          if (_wrongQuestions.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: '开始练习',
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/practice',
+                  arguments: {
+                    'bankId': widget.bankId,
+                    'mode': PracticeMode.wrongOnly,
+                  },
+                );
+              },
+            ),
         ],
       ),
-      body: Column(
-        children: [
-          // Summary Card
-          _buildSummaryCard(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline,
+                          size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(_error!,
+                          style: TextStyle(color: Colors.grey.shade600)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadWrongQuestions,
+                        child: const Text('重试'),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    // Summary Card
+                    _buildSummaryCard(),
 
-          // Filter Tabs
-          _buildFilterTabs(),
+                    // Filter Tabs
+                    _buildFilterTabs(),
 
-          // Wrong Questions List
-          Expanded(
-            child: _buildWrongQuestionsList(),
-          ),
-        ],
-      ),
+                    // Wrong Questions List
+                    Expanded(
+                      child: _buildWrongQuestionsList(),
+                    ),
+                  ],
+                ),
     );
   }
 
   Widget _buildSummaryCard() {
-    // TODO: Get actual count from provider
-    final wrongQuestionsCount = 0;
-    final correctedCount = 0;
+    final wrongQuestionsCount = _wrongQuestions.length;
+    final correctedCount = _wrongQuestions.where((wq) => wq.corrected).length;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -152,9 +250,12 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
                   icon: Icon(Icons.check_circle),
                 ),
               ],
-              selected: const {'all'},
+              selected: {_selectedFilter},
               onSelectionChanged: (Set<String> newSelection) {
-                // TODO: Filter wrong questions
+                setState(() {
+                  _selectedFilter = newSelection.first;
+                });
+                _loadWrongQuestions();
               },
             ),
           ),
@@ -164,13 +265,28 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
   }
 
   Widget _buildWrongQuestionsList() {
-    // TODO: Implement actual list from provider
+    if (_wrongQuestions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline,
+                size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text('还没有错题',
+                style: TextStyle(fontSize: 18, color: Colors.grey.shade600)),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: 0, // Placeholder
+      itemCount: _wrongQuestions.length,
       itemBuilder: (context, index) {
+        final wrongQuestion = _wrongQuestions[index];
         return Dismissible(
-          key: Key('wrong_question_$index'),
+          key: Key(wrongQuestion.id),
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
@@ -185,26 +301,43 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
             ),
           ),
           onDismissed: (direction) {
-            // TODO: Remove from wrong questions
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('已从错题本删除')),
-            );
+            _deleteWrongQuestion(wrongQuestion.id, index);
           },
           child: _WrongQuestionCard(
             questionNumber: index + 1,
-            questionStem: '题目 ${index + 1}',
-            questionType: '单选题',
-            difficulty: '简单',
-            errorCount: 2,
-            isCorrected: index % 2 == 0,
-            lastErrorDate: '2025-11-03',
+            questionStem: wrongQuestion.questionStem,
+            questionType: _getQuestionTypeLabel(wrongQuestion.questionType),
+            difficulty: wrongQuestion.questionDifficulty ?? '未知',
+            errorCount: wrongQuestion.errorCount,
+            isCorrected: wrongQuestion.corrected,
+            lastErrorDate: wrongQuestion.lastErrorAt.substring(0, 10),
             onTap: () {
-              // TODO: Navigate to question detail or practice
+              // Navigate to practice this question
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('题目详情功能待开发')),
+              );
             },
           ),
         );
       },
     );
+  }
+
+  String _getQuestionTypeLabel(String type) {
+    switch (type) {
+      case 'single':
+        return '单选题';
+      case 'multiple':
+        return '多选题';
+      case 'judge':
+        return '判断题';
+      case 'fill':
+        return '填空题';
+      case 'essay':
+        return '问答题';
+      default:
+        return type;
+    }
   }
 }
 

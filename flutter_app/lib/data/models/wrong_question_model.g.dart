@@ -18,9 +18,16 @@ WrongQuestionModel _$WrongQuestionModelFromJson(Map<String, dynamic> json) =>
       firstErrorAt: json['first_error_at'] as String,
       lastErrorAt: json['last_error_at'] as String,
       correctedAt: json['corrected_at'] as String?,
-      question: json['question'] == null
-          ? null
-          : QuestionModel.fromJson(json['question'] as Map<String, dynamic>),
+      questionType: json['question_type'] as String,
+      questionStem: json['question_stem'] as String,
+      questionDifficulty: json['question_difficulty'] as String?,
+      questionTags: (json['question_tags'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      hasImage: json['has_image'] as bool?,
+      hasVideo: json['has_video'] as bool?,
+      hasAudio: json['has_audio'] as bool?,
+      correctAnswer: json['correct_answer'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$WrongQuestionModelToJson(WrongQuestionModel instance) =>
@@ -35,7 +42,14 @@ Map<String, dynamic> _$WrongQuestionModelToJson(WrongQuestionModel instance) =>
       'first_error_at': instance.firstErrorAt,
       'last_error_at': instance.lastErrorAt,
       'corrected_at': instance.correctedAt,
-      'question': instance.question,
+      'question_type': instance.questionType,
+      'question_stem': instance.questionStem,
+      'question_difficulty': instance.questionDifficulty,
+      'question_tags': instance.questionTags,
+      'has_image': instance.hasImage,
+      'has_video': instance.hasVideo,
+      'has_audio': instance.hasAudio,
+      'correct_answer': instance.correctAnswer,
     };
 
 WrongQuestionListResponse _$WrongQuestionListResponseFromJson(
@@ -45,6 +59,7 @@ WrongQuestionListResponse _$WrongQuestionListResponseFromJson(
       .map((e) => WrongQuestionModel.fromJson(e as Map<String, dynamic>))
       .toList(),
   total: (json['total'] as num).toInt(),
+  uncorrectedCount: (json['uncorrected_count'] as num).toInt(),
 );
 
 Map<String, dynamic> _$WrongQuestionListResponseToJson(
@@ -52,6 +67,7 @@ Map<String, dynamic> _$WrongQuestionListResponseToJson(
 ) => <String, dynamic>{
   'wrong_questions': instance.wrongQuestions,
   'total': instance.total,
+  'uncorrected_count': instance.uncorrectedCount,
 };
 
 WrongQuestionAnalysisModel _$WrongQuestionAnalysisModelFromJson(

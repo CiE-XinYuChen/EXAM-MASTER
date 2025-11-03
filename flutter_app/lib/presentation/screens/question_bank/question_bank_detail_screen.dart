@@ -3,7 +3,12 @@ import 'package:provider/provider.dart';
 import '../../providers/question_bank_provider.dart';
 import '../../../data/models/question_bank_model.dart';
 import '../../../data/models/practice_session_model.dart';
+import '../../../data/models/statistics_model.dart';
+import '../../../data/datasources/remote/statistics_api.dart';
+import '../../../data/repositories/statistics_repository.dart';
+import '../../../core/network/dio_client.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/logger.dart';
 
 /// Question Bank Detail Screen
 /// 题库详情页面
@@ -21,17 +26,56 @@ class QuestionBankDetailScreen extends StatefulWidget {
 }
 
 class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
+  final StatisticsRepository _statisticsRepository = StatisticsRepository(
+    api: StatisticsApi(DioClient()),
+  );
+
+  BankStatisticsModel? _statistics;
+  bool _loadingStatistics = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadQuestionBank();
+      _loadStatistics();
     });
   }
 
   Future<void> _loadQuestionBank() async {
     final provider = context.read<QuestionBankProvider>();
     await provider.getQuestionBankById(widget.bankId);
+  }
+
+  Future<void> _loadStatistics() async {
+    setState(() {
+      _loadingStatistics = true;
+    });
+
+    try {
+      final result = await _statisticsRepository.getBankStatistics(widget.bankId);
+
+      result.fold(
+        (failure) {
+          AppLogger.error('Failed to load statistics: ${failure.message}');
+          setState(() {
+            _loadingStatistics = false;
+          });
+        },
+        (statistics) {
+          setState(() {
+            _statistics = statistics;
+            _loadingStatistics = false;
+          });
+          AppLogger.info('Statistics loaded: ${statistics.practicedQuestions}/${statistics.totalQuestions}');
+        },
+      );
+    } catch (e) {
+      AppLogger.error('Unexpected error loading statistics: $e');
+      setState(() {
+        _loadingStatistics = false;
+      });
+    }
   }
 
   @override
@@ -334,9 +378,8 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
   }
 
   Widget _buildProgressBar(QuestionBankModel bank) {
-    // TODO: Get actual progress from provider
-    final totalQuestions = bank.totalQuestions ?? 0;
-    final practicedQuestions = 0; // Placeholder
+    final totalQuestions = _statistics?.totalQuestions ?? bank.totalQuestions ?? 0;
+    final practicedQuestions = _statistics?.practicedQuestions ?? 0;
     final progress = totalQuestions > 0 ? practicedQuestions / totalQuestions : 0.0;
 
     return Padding(

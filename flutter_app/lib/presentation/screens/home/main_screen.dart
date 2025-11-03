@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'home_tab.dart';
-import 'practice_tab.dart';
-import 'statistics_tab.dart';
 import 'profile_tab.dart';
 
 /// Main Screen
@@ -18,8 +16,6 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = const [
     HomeTab(),
-    PracticeTab(),
-    StatisticsTab(),
     ProfileTab(),
   ];
 
@@ -42,16 +38,6 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: '首页',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.edit_note_outlined),
-            selectedIcon: Icon(Icons.edit_note),
-            label: '练习',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: '统计',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
