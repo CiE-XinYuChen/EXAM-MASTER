@@ -100,7 +100,26 @@ class ApiInterceptor extends Interceptor {
     // 尝试从响应中提取错误消息
     String message = '请求失败';
     if (data is Map<String, dynamic>) {
-      message = data['message'] ?? data['detail'] ?? data['error'] ?? message;
+      // Handle different types of error messages
+      final detail = data['detail'];
+      if (detail is String) {
+        message = detail;
+      } else if (detail is List) {
+        // FastAPI validation errors return a list of error objects
+        message = detail.map((e) {
+          if (e is Map) {
+            final msg = e['msg'] ?? e['message'] ?? '';
+            final loc = e['loc'];
+            if (loc is List && loc.length > 1) {
+              return '${loc.last}: $msg';
+            }
+            return msg;
+          }
+          return e.toString();
+        }).join(', ');
+      } else {
+        message = data['message']?.toString() ?? data['error']?.toString() ?? message;
+      }
     }
 
     switch (statusCode) {

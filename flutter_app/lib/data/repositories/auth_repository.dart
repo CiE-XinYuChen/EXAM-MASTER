@@ -39,8 +39,23 @@ class AuthRepository {
 
       final response = await _authApi.login(request);
 
-      // Save token and user info to local storage
-      await _saveAuthData(response);
+      // Save token to local storage
+      await _localStorage.saveString(
+        StorageKeys.accessToken,
+        response.accessToken,
+      );
+
+      // Fetch user data separately since backend doesn't return it
+      final userResult = await getCurrentUser();
+      userResult.fold(
+        (failure) {
+          AppLogger.error('Failed to fetch user data after login: ${failure.message}');
+          throw Exception('Failed to fetch user data: ${failure.message}');
+        },
+        (user) {
+          AppLogger.debug('User data fetched and saved successfully');
+        },
+      );
 
       AppLogger.debug('Login successful, token saved');
       return Right(response);
@@ -84,23 +99,50 @@ class AuthRepository {
     required String username,
     required String email,
     required String password,
+    required String confirmPassword,
   }) async {
     try {
       AppLogger.info('AuthRepository.register: $username, $email');
 
-      final request = RegisterRequest(
+      final registerRequest = RegisterRequest(
         username: username,
         email: email,
         password: password,
+        confirmPassword: confirmPassword,
       );
 
-      final response = await _authApi.register(request);
+      // Register the user (returns UserModel without tokens)
+      await _authApi.register(registerRequest);
+      AppLogger.debug('Registration successful, now logging in...');
 
-      // Save token and user info to local storage
-      await _saveAuthData(response);
+      // Automatically login to get tokens
+      final loginRequest = LoginRequest(
+        username: username,
+        password: password,
+      );
 
-      AppLogger.debug('Registration successful, token saved');
-      return Right(response);
+      final loginResponse = await _authApi.login(loginRequest);
+
+      // Save token to local storage
+      await _localStorage.saveString(
+        StorageKeys.accessToken,
+        loginResponse.accessToken,
+      );
+
+      // Fetch user data separately since backend doesn't return it
+      final userResult = await getCurrentUser();
+      userResult.fold(
+        (failure) {
+          AppLogger.error('Failed to fetch user data after registration: ${failure.message}');
+          throw Exception('Failed to fetch user data: ${failure.message}');
+        },
+        (user) {
+          AppLogger.debug('User data fetched and saved successfully');
+        },
+      );
+
+      AppLogger.debug('Auto-login successful, token saved');
+      return Right(loginResponse);
     } on ServerException catch (e) {
       AppLogger.error('Registration failed: ${e.message}');
       return Left(ServerFailure(
@@ -226,34 +268,6 @@ class AuthRepository {
   /// 获取缓存的用户角色
   Future<String?> getCachedUserRole() async {
     return await _localStorage.getString(StorageKeys.role);
-  }
-
-  /// Save authentication data to local storage
-  Future<void> _saveAuthData(LoginResponse response) async {
-    await _localStorage.saveString(
-      StorageKeys.accessToken,
-      response.accessToken,
-    );
-    await _localStorage.saveInt(
-      StorageKeys.userId,
-      response.user.id,
-    );
-    await _localStorage.saveString(
-      StorageKeys.username,
-      response.user.username,
-    );
-    await _localStorage.saveString(
-      StorageKeys.email,
-      response.user.email,
-    );
-    await _localStorage.saveString(
-      StorageKeys.role,
-      response.user.role,
-    );
-    await _localStorage.saveBool(
-      StorageKeys.isActive,
-      response.user.isActive,
-    );
   }
 
   /// Clear authentication data from local storage

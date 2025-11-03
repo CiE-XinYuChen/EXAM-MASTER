@@ -30,7 +30,9 @@ LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
     LoginResponse(
       accessToken: json['access_token'] as String,
       tokenType: json['token_type'] as String,
-      user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
+      user: json['user'] == null
+          ? null
+          : UserModel.fromJson(json['user'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
@@ -45,6 +47,7 @@ RegisterRequest _$RegisterRequestFromJson(Map<String, dynamic> json) =>
       username: json['username'] as String,
       email: json['email'] as String,
       password: json['password'] as String,
+      confirmPassword: json['confirm_password'] as String,
     );
 
 Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
@@ -52,6 +55,7 @@ Map<String, dynamic> _$RegisterRequestToJson(RegisterRequest instance) =>
       'username': instance.username,
       'email': instance.email,
       'password': instance.password,
+      'confirm_password': instance.confirmPassword,
     };
 
 LoginRequest _$LoginRequestFromJson(Map<String, dynamic> json) => LoginRequest(

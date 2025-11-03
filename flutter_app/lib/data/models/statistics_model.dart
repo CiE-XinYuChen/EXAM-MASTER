@@ -229,3 +229,6 @@ class DailyStatisticsListResponse extends Equatable {
   @override
   List<Object?> get props => [dailyStats];
 }
+
+// Type alias for single bank statistics
+typedef BankStatisticsResponse = BankStatisticsModel;

@@ -8,6 +8,16 @@ class LocalStorage {
 
   LocalStorage._();
 
+  // Public constructor for dependency injection
+  factory LocalStorage() {
+    return _instance!;
+  }
+
+  static Future<void> init() async {
+    _instance ??= LocalStorage._();
+    _preferences ??= await SharedPreferences.getInstance();
+  }
+
   static Future<LocalStorage> getInstance() async {
     _instance ??= LocalStorage._();
     _preferences ??= await SharedPreferences.getInstance();
@@ -92,4 +102,11 @@ class LocalStorage {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getKeys();
   }
+
+  // ==================== Aliases for save methods ====================
+  Future<bool> saveString(String key, String value) => setString(key, value);
+  Future<bool> saveInt(String key, int value) => setInt(key, value);
+  Future<bool> saveDouble(String key, double value) => setDouble(key, value);
+  Future<bool> saveBool(String key, bool value) => setBool(key, value);
+  Future<bool> saveStringList(String key, List<String> value) => setStringList(key, value);
 }

@@ -85,7 +85,7 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
 
-      return result.fold(
+      final loginSuccess = result.fold(
         (failure) {
           AppLogger.error('Login failed: ${failure.message}');
           _errorMessage = _getErrorMessage(failure);
@@ -94,14 +94,34 @@ class AuthProvider with ChangeNotifier {
           return false;
         },
         (response) {
-          AppLogger.info('Login successful: ${response.user.username}');
-          _currentUser = response.user;
-          _state = AuthState.authenticated;
-          _errorMessage = null;
-          notifyListeners();
+          AppLogger.info('Login successful, token received');
           return true;
         },
       );
+
+      if (loginSuccess) {
+        // Fetch user info since repository already saved it to storage
+        final userResult = await _authRepository.getCurrentUser();
+        return userResult.fold(
+          (failure) {
+            AppLogger.error('Failed to get user info: ${failure.message}');
+            _errorMessage = 'Login successful but failed to get user info';
+            _state = AuthState.unauthenticated;
+            notifyListeners();
+            return false;
+          },
+          (user) {
+            AppLogger.info('Login successful: ${user.username}');
+            _currentUser = user;
+            _state = AuthState.authenticated;
+            _errorMessage = null;
+            notifyListeners();
+            return true;
+          },
+        );
+      }
+
+      return false;
     } catch (e) {
       AppLogger.error('Unexpected login error: $e');
       _errorMessage = '登录失败，请稍后重试';
@@ -116,6 +136,7 @@ class AuthProvider with ChangeNotifier {
     required String username,
     required String email,
     required String password,
+    required String confirmPassword,
   }) async {
     _state = AuthState.loading;
     _errorMessage = null;
@@ -128,9 +149,10 @@ class AuthProvider with ChangeNotifier {
         username: username,
         email: email,
         password: password,
+        confirmPassword: confirmPassword,
       );
 
-      return result.fold(
+      final registerSuccess = result.fold(
         (failure) {
           AppLogger.error('Registration failed: ${failure.message}');
           _errorMessage = _getErrorMessage(failure);
@@ -139,14 +161,34 @@ class AuthProvider with ChangeNotifier {
           return false;
         },
         (response) {
-          AppLogger.info('Registration successful: ${response.user.username}');
-          _currentUser = response.user;
-          _state = AuthState.authenticated;
-          _errorMessage = null;
-          notifyListeners();
+          AppLogger.info('Registration successful, token received');
           return true;
         },
       );
+
+      if (registerSuccess) {
+        // Fetch user info since repository already saved it to storage
+        final userResult = await _authRepository.getCurrentUser();
+        return userResult.fold(
+          (failure) {
+            AppLogger.error('Failed to get user info: ${failure.message}');
+            _errorMessage = 'Registration successful but failed to get user info';
+            _state = AuthState.unauthenticated;
+            notifyListeners();
+            return false;
+          },
+          (user) {
+            AppLogger.info('Registration successful: ${user.username}');
+            _currentUser = user;
+            _state = AuthState.authenticated;
+            _errorMessage = null;
+            notifyListeners();
+            return true;
+          },
+        );
+      }
+
+      return false;
     } catch (e) {
       AppLogger.error('Unexpected registration error: $e');
       _errorMessage = '注册失败，请稍后重试';

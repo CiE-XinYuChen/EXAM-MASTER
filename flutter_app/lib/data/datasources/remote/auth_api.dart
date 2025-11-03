@@ -23,9 +23,16 @@ class AuthApi {
     try {
       AppLogger.info('AuthApi.login: ${request.username}');
 
+      // Backend expects form data (OAuth2PasswordRequestForm), not JSON
       final response = await _dioClient.post(
         ApiConstants.login,
-        data: request.toJson(),
+        data: FormData.fromMap({
+          'username': request.username,
+          'password': request.password,
+        }),
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       );
 
       if (response.statusCode == 200) {
@@ -50,22 +57,29 @@ class AuthApi {
   /// Register
   /// 用户注册
   ///
+  /// Returns the created user (without tokens)
+  /// Caller should login separately to get tokens
+  ///
   /// Throws:
   /// - [ServerException]
   /// - [NetworkException]
   /// - [ValidationException]
-  Future<LoginResponse> register(RegisterRequest request) async {
+  Future<UserModel> register(RegisterRequest request) async {
     try {
       AppLogger.info('AuthApi.register: ${request.username}');
+      AppLogger.debug('Register request data: ${request.toJson()}');
 
       final response = await _dioClient.post(
         ApiConstants.register,
         data: request.toJson(),
       );
 
+      AppLogger.debug('Register response status: ${response.statusCode}');
+      AppLogger.debug('Register response data: ${response.data}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         AppLogger.debug('Registration successful');
-        return LoginResponse.fromJson(response.data);
+        return UserModel.fromJson(response.data);
       } else {
         AppLogger.error('Registration failed: ${response.statusCode}');
         throw ServerException(
@@ -74,10 +88,14 @@ class AuthApi {
         );
       }
     } on DioException catch (e) {
-      AppLogger.error('Registration error: ${e.message}');
+      AppLogger.error('Registration DioException type: ${e.type}');
+      AppLogger.error('Registration DioException message: ${e.message}');
+      AppLogger.error('Registration DioException response: ${e.response?.data}');
+      AppLogger.error('Registration DioException status: ${e.response?.statusCode}');
       throw _handleDioException(e);
-    } catch (e) {
+    } catch (e, stackTrace) {
       AppLogger.error('Unexpected registration error: $e');
+      AppLogger.error('Stack trace: $stackTrace');
       throw UnknownException(message: 'Unexpected error during registration: $e');
     }
   }
@@ -95,7 +113,7 @@ class AuthApi {
     try {
       AppLogger.info('AuthApi.getCurrentUser');
 
-      final response = await _dioClient.get(ApiConstants.userMe);
+      final response = await _dioClient.get(ApiConstants.currentUser);
 
       if (response.statusCode == 200) {
         AppLogger.debug('Get current user successful');
@@ -145,7 +163,17 @@ class AuthApi {
     }
 
     final statusCode = e.response?.statusCode;
-    final message = e.response?.data?['message'] ?? e.message ?? 'Unknown error';
+    // Try to extract error message from response (FastAPI uses 'detail')
+    String message = 'Unknown error';
+    if (e.response?.data != null) {
+      final data = e.response!.data;
+      if (data is Map) {
+        message = data['detail']?.toString() ??
+                  data['message']?.toString() ??
+                  e.message ??
+                  'Unknown error';
+      }
+    }
 
     if (statusCode != null) {
       switch (statusCode) {

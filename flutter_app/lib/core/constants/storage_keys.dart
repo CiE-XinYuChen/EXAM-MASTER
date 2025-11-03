@@ -12,7 +12,9 @@ class StorageKeys {
   static const String username = 'username';
   static const String email = 'email';
   static const String userRole = 'user_role';
+  static const String role = 'user_role'; // Alias
   static const String userProfile = 'user_profile';
+  static const String isActive = 'is_active';
 
   // ==================== 应用设置 ====================
   static const String themeMode = 'theme_mode'; // light, dark, system

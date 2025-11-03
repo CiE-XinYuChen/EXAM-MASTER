@@ -119,3 +119,14 @@ class ParseException extends AppException {
   @override
   String toString() => 'ParseException: $message';
 }
+
+/// Unknown Exception
+/// 未知异常
+class UnknownException extends AppException {
+  const UnknownException({
+    super.message = '未知错误',
+  });
+
+  @override
+  String toString() => 'UnknownException: $message';
+}

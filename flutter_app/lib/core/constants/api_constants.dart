@@ -113,6 +113,26 @@ class ApiConstants {
 
   // ==================== 用户相关 ====================
   static const String userProfile = '/users/me';
+  static const String userMe = '/users/me'; // Alias for currentUser
   static const String userUpdate = '/users/me';
   static const String userChangePassword = '/users/me/password';
+
+  // Aliases for consistency
+  static const String chatSessions = aiChatSessions;
+  static String chatSessionById(String sessionId) => aiChatSessionDetail(sessionId);
+  static String chatSendMessage(String sessionId) => aiChatSessionSend(sessionId);
+  static String chatMessages(String sessionId) => aiChatSessionMessages(sessionId);
+  static String favoriteById(String favoriteId) => favoriteDetail(favoriteId);
+  static String favoriteCheck(String questionId) => favoriteByQuestion(questionId);
+  static String wrongQuestionById(String wrongQuestionId) => wrongQuestionDetail(wrongQuestionId);
+  static const String myAccess = activationMyAccess;
+  static const String activateCode = activationActivate;
+  static String bankQuestions(String bankId) => questionBankQuestions(bankId);
+  static String questionBankById(String bankId) => questionBankDetail(bankId);
+  static String questionById(String questionId) => '/questions/$questionId'; // Direct access
+  static String practiceSessionById(String sessionId) => practiceSessionDetail(sessionId);
+  static String practiceSessionHistory(String sessionId) => '$practiceSessionDetail(sessionId)/history';
+  static String practiceSessionPause(String sessionId) => '$practiceSessionDetail(sessionId)/pause';
+  static const String statisticsByBank = statisticsBanks;
+  static String statisticsBankById(String bankId) => statisticsBankDetail(bankId);
 }

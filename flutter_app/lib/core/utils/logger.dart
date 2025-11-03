@@ -33,4 +33,10 @@ class AppLogger {
   static void wtf(dynamic message, [dynamic error, StackTrace? stackTrace]) {
     _logger.f(message, error: error, stackTrace: stackTrace);
   }
+
+  // Aliases for convenience
+  static void debug(dynamic message, [dynamic error, StackTrace? stackTrace]) => d(message, error, stackTrace);
+  static void info(dynamic message, [dynamic error, StackTrace? stackTrace]) => i(message, error, stackTrace);
+  static void warning(dynamic message, [dynamic error, StackTrace? stackTrace]) => w(message, error, stackTrace);
+  static void error(dynamic message, [dynamic error, StackTrace? stackTrace]) => e(message, error, stackTrace);
 }

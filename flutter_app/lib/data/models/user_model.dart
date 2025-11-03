@@ -72,12 +72,12 @@ class LoginResponse extends Equatable {
   final String accessToken;
   @JsonKey(name: 'token_type')
   final String tokenType;
-  final UserModel user;
+  final UserModel? user;
 
   const LoginResponse({
     required this.accessToken,
     required this.tokenType,
-    required this.user,
+    this.user,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) =>
@@ -95,11 +95,14 @@ class RegisterRequest {
   final String username;
   final String email;
   final String password;
+  @JsonKey(name: 'confirm_password')
+  final String confirmPassword;
 
   const RegisterRequest({
     required this.username,
     required this.email,
     required this.password,
+    required this.confirmPassword,
   });
 
   Map<String, dynamic> toJson() => _$RegisterRequestToJson(this);
