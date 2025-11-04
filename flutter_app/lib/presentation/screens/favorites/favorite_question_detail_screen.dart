@@ -80,15 +80,6 @@ class _FavoriteQuestionDetailScreenState
     return Scaffold(
       appBar: AppBar(
         title: Text('第 ${widget.favorite.questionNumber ?? '?'} 题'),
-        actions: [
-          // Save note button
-          if (_noteController.text != widget.favorite.note)
-            IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: '保存备注',
-              onPressed: _isUpdating ? null : _updateNote,
-            ),
-        ],
       ),
       body: _isUpdating
           ? const Center(child: CircularProgressIndicator())
@@ -106,6 +97,24 @@ class _FavoriteQuestionDetailScreenState
                   const SizedBox(height: 8),
                   _buildQuestionStem(),
                   const SizedBox(height: 24),
+
+                  // Options (if available)
+                  if (widget.favorite.questionOptions != null &&
+                      widget.favorite.questionOptions!.isNotEmpty) ...[
+                    _buildSectionTitle('选项'),
+                    const SizedBox(height: 8),
+                    _buildOptions(),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Explanation (if available)
+                  if (widget.favorite.questionExplanation != null &&
+                      widget.favorite.questionExplanation!.isNotEmpty) ...[
+                    _buildSectionTitle('题目解析'),
+                    const SizedBox(height: 8),
+                    _buildExplanation(),
+                    const SizedBox(height: 24),
+                  ],
 
                   // Note section
                   _buildSectionTitle('我的备注'),
@@ -244,6 +253,96 @@ class _FavoriteQuestionDetailScreenState
                 labelStyle: Theme.of(context).textTheme.bodySmall,
               ))
           .toList(),
+    );
+  }
+
+  Widget _buildOptions() {
+    return Column(
+      children: widget.favorite.questionOptions!.map((option) {
+        final isCorrect = option.isCorrect ?? false;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isCorrect ? Colors.green.shade50 : Colors.grey.shade50,
+            border: Border.all(
+              color: isCorrect ? Colors.green : Colors.grey.shade300,
+              width: isCorrect ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isCorrect ? Colors.green : Colors.grey.shade300,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    option.label,
+                    style: TextStyle(
+                      color: isCorrect ? Colors.white : Colors.grey.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  option.content,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              if (isCorrect)
+                const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildExplanation() {
+    return Card(
+      color: Colors.orange.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline,
+                  color: Colors.orange.shade700,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '解析',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade700,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              widget.favorite.questionExplanation!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.6,
+                  ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

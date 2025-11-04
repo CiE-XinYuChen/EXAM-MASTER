@@ -35,6 +35,13 @@ class FavoriteResponse(BaseModel):
         from_attributes = True
 
 
+class QuestionOption(BaseModel):
+    """题目选项"""
+    label: str
+    content: str
+    is_correct: Optional[bool] = None
+
+
 class FavoriteWithQuestionResponse(FavoriteResponse):
     """带题目信息的收藏响应"""
     question_number: Optional[int]
@@ -42,6 +49,8 @@ class FavoriteWithQuestionResponse(FavoriteResponse):
     question_stem: str
     question_difficulty: Optional[str]
     question_tags: Optional[List[str]]
+    question_options: Optional[List[QuestionOption]] = None
+    question_explanation: Optional[str] = None
     has_image: bool
     has_video: bool
     has_audio: bool

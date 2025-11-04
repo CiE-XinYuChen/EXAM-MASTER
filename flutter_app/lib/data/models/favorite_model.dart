@@ -3,6 +3,30 @@ import 'package:equatable/equatable.dart';
 
 part 'favorite_model.g.dart';
 
+/// Question Option Model
+/// 题目选项模型
+@JsonSerializable()
+class QuestionOption extends Equatable {
+  final String label;
+  final String content;
+  @JsonKey(name: 'is_correct')
+  final bool? isCorrect;
+
+  const QuestionOption({
+    required this.label,
+    required this.content,
+    this.isCorrect,
+  });
+
+  factory QuestionOption.fromJson(Map<String, dynamic> json) =>
+      _$QuestionOptionFromJson(json);
+
+  Map<String, dynamic> toJson() => _$QuestionOptionToJson(this);
+
+  @override
+  List<Object?> get props => [label, content, isCorrect];
+}
+
 /// Favorite Model
 /// 收藏数据模型（带题目详细信息）
 @JsonSerializable()
@@ -29,6 +53,10 @@ class FavoriteModel extends Equatable {
   final String? questionDifficulty;
   @JsonKey(name: 'question_tags')
   final List<String>? questionTags;
+  @JsonKey(name: 'question_options')
+  final List<QuestionOption>? questionOptions;
+  @JsonKey(name: 'question_explanation')
+  final String? questionExplanation;
   @JsonKey(name: 'has_image')
   final bool? hasImage;
   @JsonKey(name: 'has_video')
@@ -48,6 +76,8 @@ class FavoriteModel extends Equatable {
     required this.questionStem,
     this.questionDifficulty,
     this.questionTags,
+    this.questionOptions,
+    this.questionExplanation,
     this.hasImage,
     this.hasVideo,
     this.hasAudio,
@@ -71,6 +101,8 @@ class FavoriteModel extends Equatable {
         questionStem,
         questionDifficulty,
         questionTags,
+        questionOptions,
+        questionExplanation,
         hasImage,
         hasVideo,
         hasAudio,
@@ -87,6 +119,8 @@ class FavoriteModel extends Equatable {
     String? questionStem,
     String? questionDifficulty,
     List<String>? questionTags,
+    List<QuestionOption>? questionOptions,
+    String? questionExplanation,
     bool? hasImage,
     bool? hasVideo,
     bool? hasAudio,
@@ -102,6 +136,8 @@ class FavoriteModel extends Equatable {
       questionStem: questionStem ?? this.questionStem,
       questionDifficulty: questionDifficulty ?? this.questionDifficulty,
       questionTags: questionTags ?? this.questionTags,
+      questionOptions: questionOptions ?? this.questionOptions,
+      questionExplanation: questionExplanation ?? this.questionExplanation,
       hasImage: hasImage ?? this.hasImage,
       hasVideo: hasVideo ?? this.hasVideo,
       hasAudio: hasAudio ?? this.hasAudio,

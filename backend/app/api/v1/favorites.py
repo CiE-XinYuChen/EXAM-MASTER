@@ -13,7 +13,7 @@ from app.core.database import get_qbank_db
 from app.core.security import get_current_user
 from app.models.user_models import User
 from app.models.user_practice import UserFavorite
-from app.models.question_models_v2 import QuestionV2
+from app.models.question_models_v2 import QuestionV2, QuestionOptionV2
 from app.schemas.favorites_schemas import (
     FavoriteCreate,
     FavoriteUpdate,
@@ -121,6 +121,24 @@ async def list_favorites(
     # 构造响应
     favorites_with_question = []
     for favorite, question in results:
+        # 获取题目选项（如果有）
+        options = None
+        if question.type in ['single', 'multiple']:
+            question_options = db.query(QuestionOptionV2).filter(
+                QuestionOptionV2.question_id == question.id
+            ).order_by(QuestionOptionV2.sort_order).all()
+
+            if question_options:
+                from app.schemas.favorites_schemas import QuestionOption
+                options = [
+                    QuestionOption(
+                        label=opt.option_label,
+                        content=opt.option_content,
+                        is_correct=opt.is_correct
+                    )
+                    for opt in question_options
+                ]
+
         favorites_with_question.append(FavoriteWithQuestionResponse(
             id=favorite.id,
             user_id=favorite.user_id,
@@ -133,6 +151,8 @@ async def list_favorites(
             question_stem=question.stem,
             question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),
             question_tags=question.tags,
+            question_options=options,
+            question_explanation=question.explanation,
             has_image=question.has_image if hasattr(question, 'has_image') else False,
             has_video=question.has_video if hasattr(question, 'has_video') else False,
             has_audio=question.has_audio if hasattr(question, 'has_audio') else False

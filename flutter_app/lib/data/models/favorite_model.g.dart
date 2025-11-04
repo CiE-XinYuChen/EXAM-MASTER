@@ -6,6 +6,20 @@ part of 'favorite_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+QuestionOption _$QuestionOptionFromJson(Map<String, dynamic> json) =>
+    QuestionOption(
+      label: json['label'] as String,
+      content: json['content'] as String,
+      isCorrect: json['is_correct'] as bool?,
+    );
+
+Map<String, dynamic> _$QuestionOptionToJson(QuestionOption instance) =>
+    <String, dynamic>{
+      'label': instance.label,
+      'content': instance.content,
+      'is_correct': instance.isCorrect,
+    };
+
 FavoriteModel _$FavoriteModelFromJson(Map<String, dynamic> json) =>
     FavoriteModel(
       id: json['id'] as String,
@@ -21,6 +35,10 @@ FavoriteModel _$FavoriteModelFromJson(Map<String, dynamic> json) =>
       questionTags: (json['question_tags'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
+      questionOptions: (json['question_options'] as List<dynamic>?)
+          ?.map((e) => QuestionOption.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      questionExplanation: json['question_explanation'] as String?,
       hasImage: json['has_image'] as bool?,
       hasVideo: json['has_video'] as bool?,
       hasAudio: json['has_audio'] as bool?,
@@ -39,6 +57,8 @@ Map<String, dynamic> _$FavoriteModelToJson(FavoriteModel instance) =>
       'question_stem': instance.questionStem,
       'question_difficulty': instance.questionDifficulty,
       'question_tags': instance.questionTags,
+      'question_options': instance.questionOptions,
+      'question_explanation': instance.questionExplanation,
       'has_image': instance.hasImage,
       'has_video': instance.hasVideo,
       'has_audio': instance.hasAudio,
