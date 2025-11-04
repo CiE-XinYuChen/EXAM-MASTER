@@ -83,12 +83,11 @@ def get_question_ids_for_session(
     """根据模式和筛选条件获取题目ID列表"""
 
     if mode == PracticeMode.wrong_only:
-        # 错题模式：只获取错题
+        # 错题模式：获取所有错题（包括已订正和未订正）
         query = db.query(UserWrongQuestion.question_id).filter(
             and_(
                 UserWrongQuestion.user_id == user_id,
-                UserWrongQuestion.bank_id == bank_id,
-                UserWrongQuestion.corrected == False
+                UserWrongQuestion.bank_id == bank_id
             )
         )
         question_ids = [q[0] for q in query.all()]
