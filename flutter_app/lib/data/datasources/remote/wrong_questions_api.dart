@@ -83,7 +83,7 @@ class WrongQuestionsApi {
   /// - [NetworkException]
   /// - [AuthenticationException]
   /// - [NotFoundException]
-  Future<WrongQuestionModel> markCorrected(String wrongQuestionId, bool corrected) async {
+  Future<bool> markCorrected(String wrongQuestionId, bool corrected) async {
     try {
       AppLogger.info('WrongQuestionsApi.markCorrected: $wrongQuestionId, corrected=$corrected');
 
@@ -94,7 +94,7 @@ class WrongQuestionsApi {
 
       if (response.statusCode == 200) {
         AppLogger.debug('Mark corrected successful');
-        return WrongQuestionModel.fromJson(response.data);
+        return true;
       } else {
         throw ServerException(
           message: 'Failed to mark corrected',

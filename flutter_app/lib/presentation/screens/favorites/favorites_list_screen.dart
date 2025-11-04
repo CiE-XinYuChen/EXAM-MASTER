@@ -5,6 +5,7 @@ import '../../../data/datasources/remote/favorites_api.dart';
 import '../../../data/repositories/favorites_repository.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/logger.dart';
+import 'favorite_question_detail_screen.dart';
 
 /// Favorites List Screen
 /// 收藏列表页面
@@ -253,11 +254,21 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
             questionStem: favorite.questionStem,
             questionType: _getQuestionTypeLabel(favorite.questionType),
             difficulty: favorite.questionDifficulty ?? '未知',
-            onTap: () {
-              // TODO: Navigate to question detail or practice
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('题目详情功能待开发')),
+            onTap: () async {
+              // Navigate to favorite question detail screen
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FavoriteQuestionDetailScreen(
+                    favorite: favorite,
+                  ),
+                ),
               );
+
+              // Refresh list if note was updated
+              if (result == true) {
+                _loadFavorites();
+              }
             },
           ),
         );

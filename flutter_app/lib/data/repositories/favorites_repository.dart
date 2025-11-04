@@ -91,6 +91,11 @@ class FavoritesRepository {
     }
   }
 
+  /// Convenience method to update favorite note with just a string
+  Future<Either<Failure, void>> updateFavoriteNote(String favoriteId, String note) async {
+    return updateNote(favoriteId, UpdateFavoriteNoteRequest(note: note));
+  }
+
   Future<Either<Failure, bool>> isFavorited(String questionId) async {
     try {
       final result = await _api.isFavorited(questionId);

@@ -35,7 +35,7 @@ class WrongQuestionsRepository {
     }
   }
 
-  Future<Either<Failure, WrongQuestionModel>> markAsCorrected(
+  Future<Either<Failure, bool>> markAsCorrected(
     String wrongQuestionId,
     bool corrected,
   ) async {
