@@ -97,7 +97,14 @@ class _QuestionReviewScreenState extends State<QuestionReviewScreen> {
                   _buildSectionTitle('题目'),
                   const SizedBox(height: 8),
                   _buildQuestionStem(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+
+                  // Question options (if available)
+                  if (widget.wrongQuestion.questionOptions != null &&
+                      widget.wrongQuestion.questionOptions!.isNotEmpty) ...[
+                    _buildQuestionOptions(),
+                    const SizedBox(height: 24),
+                  ],
 
                   // Last error answer (if available)
                   if (widget.wrongQuestion.lastErrorAnswer != null) ...[
@@ -212,6 +219,66 @@ class _QuestionReviewScreenState extends State<QuestionReviewScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildQuestionOptions() {
+    return Column(
+      children: widget.wrongQuestion.questionOptions!.asMap().entries.map((entry) {
+        final option = entry.value;
+        final label = option['label'] ?? '';
+        final content = option['content'] ?? '';
+        final isCorrect = option['is_correct'] == true;
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          color: isCorrect ? Colors.green.shade50 : null,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Option label (A, B, C, D)
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isCorrect ? Colors.green : Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isCorrect ? Colors.white : Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Option content
+                Expanded(
+                  child: Text(
+                    content,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isCorrect ? Colors.green.shade900 : null,
+                          fontWeight: isCorrect ? FontWeight.w600 : null,
+                        ),
+                  ),
+                ),
+                // Checkmark for correct answer
+                if (isCorrect)
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade700,
+                    size: 20,
+                  ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

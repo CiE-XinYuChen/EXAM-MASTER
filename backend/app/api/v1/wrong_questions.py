@@ -87,6 +87,16 @@ async def list_wrong_questions(
     # 构造响应
     wrong_questions_with_details = []
     for wrong_q, question in results:
+        # 构造选项列表
+        options_list = []
+        if hasattr(question, 'options') and question.options:
+            for opt in question.options:
+                options_list.append({
+                    "label": opt.option_label,
+                    "content": opt.option_content,
+                    "is_correct": opt.is_correct if hasattr(opt, 'is_correct') else False
+                })
+
         wrong_questions_with_details.append(WrongQuestionWithDetailsResponse(
             id=wrong_q.id,
             user_id=wrong_q.user_id,
@@ -106,7 +116,8 @@ async def list_wrong_questions(
             has_image=question.has_image if hasattr(question, 'has_image') else False,
             has_video=question.has_video if hasattr(question, 'has_video') else False,
             has_audio=question.has_audio if hasattr(question, 'has_audio') else False,
-            correct_answer=question.correct_answer if hasattr(question, 'correct_answer') else None
+            correct_answer=question.correct_answer if hasattr(question, 'correct_answer') else None,
+            question_options=options_list if options_list else None
         ))
 
     return WrongQuestionListResponse(
@@ -142,6 +153,16 @@ async def get_wrong_question(
 
     wrong_q, question = result
 
+    # 构造选项列表
+    options_list = []
+    if hasattr(question, 'options') and question.options:
+        for opt in question.options:
+            options_list.append({
+                "label": opt.option_label,
+                "content": opt.option_content,
+                "is_correct": opt.is_correct if hasattr(opt, 'is_correct') else False
+            })
+
     return WrongQuestionWithDetailsResponse(
         id=wrong_q.id,
         user_id=wrong_q.user_id,
@@ -161,7 +182,8 @@ async def get_wrong_question(
         has_image=question.has_image if hasattr(question, 'has_image') else False,
         has_video=question.has_video if hasattr(question, 'has_video') else False,
         has_audio=question.has_audio if hasattr(question, 'has_audio') else False,
-        correct_answer=question.correct_answer if hasattr(question, 'correct_answer') else None
+        correct_answer=question.correct_answer if hasattr(question, 'correct_answer') else None,
+        question_options=options_list if options_list else None
     )
 
 

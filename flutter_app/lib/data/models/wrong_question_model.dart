@@ -45,6 +45,8 @@ class WrongQuestionModel extends Equatable {
   final bool? hasAudio;
   @JsonKey(name: 'correct_answer')
   final Map<String, dynamic>? correctAnswer;
+  @JsonKey(name: 'question_options')
+  final List<Map<String, dynamic>>? questionOptions;
 
   const WrongQuestionModel({
     required this.id,
@@ -66,6 +68,7 @@ class WrongQuestionModel extends Equatable {
     this.hasVideo,
     this.hasAudio,
     this.correctAnswer,
+    this.questionOptions,
   });
 
   factory WrongQuestionModel.fromJson(Map<String, dynamic> json) =>
@@ -94,6 +97,7 @@ class WrongQuestionModel extends Equatable {
         hasVideo,
         hasAudio,
         correctAnswer,
+        questionOptions,
       ];
 
   WrongQuestionModel copyWith({
@@ -115,6 +119,7 @@ class WrongQuestionModel extends Equatable {
     bool? hasVideo,
     bool? hasAudio,
     Map<String, dynamic>? correctAnswer,
+    List<Map<String, dynamic>>? questionOptions,
   }) {
     return WrongQuestionModel(
       id: id ?? this.id,
@@ -135,6 +140,7 @@ class WrongQuestionModel extends Equatable {
       hasVideo: hasVideo ?? this.hasVideo,
       hasAudio: hasAudio ?? this.hasAudio,
       correctAnswer: correctAnswer ?? this.correctAnswer,
+      questionOptions: questionOptions ?? this.questionOptions,
     );
   }
 }

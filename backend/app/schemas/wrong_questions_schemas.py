@@ -38,6 +38,7 @@ class WrongQuestionWithDetailsResponse(WrongQuestionResponse):
     has_video: bool
     has_audio: bool
     correct_answer: Optional[Dict[str, Any]]  # 正确答案
+    question_options: Optional[List[Dict[str, Any]]]  # 题目选项
 
 
 class WrongQuestionListResponse(BaseModel):

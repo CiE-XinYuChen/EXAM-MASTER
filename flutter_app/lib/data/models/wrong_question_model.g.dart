@@ -29,6 +29,9 @@ WrongQuestionModel _$WrongQuestionModelFromJson(Map<String, dynamic> json) =>
       hasVideo: json['has_video'] as bool?,
       hasAudio: json['has_audio'] as bool?,
       correctAnswer: json['correct_answer'] as Map<String, dynamic>?,
+      questionOptions: (json['question_options'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
     );
 
 Map<String, dynamic> _$WrongQuestionModelToJson(WrongQuestionModel instance) =>
@@ -52,6 +55,7 @@ Map<String, dynamic> _$WrongQuestionModelToJson(WrongQuestionModel instance) =>
       'has_video': instance.hasVideo,
       'has_audio': instance.hasAudio,
       'correct_answer': instance.correctAnswer,
+      'question_options': instance.questionOptions,
     };
 
 WrongQuestionListResponse _$WrongQuestionListResponseFromJson(
