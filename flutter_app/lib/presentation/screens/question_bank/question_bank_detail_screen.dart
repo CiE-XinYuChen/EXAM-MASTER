@@ -455,33 +455,12 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '题库信息',
+                      '详细信息',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 24),
-
-                // Total Questions
-                _StatCard(
-                  icon: Icons.quiz_outlined,
-                  label: '总题数',
-                  value: '${bank.totalQuestions ?? 0}',
-                  color: Colors.blue,
-                ),
-
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 24),
-
-                // Details Section
-                Text(
-                  '详细信息',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
                 ),
                 const SizedBox(height: 16),
                 _DetailRow(
@@ -587,54 +566,6 @@ class _PracticeOptionCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Stat Card
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-            ),
-          ],
         ),
       ),
     );

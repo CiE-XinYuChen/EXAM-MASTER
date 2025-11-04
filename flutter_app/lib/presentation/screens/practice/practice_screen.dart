@@ -97,35 +97,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   Future<void> _showExitDialog() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认退出'),
-        content: const Text('是否保存当前进度并退出练习？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('退出不保存'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final provider = context.read<PracticeProvider>();
-              await provider.pauseSession();
-              if (mounted) {
-                Navigator.pop(context, true);
-              }
-            },
-            child: const Text('保存并退出'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true && mounted) {
+    // 直接保存并退出，不显示对话框
+    final provider = context.read<PracticeProvider>();
+    await provider.pauseSession();
+    if (mounted) {
       Navigator.pop(context);
     }
   }

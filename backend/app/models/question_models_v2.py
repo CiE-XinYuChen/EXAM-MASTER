@@ -38,14 +38,24 @@ class QuestionType(str, enum.Enum):
 
     @classmethod
     def _missing_(cls, value):
-        """Handle missing enum values by cleaning the prefix"""
+        """Handle missing enum values by cleaning the prefix or handling invalid values"""
+        # Handle empty strings or None by logging error but allowing query to continue
+        if not value or value == "":
+            import logging
+            logging.warning(f"Invalid QuestionType value: '{value}' - data corruption detected")
+            # Return single as default for backwards compatibility
+            return cls.single
+
         if isinstance(value, str) and value.startswith('QuestionType.'):
             # Remove prefix and try again
             clean_value = value.replace('QuestionType.', '')
             for member in cls:
                 if member.value == clean_value:
                     return member
-        return None
+
+        import logging
+        logging.warning(f"Unknown QuestionType value: '{value}' - returning default")
+        return cls.single
 
 
 class QuestionBankV2(BaseQBank):

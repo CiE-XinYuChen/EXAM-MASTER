@@ -805,6 +805,13 @@ async def admin_questions_create(
             "meta_data": {}
         }
     
+    # Validate required fields
+    if not data.get("type") or data["type"] == "":
+        raise HTTPException(status_code=400, detail="题目类型不能为空")
+
+    if data["type"] not in ["single", "multiple", "judge", "fill", "essay", "composite"]:
+        raise HTTPException(status_code=400, detail=f"无效的题目类型: {data['type']}")
+
     # Create question
     question_id = str(uuid.uuid4())
     question = QuestionV2(
@@ -1009,9 +1016,15 @@ async def admin_questions_edit(
     # Handle type field - clean up enum format if needed
     if "type" in data:
         type_value = data["type"]
+        # Validate type is not empty
+        if not type_value or type_value == "":
+            raise HTTPException(status_code=400, detail="题目类型不能为空")
         # Remove 'QuestionType.' prefix if present
         if isinstance(type_value, str) and type_value.startswith("QuestionType."):
             type_value = type_value.replace("QuestionType.", "")
+        # Validate type is valid
+        if type_value not in ["single", "multiple", "judge", "fill", "essay", "composite"]:
+            raise HTTPException(status_code=400, detail=f"无效的题目类型: {type_value}")
         question.type = type_value
 
     question.difficulty = data.get("difficulty", question.difficulty)
