@@ -69,16 +69,11 @@ class _BrowseQuestionsScreenState extends State<BrowseQuestionsScreen> {
       appBar: AppBar(
         title: const Text('浏览题目'),
         actions: [
-          // Show answer toggle info
+          // Question list button
           IconButton(
-            icon: const Icon(Icons.info_outline),
+            icon: const Icon(Icons.format_list_numbered),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('浏览模式下，答案将自动展示，无需提交作答'),
-                  duration: Duration(seconds: 3),
-                ),
-              );
+              _showQuestionListDialog();
             },
           ),
         ],
@@ -240,6 +235,77 @@ class _BrowseQuestionsScreenState extends State<BrowseQuestionsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showQuestionListDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '题目列表',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 5,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: _questions.length,
+                    itemBuilder: (context, index) {
+                      final isCurrent = index == _currentIndex;
+                      return InkWell(
+                        onTap: () {
+                          _swiperController.move(index);
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: isCurrent ? Colors.white : Colors.grey.shade700,
+                                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

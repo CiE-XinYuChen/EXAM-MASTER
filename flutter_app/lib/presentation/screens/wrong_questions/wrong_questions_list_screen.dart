@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../data/models/practice_session_model.dart';
 import '../../../data/models/wrong_question_model.dart';
 import '../../../data/datasources/remote/wrong_questions_api.dart';
 import '../../../data/repositories/wrong_questions_repository.dart';
@@ -113,24 +112,6 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('错题本'),
-        actions: [
-          // Practice wrong questions
-          if (_wrongQuestions.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: '开始练习',
-              onPressed: () {
-                Navigator.pushNamed(
-                  context,
-                  '/practice',
-                  arguments: {
-                    'bankId': widget.bankId,
-                    'mode': PracticeMode.wrongOnly,
-                  },
-                );
-              },
-            ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

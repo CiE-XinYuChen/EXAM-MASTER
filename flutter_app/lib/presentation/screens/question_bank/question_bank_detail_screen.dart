@@ -298,26 +298,6 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
 
           const SizedBox(height: 12),
 
-          // Unpracticed
-          _PracticeOptionCard(
-            icon: Icons.new_releases_outlined,
-            title: '未练习题目',
-            subtitle: '只练习从未做过的题目',
-            color: Colors.pink,
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                '/practice',
-                arguments: {
-                  'bankId': bank.id,
-                  'mode': PracticeMode.unpracticed,
-                },
-              );
-            },
-          ),
-
-          const SizedBox(height: 12),
-
           // Wrong Questions
           _PracticeOptionCard(
             icon: Icons.error_outline,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../data/models/practice_session_model.dart';
 import '../../../data/models/favorite_model.dart';
 import '../../../data/datasources/remote/favorites_api.dart';
 import '../../../data/repositories/favorites_repository.dart';
@@ -101,24 +100,6 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('收藏列表'),
-        actions: [
-          // Practice favorites (both browsing and doing)
-          if (_favorites.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: '开始练习',
-              onPressed: () {
-                Navigator.pushNamed(
-                  context,
-                  '/practice',
-                  arguments: {
-                    'bankId': widget.bankId,
-                    'mode': PracticeMode.favoriteOnly,
-                  },
-                );
-              },
-            ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

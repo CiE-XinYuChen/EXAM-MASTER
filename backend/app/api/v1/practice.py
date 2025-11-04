@@ -18,6 +18,7 @@ from app.models.user_practice import (
     PracticeSession, UserAnswerRecord, UserFavorite, UserWrongQuestion,
     PracticeMode, SessionStatus
 )
+from app.models.user_statistics import UserBankStatistics
 from app.models.question_models_v2 import QuestionV2, QuestionType
 from app.models.activation import UserBankAccess
 from app.schemas.practice_schemas import (
@@ -70,6 +71,98 @@ def check_bank_access(main_db: Session, user: User, bank_id: str) -> bool:
             return True
 
     return False
+
+
+def _update_bank_statistics(
+    db: Session,
+    user_id: int,
+    bank_id: str,
+    question_id: str,
+    is_correct: bool,
+    time_spent: int
+):
+    """更新题库统计数据"""
+
+    # 查找或创建统计记录
+    stats = db.query(UserBankStatistics).filter(
+        and_(
+            UserBankStatistics.user_id == user_id,
+            UserBankStatistics.bank_id == bank_id
+        )
+    ).first()
+
+    if not stats:
+        # 获取题库总题数
+        total_questions = db.query(func.count(QuestionV2.id)).filter(
+            QuestionV2.bank_id == bank_id
+        ).scalar() or 0
+
+        stats = UserBankStatistics(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            bank_id=bank_id,
+            total_questions=total_questions,
+            practiced_questions=0,
+            correct_count=0,
+            wrong_count=0,
+            accuracy_rate=0.0,
+            favorite_count=0,
+            wrong_questions_count=0,
+            total_time_spent=0,
+            first_practiced_at=datetime.utcnow()
+        )
+        db.add(stats)
+
+    # 检查这道题之前做过几次（统计不重复的题目数）
+    previous_answer_count = db.query(func.count(UserAnswerRecord.id)).filter(
+        and_(
+            UserAnswerRecord.user_id == user_id,
+            UserAnswerRecord.question_id == question_id,
+            UserAnswerRecord.bank_id == bank_id
+        )
+    ).scalar() or 0
+
+    # 如果是第一次做这道题（包括本次），增加已练习题目数
+    if previous_answer_count == 1:
+        stats.practiced_questions += 1
+
+    # 更新正确/错误统计
+    if is_correct:
+        stats.correct_count += 1
+    else:
+        stats.wrong_count += 1
+
+    # 更新正确率
+    total_answered = stats.correct_count + stats.wrong_count
+    if total_answered > 0:
+        stats.accuracy_rate = (stats.correct_count / total_answered) * 100
+
+    # 更新总用时
+    stats.total_time_spent += time_spent
+
+    # 更新最后练习时间
+    stats.last_practiced_at = datetime.utcnow()
+
+    # 更新收藏数量
+    favorite_count = db.query(func.count(UserFavorite.id)).filter(
+        and_(
+            UserFavorite.user_id == user_id,
+            UserFavorite.bank_id == bank_id
+        )
+    ).scalar() or 0
+    stats.favorite_count = favorite_count
+
+    # 更新错题数量（未订正的）
+    wrong_questions_count = db.query(func.count(UserWrongQuestion.id)).filter(
+        and_(
+            UserWrongQuestion.user_id == user_id,
+            UserWrongQuestion.bank_id == bank_id,
+            UserWrongQuestion.corrected == False
+        )
+    ).scalar() or 0
+    stats.wrong_questions_count = wrong_questions_count
+
+    db.commit()
 
 
 def get_question_ids_for_session(
@@ -592,6 +685,9 @@ async def submit_answer(
 
     db.commit()
     db.refresh(record)
+
+    # 更新题库统计
+    _update_bank_statistics(db, current_user.id, session.bank_id, answer_data.question_id, is_correct, answer_data.time_spent)
 
     # 构造选项信息（包含label和content）
     options_data = []
