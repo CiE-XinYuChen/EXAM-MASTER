@@ -27,6 +27,8 @@ class WrongQuestionModel extends Equatable {
   final String? correctedAt;
 
   // Question details from backend (like FavoriteModel)
+  @JsonKey(name: 'question_number')
+  final int? questionNumber;
   @JsonKey(name: 'question_type')
   final String questionType;
   @JsonKey(name: 'question_stem')
@@ -55,6 +57,7 @@ class WrongQuestionModel extends Equatable {
     required this.firstErrorAt,
     required this.lastErrorAt,
     this.correctedAt,
+    this.questionNumber,
     required this.questionType,
     required this.questionStem,
     this.questionDifficulty,
@@ -82,6 +85,7 @@ class WrongQuestionModel extends Equatable {
         firstErrorAt,
         lastErrorAt,
         correctedAt,
+        questionNumber,
         questionType,
         questionStem,
         questionDifficulty,

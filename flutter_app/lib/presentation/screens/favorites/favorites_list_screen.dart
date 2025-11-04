@@ -249,7 +249,7 @@ class _FavoritesListScreenState extends State<FavoritesListScreen> {
             _deleteFavorite(favorite.id, index);
           },
           child: _FavoriteQuestionCard(
-            questionNumber: index + 1,
+            questionNumber: favorite.questionNumber ?? (index + 1),
             questionStem: favorite.questionStem,
             questionType: _getQuestionTypeLabel(favorite.questionType),
             difficulty: favorite.questionDifficulty ?? '未知',

@@ -98,14 +98,15 @@ async def list_wrong_questions(
             first_error_at=wrong_q.first_error_at,
             last_error_at=wrong_q.last_error_at,
             corrected_at=wrong_q.corrected_at,
+            question_number=question.number if hasattr(question, 'number') else None,
             question_type=question.type.value,
             question_stem=question.stem,
             question_difficulty=question.difficulty.value if question.difficulty else None,
             question_tags=question.tags,
-            has_image=question.has_image,
-            has_video=question.has_video,
-            has_audio=question.has_audio,
-            correct_answer=question.correct_answer
+            has_image=question.has_image if hasattr(question, 'has_image') else False,
+            has_video=question.has_video if hasattr(question, 'has_video') else False,
+            has_audio=question.has_audio if hasattr(question, 'has_audio') else False,
+            correct_answer=question.correct_answer if hasattr(question, 'correct_answer') else None
         ))
 
     return WrongQuestionListResponse(

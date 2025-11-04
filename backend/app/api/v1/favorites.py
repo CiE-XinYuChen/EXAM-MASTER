@@ -128,11 +128,12 @@ async def list_favorites(
             bank_id=favorite.bank_id,
             note=favorite.note,
             created_at=favorite.created_at,
+            question_number=question.number if hasattr(question, 'number') else None,
             question_type=question.type.value,
             question_stem=question.stem,
-            question_difficulty=question.difficulty if hasattr(question.difficulty, 'value') else question.difficulty,
+            question_difficulty=question.difficulty.value if hasattr(question.difficulty, 'value') else question.difficulty,
             question_tags=question.tags,
-            has_image=question.has_images if hasattr(question, 'has_images') else False,
+            has_image=question.has_image if hasattr(question, 'has_image') else False,
             has_video=question.has_video if hasattr(question, 'has_video') else False,
             has_audio=question.has_audio if hasattr(question, 'has_audio') else False
         ))

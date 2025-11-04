@@ -37,6 +37,7 @@ class FavoriteResponse(BaseModel):
 
 class FavoriteWithQuestionResponse(FavoriteResponse):
     """带题目信息的收藏响应"""
+    question_number: Optional[int]
     question_type: str
     question_stem: str
     question_difficulty: Optional[str]

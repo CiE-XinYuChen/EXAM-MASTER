@@ -29,6 +29,7 @@ class WrongQuestionResponse(BaseModel):
 
 class WrongQuestionWithDetailsResponse(WrongQuestionResponse):
     """带题目详情的错题响应"""
+    question_number: Optional[int]
     question_type: str
     question_stem: str
     question_difficulty: Optional[str]

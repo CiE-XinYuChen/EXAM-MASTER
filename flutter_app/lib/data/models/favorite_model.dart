@@ -19,6 +19,8 @@ class FavoriteModel extends Equatable {
   final String createdAt;
 
   // Question details from backend
+  @JsonKey(name: 'question_number')
+  final int? questionNumber;
   @JsonKey(name: 'question_type')
   final String questionType;
   @JsonKey(name: 'question_stem')
@@ -41,6 +43,7 @@ class FavoriteModel extends Equatable {
     required this.bankId,
     this.note,
     required this.createdAt,
+    this.questionNumber,
     required this.questionType,
     required this.questionStem,
     this.questionDifficulty,
@@ -63,6 +66,7 @@ class FavoriteModel extends Equatable {
         bankId,
         note,
         createdAt,
+        questionNumber,
         questionType,
         questionStem,
         questionDifficulty,
