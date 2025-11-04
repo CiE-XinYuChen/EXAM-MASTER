@@ -138,7 +138,7 @@ def _update_bank_statistics(
         stats.accuracy_rate = (stats.correct_count / total_answered) * 100
 
     # 更新总用时
-    stats.total_time_spent += time_spent
+    stats.total_time_spent += (time_spent or 0)
 
     # 更新最后练习时间
     stats.last_practiced_at = datetime.utcnow()

@@ -71,7 +71,7 @@ class _BrowseQuestionsScreenState extends State<BrowseQuestionsScreen> {
         actions: [
           // Question list button
           IconButton(
-            icon: const Icon(Icons.format_list_numbered),
+            icon: const Icon(Icons.menu),
             onPressed: () {
               _showQuestionListDialog();
             },
