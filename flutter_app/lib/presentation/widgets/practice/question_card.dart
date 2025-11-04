@@ -106,8 +106,12 @@ class _QuestionCardState extends State<QuestionCard> {
               (index) => TextEditingController(text: savedAnswer[index] as String? ?? ''),
             );
           } else {
-            // Determine number of blanks (you might need to parse stem)
-            _fillControllers = List.generate(1, (_) => TextEditingController());
+            // Determine number of blanks by parsing stem for ____ patterns
+            final blankCount = '____'.allMatches(widget.question.stem).length;
+            _fillControllers = List.generate(
+              blankCount > 0 ? blankCount : 1,
+              (_) => TextEditingController(),
+            );
           }
           break;
         case QuestionType.essay:
@@ -976,7 +980,7 @@ class _QuestionCardState extends State<QuestionCard> {
               setState(() {
                 _judgeAnswer = true;
               });
-              _saveAnswer('true');
+              _saveAnswer(true);  // 保存为布尔值而不是字符串
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -1021,7 +1025,7 @@ class _QuestionCardState extends State<QuestionCard> {
               setState(() {
                 _judgeAnswer = false;
               });
-              _saveAnswer('false');
+              _saveAnswer(false);  // 保存为布尔值而不是字符串
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(

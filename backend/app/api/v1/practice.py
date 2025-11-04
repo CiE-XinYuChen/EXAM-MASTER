@@ -586,10 +586,48 @@ async def submit_answer(
         is_correct = user_ans == correct_ans
     elif question.type == QuestionType.judge:
         is_correct = user_answer.get("answer") == correct_answer.get("answer")
-    # 填空题和问答题需要更复杂的判断逻辑，这里简化处理
-    elif question.type in [QuestionType.fill, QuestionType.essay]:
-        # 可以加入关键词匹配或AI判断
-        is_correct = False  # 默认需要人工评判
+    elif question.type == QuestionType.fill:
+        # 填空题答案校验 - 支持多个空格和备选答案
+        blanks = correct_answer.get("blanks", [])
+        user_blanks = user_answer.get("answers", [])
+
+        # 逐个比对填空答案（忽略大小写和首尾空格）
+        is_correct = True
+        if len(user_blanks) != len(blanks):
+            is_correct = False
+        else:
+            for i, blank in enumerate(blanks):
+                if i >= len(user_blanks):
+                    is_correct = False
+                    break
+                user_ans = str(user_blanks[i]).strip().lower()
+                correct_ans = str(blank.get("answer", "")).strip().lower()
+                alternatives = [str(alt).strip().lower() for alt in blank.get("alternatives", [])]
+
+                # 检查是否匹配标准答案或任一备选答案
+                if user_ans != correct_ans and user_ans not in alternatives:
+                    is_correct = False
+                    break
+    elif question.type == QuestionType.essay:
+        # 问答题基于关键词匹配评判
+        user_text = str(user_answer.get("answer", "")).strip().lower()
+        reference_answer = str(correct_answer.get("reference_answer", "")).strip().lower()
+        keywords = correct_answer.get("keywords", [])
+
+        # 如果有关键词，检查关键词匹配度
+        if keywords and len(keywords) > 0:
+            matched_keywords = sum(1 for keyword in keywords if keyword.lower() in user_text)
+            # 如果匹配50%以上关键词，视为正确
+            is_correct = matched_keywords >= len(keywords) * 0.5
+        else:
+            # 没有关键词时，进行简单的相似度判断
+            # 如果用户答案包含参考答案的主要内容，视为正确
+            if reference_answer and len(reference_answer) > 10:
+                # 检查用户答案是否包含参考答案的关键部分
+                is_correct = reference_answer[:20] in user_text or len(user_text) >= len(reference_answer) * 0.5
+            else:
+                # 如果没有参考答案或关键词，只要有作答就给分
+                is_correct = len(user_text) > 0
 
     # 创建答题记录
     # 序列化选项为字典列表
