@@ -50,11 +50,54 @@ favorites_with_question.append(FavoriteWithQuestionResponse(
 
 **文件**: backend/app/schemas/wrong_questions_schemas.py
 - 行 32: 添加 `question_number: Optional[int]`
+- 行 41: 添加 `question_options: Optional[List[Dict[str, Any]]]`
 
 **文件**: backend/app/schemas/favorites_schemas.py
 - 行 40: 添加 `question_number: Optional[int]`
 
-### 4. ✅ 错题练习模式修复 (backend/app/api/v1/practice.py)
+### 4. ✅ 题目选项显示功能 (backend/app/api/v1/wrong_questions.py)
+
+**修改位置**: 行 90-121 (list_wrong_questions 函数)
+
+**修改内容**:
+```python
+# 构造选项列表
+options_list = []
+if hasattr(question, 'options') and question.options:
+    for opt in question.options:
+        options_list.append({
+            "label": opt.option_label,
+            "content": opt.option_content,
+            "is_correct": opt.is_correct if hasattr(opt, 'is_correct') else False
+        })
+
+wrong_questions_with_details.append(WrongQuestionWithDetailsResponse(
+    # ... 其他字段
+    question_options=options_list if options_list else None  # 新增
+))
+```
+
+**修改位置**: 行 156-186 (get_wrong_question 函数)
+
+**修改内容**:
+```python
+# 构造选项列表
+options_list = []
+if hasattr(question, 'options') and question.options:
+    for opt in question.options:
+        options_list.append({
+            "label": opt.option_label,
+            "content": opt.option_content,
+            "is_correct": opt.is_correct if hasattr(opt, 'is_correct') else False
+        })
+
+return WrongQuestionWithDetailsResponse(
+    # ... 其他字段
+    question_options=options_list if options_list else None  # 新增
+)
+```
+
+### 5. ✅ 错题练习模式修复 (backend/app/api/v1/practice.py)
 
 **修改位置**: 行 85-93
 
@@ -163,6 +206,18 @@ curl -X GET "https://exam.shaynechen.tech/api/v1/wrong-questions?bank_id=$BANK_I
   -H "Content-Type: application/json" | jq '.wrong_questions[0].question_number'
 
 # 应该返回一个数字，而不是null
+
+# 同时检查是否返回question_options
+curl -X GET "https://exam.shaynechen.tech/api/v1/wrong-questions?bank_id=$BANK_ID&limit=1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" | jq '.wrong_questions[0].question_options'
+
+# 应该返回选项数组，例如:
+# [
+#   {"label": "A", "content": "选项A内容", "is_correct": false},
+#   {"label": "B", "content": "选项B内容", "is_correct": true},
+#   ...
+# ]
 ```
 
 #### 测试2: 检查收藏API是否返回question_number
@@ -204,8 +259,10 @@ journalctl -u exam-backend -f
 
 部署完成后，在Flutter应用中测试：
 
-- [ ] 错题本列表显示真实题号（不是1、2、3）
+- [ ] 错题本列表显示真实题号（不是1、2、3，而是题库中的实际题号）
 - [ ] 错题详情页面标题显示正确题号（不是"第 ? 题"）
+- [ ] 错题详情页面显示题目选项（A、B、C、D选项列表）
+- [ ] 错题详情页面正确答案显示为绿色高亮
 - [ ] 错题练习显示所有错题（进度应该是"1/10"而不是"1/2"）
 - [ ] 收藏列表显示真实题号
 - [ ] 收藏详情页面标题显示正确题号
