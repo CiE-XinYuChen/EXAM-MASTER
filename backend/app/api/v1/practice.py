@@ -82,6 +82,10 @@ def get_question_ids_for_session(
 ) -> List[str]:
     """根据模式和筛选条件获取题目ID列表"""
 
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Getting question IDs: mode={mode}, user_id={user_id}, bank_id={bank_id}")
+
     if mode == PracticeMode.wrong_only:
         # 错题模式：获取所有错题（包括已订正和未订正）
         query = db.query(UserWrongQuestion.question_id).filter(
@@ -91,6 +95,7 @@ def get_question_ids_for_session(
             )
         )
         question_ids = [q[0] for q in query.all()]
+        logger.info(f"Wrong questions mode: found {len(question_ids)} questions")
 
     elif mode == PracticeMode.favorite_only:
         # 收藏模式：只获取收藏题目
@@ -101,6 +106,12 @@ def get_question_ids_for_session(
             )
         )
         question_ids = [q[0] for q in query.all()]
+        logger.info(f"Favorite mode: found {len(question_ids)} questions")
+
+        # 如果没有找到收藏，记录详细信息
+        if not question_ids:
+            total_favorites = db.query(UserFavorite).filter(UserFavorite.user_id == user_id).count()
+            logger.warning(f"No favorites found for bank_id={bank_id}, but user has {total_favorites} total favorites")
 
     elif mode == PracticeMode.unpracticed:
         # 未练习模式：获取用户从未答过的题目

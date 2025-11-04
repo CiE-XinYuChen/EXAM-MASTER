@@ -70,10 +70,11 @@ class WrongQuestionsApi {
     }
   }
 
-  /// Mark a wrong question as corrected
-  /// 标记错题为已订正
+  /// Mark a wrong question as corrected or uncorrected
+  /// 标记错题为已订正/未订正
   ///
   /// [wrongQuestionId] - Wrong question ID
+  /// [corrected] - True to mark as corrected, false to mark as uncorrected
   ///
   /// Requires authentication
   ///
@@ -82,17 +83,18 @@ class WrongQuestionsApi {
   /// - [NetworkException]
   /// - [AuthenticationException]
   /// - [NotFoundException]
-  Future<MarkCorrectedResponse> markCorrected(String wrongQuestionId) async {
+  Future<WrongQuestionModel> markCorrected(String wrongQuestionId, bool corrected) async {
     try {
-      AppLogger.info('WrongQuestionsApi.markCorrected: $wrongQuestionId');
+      AppLogger.info('WrongQuestionsApi.markCorrected: $wrongQuestionId, corrected=$corrected');
 
-      final response = await _dioClient.post(
+      final response = await _dioClient.put(
         ApiConstants.wrongQuestionCorrect(wrongQuestionId),
+        data: {'corrected': corrected},
       );
 
       if (response.statusCode == 200) {
         AppLogger.debug('Mark corrected successful');
-        return MarkCorrectedResponse.fromJson(response.data);
+        return WrongQuestionModel.fromJson(response.data);
       } else {
         throw ServerException(
           message: 'Failed to mark corrected',

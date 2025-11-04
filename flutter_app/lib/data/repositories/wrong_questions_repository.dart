@@ -35,9 +35,12 @@ class WrongQuestionsRepository {
     }
   }
 
-  Future<Either<Failure, MarkCorrectedResponse>> markCorrected(String wrongQuestionId) async {
+  Future<Either<Failure, WrongQuestionModel>> markAsCorrected(
+    String wrongQuestionId,
+    bool corrected,
+  ) async {
     try {
-      final result = await _api.markCorrected(wrongQuestionId);
+      final result = await _api.markCorrected(wrongQuestionId, corrected);
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));

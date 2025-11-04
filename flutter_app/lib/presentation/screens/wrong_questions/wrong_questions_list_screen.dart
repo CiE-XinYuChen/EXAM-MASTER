@@ -5,6 +5,7 @@ import '../../../data/datasources/remote/wrong_questions_api.dart';
 import '../../../data/repositories/wrong_questions_repository.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/utils/logger.dart';
+import 'question_review_screen.dart';
 
 /// Wrong Questions List Screen
 /// 错题本列表页面
@@ -311,11 +312,21 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
             errorCount: wrongQuestion.errorCount,
             isCorrected: wrongQuestion.corrected,
             lastErrorDate: wrongQuestion.lastErrorAt.substring(0, 10),
-            onTap: () {
-              // Navigate to practice this question
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('题目详情功能待开发')),
+            onTap: () async {
+              // Navigate to question review screen
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => QuestionReviewScreen(
+                    wrongQuestion: wrongQuestion,
+                  ),
+                ),
               );
+
+              // Refresh list if status changed
+              if (result == true) {
+                _loadWrongQuestions();
+              }
             },
           ),
         );
