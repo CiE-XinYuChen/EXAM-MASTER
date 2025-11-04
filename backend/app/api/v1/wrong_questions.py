@@ -108,7 +108,7 @@ async def list_wrong_questions(
             first_error_at=wrong_q.first_error_at,
             last_error_at=wrong_q.last_error_at,
             corrected_at=wrong_q.corrected_at,
-            question_number=question.number if hasattr(question, 'number') else None,
+            question_number=question.question_number if hasattr(question, 'question_number') else None,
             question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),
             question_stem=question.stem,
             question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),

@@ -11,7 +11,7 @@
 # 在 list_wrong_questions 函数中
 wrong_questions_with_details.append(WrongQuestionWithDetailsResponse(
     # ... 其他字段
-    question_number=question.number if hasattr(question, 'number') else None,  # 新增
+    question_number=question.question_number if hasattr(question, 'question_number') else None,  # 新增（注意字段名是question_number）
     question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),  # 修改
     question_stem=question.stem,
     question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),  # 修改
@@ -26,7 +26,7 @@ wrong_questions_with_details.append(WrongQuestionWithDetailsResponse(
 # 在 get_wrong_question 函数中，返回时添加
 return WrongQuestionWithDetailsResponse(
     # ... 其他字段
-    question_number=question.number if hasattr(question, 'number') else None,  # 新增
+    question_number=question.question_number if hasattr(question, 'question_number') else None,  # 新增（注意字段名是question_number）
     # ... 其他字段
 )
 ```
@@ -39,7 +39,7 @@ return WrongQuestionWithDetailsResponse(
 ```python
 favorites_with_question.append(FavoriteWithQuestionResponse(
     # ... 其他字段
-    question_number=question.number if hasattr(question, 'number') else None,  # 新增
+    question_number=question.question_number if hasattr(question, 'question_number') else None,  # 新增（注意字段名是question_number）
     question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),  # 修改
     question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),  # 修改
     # ... 其他字段
