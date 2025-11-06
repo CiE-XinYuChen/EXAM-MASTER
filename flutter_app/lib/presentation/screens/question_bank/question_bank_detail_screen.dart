@@ -404,30 +404,164 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
   }
 
   Widget _buildWrongQuestionStats() {
+    if (_statistics == null || _loadingStatistics) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '学习统计',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final stats = _statistics!;
+    final accuracyRate = stats.accuracyRate ?? 0.0;
+    final totalTimeMinutes = ((stats.totalTimeSpent ?? 0) / 60).round();
+    final wrongQuestionsCount = stats.wrongQuestionsCount ?? 0;
+    final correctCount = stats.correctCount ?? 0;
+    final wrongCount = stats.wrongCount ?? 0;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '错题统计',
+            '学习统计',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
           const SizedBox(height: 16),
+
+          // Statistics cards
+          Row(
+            children: [
+              // Accuracy Rate
+              Expanded(
+                child: _StatCard(
+                  icon: Icons.task_alt,
+                  label: '正确率',
+                  value: '${accuracyRate.toStringAsFixed(1)}%',
+                  color: accuracyRate >= 80
+                      ? Colors.green
+                      : accuracyRate >= 60
+                          ? Colors.orange
+                          : Colors.red,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Total Time
+              Expanded(
+                child: _StatCard(
+                  icon: Icons.schedule,
+                  label: '学习时长',
+                  value: totalTimeMinutes < 60
+                      ? '$totalTimeMinutes分钟'
+                      : '${(totalTimeMinutes / 60).toStringAsFixed(1)}小时',
+                  color: Colors.blue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              // Correct Count
+              Expanded(
+                child: _StatCard(
+                  icon: Icons.check_circle,
+                  label: '答对题数',
+                  value: '$correctCount',
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Wrong Count
+              Expanded(
+                child: _StatCard(
+                  icon: Icons.cancel,
+                  label: '答错题数',
+                  value: '$wrongCount',
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Wrong Questions Count
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.orange.shade100,
+                  Colors.orange.shade50,
+                ],
+              ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              '功能开发中...',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-              textAlign: TextAlign.center,
+                  child: const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '错题本',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '共 $wrongQuestionsCount 道题目待订正',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey.shade600,
+                ),
+              ],
             ),
           ),
         ],
@@ -495,6 +629,61 @@ class _QuestionBankDetailScreenState extends State<QuestionBankDetailScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Stat Card
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 32,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
       ),
     );
   }

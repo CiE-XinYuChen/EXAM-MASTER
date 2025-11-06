@@ -972,6 +972,74 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Widget _buildJudge() {
+    // Get answer result if submitted
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
+
+    // Handle both bool and string types from backend
+    bool? correctAnswer;
+    final rawAnswer = answerResult?.correctAnswer['answer'];
+    if (rawAnswer is bool) {
+      correctAnswer = rawAnswer;
+    } else if (rawAnswer is String) {
+      correctAnswer = rawAnswer.toLowerCase() == 'true';
+    }
+
+    // Determine colors for each option after submission
+    Color trueBackgroundColor;
+    Color trueBorderColor;
+    Color trueIconColor;
+
+    Color falseBackgroundColor;
+    Color falseBorderColor;
+    Color falseIconColor;
+
+    if (_isAnswerSubmitted && correctAnswer != null) {
+      // After submission - show correct answer in green, wrong selection in red
+      if (correctAnswer == true) {
+        // Correct answer is TRUE
+        trueBackgroundColor = Colors.green.shade100;
+        trueBorderColor = Colors.green;
+        trueIconColor = Colors.green;
+
+        if (_judgeAnswer == false) {
+          // User selected FALSE (wrong)
+          falseBackgroundColor = Colors.red.shade100;
+          falseBorderColor = Colors.red;
+          falseIconColor = Colors.red;
+        } else {
+          falseBackgroundColor = Colors.grey.shade50;
+          falseBorderColor = Colors.grey.shade300;
+          falseIconColor = Colors.grey.shade400;
+        }
+      } else {
+        // Correct answer is FALSE
+        falseBackgroundColor = Colors.green.shade100;
+        falseBorderColor = Colors.green;
+        falseIconColor = Colors.green;
+
+        if (_judgeAnswer == true) {
+          // User selected TRUE (wrong)
+          trueBackgroundColor = Colors.red.shade100;
+          trueBorderColor = Colors.red;
+          trueIconColor = Colors.red;
+        } else {
+          trueBackgroundColor = Colors.grey.shade50;
+          trueBorderColor = Colors.grey.shade300;
+          trueIconColor = Colors.grey.shade400;
+        }
+      }
+    } else {
+      // Before submission - show selection state
+      trueBackgroundColor = _judgeAnswer == true ? Colors.green.shade100 : Colors.grey.shade50;
+      trueBorderColor = _judgeAnswer == true ? Colors.green : Colors.grey.shade300;
+      trueIconColor = _judgeAnswer == true ? Colors.green : Colors.grey.shade400;
+
+      falseBackgroundColor = _judgeAnswer == false ? Colors.red.shade100 : Colors.grey.shade50;
+      falseBorderColor = _judgeAnswer == false ? Colors.red : Colors.grey.shade300;
+      falseIconColor = _judgeAnswer == false ? Colors.red : Colors.grey.shade400;
+    }
+
     return Row(
       children: [
         Expanded(
@@ -980,21 +1048,17 @@ class _QuestionCardState extends State<QuestionCard> {
               setState(() {
                 _judgeAnswer = true;
               });
-              _saveAnswer(true);  // 保存为布尔值而不是字符串
+              _saveAnswer(true);
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: _judgeAnswer == true
-                    ? Colors.green.shade100
-                    : Colors.grey.shade50,
+                color: trueBackgroundColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _judgeAnswer == true
-                      ? Colors.green
-                      : Colors.grey.shade300,
-                  width: _judgeAnswer == true ? 2 : 1,
+                  color: trueBorderColor,
+                  width: (_isAnswerSubmitted && correctAnswer == true) || _judgeAnswer == true ? 2 : 1,
                 ),
               ),
               child: Column(
@@ -1002,7 +1066,7 @@ class _QuestionCardState extends State<QuestionCard> {
                   Icon(
                     Icons.check_circle,
                     size: 48,
-                    color: _judgeAnswer == true ? Colors.green : Colors.grey.shade400,
+                    color: trueIconColor,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1010,7 +1074,7 @@ class _QuestionCardState extends State<QuestionCard> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: _judgeAnswer == true ? Colors.green : Colors.grey.shade700,
+                      color: trueIconColor,
                     ),
                   ),
                 ],
@@ -1025,21 +1089,17 @@ class _QuestionCardState extends State<QuestionCard> {
               setState(() {
                 _judgeAnswer = false;
               });
-              _saveAnswer(false);  // 保存为布尔值而不是字符串
+              _saveAnswer(false);
             },
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: _judgeAnswer == false
-                    ? Colors.red.shade100
-                    : Colors.grey.shade50,
+                color: falseBackgroundColor,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _judgeAnswer == false
-                      ? Colors.red
-                      : Colors.grey.shade300,
-                  width: _judgeAnswer == false ? 2 : 1,
+                  color: falseBorderColor,
+                  width: (_isAnswerSubmitted && correctAnswer == false) || _judgeAnswer == false ? 2 : 1,
                 ),
               ),
               child: Column(
@@ -1047,7 +1107,7 @@ class _QuestionCardState extends State<QuestionCard> {
                   Icon(
                     Icons.cancel,
                     size: 48,
-                    color: _judgeAnswer == false ? Colors.red : Colors.grey.shade400,
+                    color: falseIconColor,
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1055,7 +1115,7 @@ class _QuestionCardState extends State<QuestionCard> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: _judgeAnswer == false ? Colors.red : Colors.grey.shade700,
+                      color: falseIconColor,
                     ),
                   ),
                 ],
@@ -1069,27 +1129,127 @@ class _QuestionCardState extends State<QuestionCard> {
 
   Widget _buildFillInTheBlank() {
     if (_fillControllers.isEmpty) {
-      _fillControllers = List.generate(1, (_) => TextEditingController());
+      // Determine number of blanks by parsing stem for ____ patterns
+      final blankCount = '____'.allMatches(widget.question.stem).length;
+      _fillControllers = List.generate(
+        blankCount > 0 ? blankCount : 1,
+        (_) => TextEditingController(),
+      );
     }
+
+    // Get answer result if submitted
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
+    final correctBlanks = answerResult?.correctAnswer['blanks'] as List?;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ...List.generate(_fillControllers.length, (index) {
+          // Check if this blank is correct after submission
+          bool? isCorrect;
+          String? correctAnswer;
+
+          if (_isAnswerSubmitted && correctBlanks != null && index < correctBlanks.length) {
+            final blank = correctBlanks[index];
+            correctAnswer = blank['answer'] as String?;
+            final userAnswer = _fillControllers[index].text.trim().toLowerCase();
+            final standardAnswer = correctAnswer?.trim().toLowerCase() ?? '';
+            final alternatives = (blank['alternatives'] as List?)?.map((e) => e.toString().trim().toLowerCase()).toList() ?? [];
+
+            isCorrect = userAnswer == standardAnswer || alternatives.contains(userAnswer);
+          }
+
+          // Determine colors based on correctness
+          Color borderColor;
+          Color fillColor;
+
+          if (_isAnswerSubmitted && isCorrect != null) {
+            if (isCorrect) {
+              borderColor = Colors.green;
+              fillColor = Colors.green.shade50;
+            } else {
+              borderColor = Colors.orange;
+              fillColor = Colors.orange.shade50;
+            }
+          } else {
+            borderColor = Colors.grey.shade400;
+            fillColor = Colors.white;
+          }
+
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: TextField(
-              controller: _fillControllers[index],
-              enabled: !_isAnswerSubmitted,
-              decoration: InputDecoration(
-                labelText: '答案 ${index + 1}',
-                hintText: '请输入答案',
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                final answers = _fillControllers.map((c) => c.text).toList();
-                _saveAnswer(answers);
-              },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _fillControllers[index],
+                  enabled: !_isAnswerSubmitted,
+                  decoration: InputDecoration(
+                    labelText: '答案 ${index + 1}',
+                    hintText: '请输入答案',
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor, width: 2),
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: borderColor, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: fillColor,
+                    suffixIcon: _isAnswerSubmitted && isCorrect != null
+                        ? Icon(
+                            isCorrect ? Icons.check_circle : Icons.error,
+                            color: isCorrect ? Colors.green : Colors.orange,
+                          )
+                        : null,
+                  ),
+                  onChanged: (value) {
+                    final answers = _fillControllers.map((c) => c.text).toList();
+                    _saveAnswer(answers);
+                  },
+                ),
+                // Show correct answer if wrong
+                if (_isAnswerSubmitted && isCorrect == false && correctAnswer != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green, width: 1),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.lightbulb_outline, size: 16, color: Colors.green.shade700),
+                          const SizedBox(width: 8),
+                          Text(
+                            '正确答案: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            correctAnswer,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green.shade900,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           );
         }),
@@ -1098,18 +1258,98 @@ class _QuestionCardState extends State<QuestionCard> {
   }
 
   Widget _buildEssay() {
-    return TextField(
-      controller: _essayController,
-      enabled: !_isAnswerSubmitted,
-      maxLines: 8,
-      decoration: const InputDecoration(
-        labelText: '请作答',
-        hintText: '请输入您的答案...',
-        border: OutlineInputBorder(),
-      ),
-      onChanged: (value) {
-        _saveAnswer(value);
-      },
+    // Get answer result if submitted
+    final provider = context.read<PracticeProvider>();
+    final answerResult = provider.getAnswerResult(widget.question.id);
+    final referenceAnswer = answerResult?.correctAnswer['reference_answer'] as String?;
+    final isCorrect = answerResult?.isCorrect ?? false;
+
+    // Determine colors based on correctness
+    Color borderColor = Colors.grey.shade400;
+    Color fillColor = Colors.white;
+
+    if (_isAnswerSubmitted) {
+      borderColor = isCorrect ? Colors.green : Colors.orange;
+      fillColor = isCorrect ? Colors.green.shade50 : Colors.orange.shade50;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _essayController,
+          enabled: !_isAnswerSubmitted,
+          maxLines: 8,
+          decoration: InputDecoration(
+            labelText: '请作答',
+            hintText: '请输入您的答案...',
+            border: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor, width: 2),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor, width: 2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor, width: 2),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: borderColor, width: 2),
+            ),
+            filled: true,
+            fillColor: fillColor,
+          ),
+          onChanged: (value) {
+            _saveAnswer(value);
+          },
+        ),
+        // Show reference answer after submission
+        if (_isAnswerSubmitted && referenceAnswer != null && referenceAnswer.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isCorrect ? Colors.green.shade50 : Colors.yellow.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isCorrect ? Colors.green : Colors.orange,
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.lightbulb_outline,
+                        color: isCorrect ? Colors.green.shade700 : Colors.orange.shade700,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '参考答案',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isCorrect ? Colors.green.shade900 : Colors.orange.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    referenceAnswer,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: isCorrect ? Colors.green.shade900 : Colors.orange.shade900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -1415,7 +1655,7 @@ class _QuestionCardState extends State<QuestionCard> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

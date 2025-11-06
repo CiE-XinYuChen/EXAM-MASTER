@@ -573,8 +573,9 @@ async def submit_answer(
     is_correct = False
     # 确保correct_answer是纯字典，避免包含ORM对象
     correct_answer_raw = question.correct_answer or {}
-    # 深拷贝并确保所有值都是可序列化的
-    correct_answer = json.loads(json.dumps(correct_answer_raw, default=str))
+    # 深拷贝，保持原始数据类型（尤其是bool类型）
+    import copy
+    correct_answer = copy.deepcopy(correct_answer_raw)
     user_answer = answer_data.user_answer
 
     # 根据题型判断正确性

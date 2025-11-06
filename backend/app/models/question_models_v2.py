@@ -200,28 +200,32 @@ class QuestionV2(BaseQBank):
             return {"answers": correct_labels}
 
         elif self.type == QuestionType.judge:
-            # 判断题：从meta_data获取答案
+            # 判断题：从meta_data获取答案（保持布尔类型）
             if self.meta_data and "answer" in self.meta_data:
                 answer_value = self.meta_data["answer"]
-                # 转换为字符串表示（"true"或"false"）
-                return {"answer": str(answer_value).lower()}
+                # 确保返回布尔类型
+                if isinstance(answer_value, bool):
+                    return {"answer": answer_value}
+                elif isinstance(answer_value, str):
+                    return {"answer": answer_value.lower() == "true"}
+                else:
+                    return {"answer": bool(answer_value)}
             return {"answer": None}
 
         elif self.type == QuestionType.fill:
-            # 填空题：从meta_data获取答案
+            # 填空题：从meta_data获取答案（返回完整的blanks信息）
             if self.meta_data and "blanks" in self.meta_data:
-                answers = [blank.get("answer", "") for blank in self.meta_data["blanks"]]
-                return {"fill_answers": answers}
-            return {"fill_answers": []}
+                return {"blanks": self.meta_data["blanks"]}
+            return {"blanks": []}
 
         elif self.type == QuestionType.essay:
             # 问答题：从meta_data获取参考答案
             if self.meta_data and "reference_answer" in self.meta_data:
                 return {
-                    "essay_answer": self.meta_data["reference_answer"],
+                    "reference_answer": self.meta_data["reference_answer"],
                     "keywords": self.meta_data.get("keywords", [])
                 }
-            return {"essay_answer": ""}
+            return {"reference_answer": "", "keywords": []}
 
         return {}
 
