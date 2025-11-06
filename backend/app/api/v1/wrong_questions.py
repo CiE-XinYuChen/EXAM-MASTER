@@ -97,6 +97,18 @@ async def list_wrong_questions(
                     "is_correct": opt.is_correct if hasattr(opt, 'is_correct') else False
                 })
 
+        # 获取题号，如果为空则查询该题目在题库中的位置
+        question_num = question.question_number if hasattr(question, 'question_number') else None
+        if question_num is None and question.bank_id:
+            # 查询该题目在题库中的顺序位置
+            position = db.query(func.count(QuestionV2.id)).filter(
+                and_(
+                    QuestionV2.bank_id == question.bank_id,
+                    QuestionV2.created_at <= question.created_at
+                )
+            ).scalar()
+            question_num = position if position else None
+
         wrong_questions_with_details.append(WrongQuestionWithDetailsResponse(
             id=wrong_q.id,
             user_id=wrong_q.user_id,
@@ -108,7 +120,7 @@ async def list_wrong_questions(
             first_error_at=wrong_q.first_error_at,
             last_error_at=wrong_q.last_error_at,
             corrected_at=wrong_q.corrected_at,
-            question_number=question.question_number if hasattr(question, 'question_number') else None,
+            question_number=question_num,
             question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),
             question_stem=question.stem,
             question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),
@@ -163,6 +175,18 @@ async def get_wrong_question(
                 "is_correct": opt.is_correct if hasattr(opt, 'is_correct') else False
             })
 
+    # 获取题号，如果为空则查询该题目在题库中的位置
+    question_num = question.question_number if hasattr(question, 'question_number') else None
+    if question_num is None and question.bank_id:
+        # 查询该题目在题库中的顺序位置
+        position = db.query(func.count(QuestionV2.id)).filter(
+            and_(
+                QuestionV2.bank_id == question.bank_id,
+                QuestionV2.created_at <= question.created_at
+            )
+        ).scalar()
+        question_num = position if position else None
+
     return WrongQuestionWithDetailsResponse(
         id=wrong_q.id,
         user_id=wrong_q.user_id,
@@ -174,7 +198,7 @@ async def get_wrong_question(
         first_error_at=wrong_q.first_error_at,
         last_error_at=wrong_q.last_error_at,
         corrected_at=wrong_q.corrected_at,
-        question_number=question.number if hasattr(question, 'number') else None,
+        question_number=question_num,
         question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),
         question_stem=question.stem,
         question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),

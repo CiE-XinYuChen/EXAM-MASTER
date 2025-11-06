@@ -139,6 +139,18 @@ async def list_favorites(
                     for opt in question_options
                 ]
 
+        # 获取题号，如果为空则查询该题目在题库中的位置
+        question_num = question.question_number if hasattr(question, 'question_number') else None
+        if question_num is None and question.bank_id:
+            # 查询该题目在题库中的顺序位置
+            position = db.query(func.count(QuestionV2.id)).filter(
+                and_(
+                    QuestionV2.bank_id == question.bank_id,
+                    QuestionV2.created_at <= question.created_at
+                )
+            ).scalar()
+            question_num = position if position else None
+
         favorites_with_question.append(FavoriteWithQuestionResponse(
             id=favorite.id,
             user_id=favorite.user_id,
@@ -146,7 +158,7 @@ async def list_favorites(
             bank_id=favorite.bank_id,
             note=favorite.note,
             created_at=favorite.created_at,
-            question_number=question.question_number if hasattr(question, 'question_number') else None,
+            question_number=question_num,
             question_type=question.type.value if hasattr(question.type, 'value') else str(question.type),
             question_stem=question.stem,
             question_difficulty=question.difficulty.value if (question.difficulty and hasattr(question.difficulty, 'value')) else (question.difficulty if isinstance(question.difficulty, str) else None),
