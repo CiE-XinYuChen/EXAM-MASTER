@@ -66,6 +66,7 @@ dependencies:
   logger: ^2.0.2+1
   connectivity_plus: ^5.0.2
   dartz: ^0.10.1
+  url_launcher: ^6.2.2
 
   # Local Database
   sqflite: ^2.3.0

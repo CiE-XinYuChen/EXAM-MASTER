@@ -98,12 +98,17 @@ class _FavoriteQuestionDetailScreenState
                   _buildQuestionStem(),
                   const SizedBox(height: 24),
 
-                  // Options (if available)
+                  // Options or Correct Answer (if available)
                   if (widget.favorite.questionOptions != null &&
                       widget.favorite.questionOptions!.isNotEmpty) ...[
                     _buildSectionTitle('选项'),
                     const SizedBox(height: 8),
                     _buildOptions(),
+                    const SizedBox(height: 24),
+                  ] else if (widget.favorite.correctAnswer != null) ...[
+                    _buildSectionTitle('正确答案'),
+                    const SizedBox(height: 8),
+                    _buildCorrectAnswer(),
                     const SizedBox(height: 24),
                   ],
 
@@ -344,6 +349,191 @@ class _FavoriteQuestionDetailScreenState
         ),
       ),
     );
+  }
+
+  Widget _buildCorrectAnswer() {
+    final typeStr = widget.favorite.questionType.toString();
+    final correctAnswer = widget.favorite.correctAnswer;
+
+    if (correctAnswer == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          '暂无答案',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.grey.shade600,
+              ),
+        ),
+      );
+    }
+
+    // Judge question
+    if (typeStr.contains('judge')) {
+      final answer = correctAnswer['answer'];
+      final isTrue = answer == true || answer == 'true';
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          border: Border.all(color: Colors.green, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isTrue ? Icons.check_circle : Icons.cancel,
+              color: Colors.green.shade700,
+              size: 32,
+            ),
+            const SizedBox(width: 16),
+            Text(
+              '正确答案：${isTrue ? '正确' : '错误'}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.green.shade900,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Fill-in-blank question
+    if (typeStr.contains('fill')) {
+      final blanks = correctAnswer['blanks'] as List?;
+      if (blanks == null || blanks.isEmpty) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            '暂无答案',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey.shade600,
+                ),
+          ),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: blanks.asMap().entries.map((entry) {
+          final index = entry.key;
+          final blank = entry.value;
+          final answer = blank['answer']?.toString() ?? '';
+          final alternatives = (blank['alternatives'] as List?)
+                  ?.map((e) => e.toString())
+                  .where((e) => e.isNotEmpty)
+                  .toList() ??
+              [];
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              border: Border.all(color: Colors.green),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '空格 ${index + 1}：$answer',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade900,
+                      ),
+                ),
+                if (alternatives.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      '备选答案：${alternatives.join('、')}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.green.shade700,
+                          ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    // Essay question
+    if (typeStr.contains('essay')) {
+      final referenceAnswer = correctAnswer['reference_answer']?.toString() ?? '';
+      final keywords = (correctAnswer['keywords'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [];
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          border: Border.all(color: Colors.green, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.lightbulb_outline, color: Colors.green.shade700),
+                const SizedBox(width: 8),
+                Text(
+                  '参考答案',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.green.shade900,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+            if (referenceAnswer.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                referenceAnswer,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.6,
+                      color: Colors.green.shade900,
+                    ),
+              ),
+            ],
+            if (keywords.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: keywords.map((keyword) {
+                  return Chip(
+                    label: Text(keyword),
+                    backgroundColor: Colors.green.shade100,
+                    labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.green.shade700,
+                        ),
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   String _getQuestionTypeLabel(String type) {

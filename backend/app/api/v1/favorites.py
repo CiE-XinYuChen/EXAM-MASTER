@@ -165,6 +165,7 @@ async def list_favorites(
             question_tags=question.tags,
             question_options=options,
             question_explanation=question.explanation,
+            correct_answer=question.correct_answer if hasattr(question, 'correct_answer') else None,
             has_image=question.has_image if hasattr(question, 'has_image') else False,
             has_video=question.has_video if hasattr(question, 'has_video') else False,
             has_audio=question.has_audio if hasattr(question, 'has_audio') else False

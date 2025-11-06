@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/auth_provider.dart';
 
 /// Profile Tab
 /// 个人中心标签
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
+
+  Future<void> _launchGitHub() async {
+    final uri = Uri.parse('https://github.com/CiE-XinYuChen/EXAM-MASTER');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -95,39 +103,6 @@ class ProfileTab extends StatelessWidget {
 
               // Menu Items
               ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: const Text('个人信息'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to profile edit
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.card_membership_outlined),
-                title: const Text('我的权限'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to my access
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.favorite_outline),
-                title: const Text('我的收藏'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to favorites
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.error_outline),
-                title: const Text('错题本'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  // TODO: Navigate to wrong questions
-                },
-              ),
-              const Divider(),
-              ListTile(
                 leading: const Icon(Icons.settings_outlined),
                 title: const Text('设置'),
                 trailing: const Icon(Icons.chevron_right),
@@ -151,6 +126,63 @@ class ProfileTab extends StatelessWidget {
                   style: TextStyle(color: Colors.red),
                 ),
                 onTap: () => _handleLogout(context),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Open Source Information
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Column(
+                  children: [
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Icon(
+                      Icons.code,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '本项目开源',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'MIT License',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _launchGitHub,
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('访问 GitHub 仓库'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'github.com/CiE-XinYuChen/EXAM-MASTER',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ],
           );

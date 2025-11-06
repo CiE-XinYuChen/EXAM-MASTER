@@ -51,6 +51,7 @@ class FavoriteWithQuestionResponse(FavoriteResponse):
     question_tags: Optional[List[str]]
     question_options: Optional[List[QuestionOption]] = None
     question_explanation: Optional[str] = None
+    correct_answer: Optional[Dict] = None
     has_image: bool
     has_video: bool
     has_audio: bool

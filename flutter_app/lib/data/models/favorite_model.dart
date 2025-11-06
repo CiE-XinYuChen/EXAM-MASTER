@@ -57,6 +57,8 @@ class FavoriteModel extends Equatable {
   final List<QuestionOption>? questionOptions;
   @JsonKey(name: 'question_explanation')
   final String? questionExplanation;
+  @JsonKey(name: 'correct_answer')
+  final Map<String, dynamic>? correctAnswer;
   @JsonKey(name: 'has_image')
   final bool? hasImage;
   @JsonKey(name: 'has_video')
@@ -78,6 +80,7 @@ class FavoriteModel extends Equatable {
     this.questionTags,
     this.questionOptions,
     this.questionExplanation,
+    this.correctAnswer,
     this.hasImage,
     this.hasVideo,
     this.hasAudio,
@@ -103,6 +106,7 @@ class FavoriteModel extends Equatable {
         questionTags,
         questionOptions,
         questionExplanation,
+        correctAnswer,
         hasImage,
         hasVideo,
         hasAudio,
@@ -121,6 +125,7 @@ class FavoriteModel extends Equatable {
     List<String>? questionTags,
     List<QuestionOption>? questionOptions,
     String? questionExplanation,
+    Map<String, dynamic>? correctAnswer,
     bool? hasImage,
     bool? hasVideo,
     bool? hasAudio,
@@ -138,6 +143,7 @@ class FavoriteModel extends Equatable {
       questionTags: questionTags ?? this.questionTags,
       questionOptions: questionOptions ?? this.questionOptions,
       questionExplanation: questionExplanation ?? this.questionExplanation,
+      correctAnswer: correctAnswer ?? this.correctAnswer,
       hasImage: hasImage ?? this.hasImage,
       hasVideo: hasVideo ?? this.hasVideo,
       hasAudio: hasAudio ?? this.hasAudio,
