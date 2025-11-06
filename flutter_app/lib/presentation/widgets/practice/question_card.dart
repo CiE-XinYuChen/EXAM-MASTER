@@ -995,38 +995,62 @@ class _QuestionCardState extends State<QuestionCard> {
     Color falseIconColor;
 
     if (_isAnswerSubmitted && correctAnswer != null) {
-      // After submission - show correct answer in green, wrong selection in red
-      if (correctAnswer == true) {
-        // Correct answer is TRUE
-        trueBackgroundColor = Colors.green.shade100;
-        trueBorderColor = Colors.green;
-        trueIconColor = Colors.green;
+      // Check if user answered correctly
+      final isUserCorrect = _judgeAnswer == correctAnswer;
 
-        if (_judgeAnswer == false) {
-          // User selected FALSE (wrong)
-          falseBackgroundColor = Colors.red.shade100;
-          falseBorderColor = Colors.red;
-          falseIconColor = Colors.red;
-        } else {
+      if (isUserCorrect) {
+        // User answered correctly - show selected answer in green
+        if (correctAnswer == true) {
+          trueBackgroundColor = Colors.green.shade100;
+          trueBorderColor = Colors.green;
+          trueIconColor = Colors.green;
+
           falseBackgroundColor = Colors.grey.shade50;
           falseBorderColor = Colors.grey.shade300;
           falseIconColor = Colors.grey.shade400;
-        }
-      } else {
-        // Correct answer is FALSE
-        falseBackgroundColor = Colors.green.shade100;
-        falseBorderColor = Colors.green;
-        falseIconColor = Colors.green;
-
-        if (_judgeAnswer == true) {
-          // User selected TRUE (wrong)
-          trueBackgroundColor = Colors.red.shade100;
-          trueBorderColor = Colors.red;
-          trueIconColor = Colors.red;
         } else {
+          falseBackgroundColor = Colors.green.shade100;
+          falseBorderColor = Colors.green;
+          falseIconColor = Colors.green;
+
           trueBackgroundColor = Colors.grey.shade50;
           trueBorderColor = Colors.grey.shade300;
           trueIconColor = Colors.grey.shade400;
+        }
+      } else {
+        // User answered incorrectly
+        if (correctAnswer == true) {
+          // Correct answer is TRUE - show in red
+          trueBackgroundColor = Colors.red.shade100;
+          trueBorderColor = Colors.red;
+          trueIconColor = Colors.red;
+
+          if (_judgeAnswer == false) {
+            // User selected FALSE (wrong) - show in yellow
+            falseBackgroundColor = Colors.yellow.shade100;
+            falseBorderColor = Colors.orange;
+            falseIconColor = Colors.orange;
+          } else {
+            falseBackgroundColor = Colors.grey.shade50;
+            falseBorderColor = Colors.grey.shade300;
+            falseIconColor = Colors.grey.shade400;
+          }
+        } else {
+          // Correct answer is FALSE - show in red
+          falseBackgroundColor = Colors.red.shade100;
+          falseBorderColor = Colors.red;
+          falseIconColor = Colors.red;
+
+          if (_judgeAnswer == true) {
+            // User selected TRUE (wrong) - show in yellow
+            trueBackgroundColor = Colors.yellow.shade100;
+            trueBorderColor = Colors.orange;
+            trueIconColor = Colors.orange;
+          } else {
+            trueBackgroundColor = Colors.grey.shade50;
+            trueBorderColor = Colors.grey.shade300;
+            trueIconColor = Colors.grey.shade400;
+          }
         }
       }
     } else {

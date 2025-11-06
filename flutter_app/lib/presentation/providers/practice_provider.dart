@@ -265,8 +265,8 @@ class PracticeProvider with ChangeNotifier {
           answerMap = {'fill_answers': userAnswer};
         }
       } else if (userAnswer is bool) {
-        // For judge questions
-        answerMap = {'answer': userAnswer.toString()};
+        // For judge questions - keep as boolean, don't convert to string
+        answerMap = {'answer': userAnswer};
       } else if (userAnswer is Map) {
         answerMap = Map<String, dynamic>.from(userAnswer);
       } else {
