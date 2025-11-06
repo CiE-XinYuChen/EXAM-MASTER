@@ -149,8 +149,75 @@
                 <!-- 题目解析 -->
                 <div class="form-group mt-3">
                     <label>题目解析（可选）</label>
-                    <textarea name="explanation" class="form-control" rows="3" 
+                    <textarea name="explanation" class="form-control" rows="3"
                               placeholder="解题思路或答案解释..."></textarea>
+                </div>
+            </div>
+
+            <!-- 多媒体资源管理 -->
+            <div class="form-section">
+                <h4 class="section-title">
+                    <i class="fas fa-photo-video"></i> 多媒体资源
+                </h4>
+
+                <div class="media-upload-area">
+                    <div class="upload-tabs">
+                        <button type="button" class="tab-btn active" onclick="switchMediaTab('image')">
+                            <i class="fas fa-image"></i> 图片
+                        </button>
+                        <button type="button" class="tab-btn" onclick="switchMediaTab('video')">
+                            <i class="fas fa-video"></i> 视频
+                        </button>
+                        <button type="button" class="tab-btn" onclick="switchMediaTab('audio')">
+                            <i class="fas fa-music"></i> 音频
+                        </button>
+                    </div>
+
+                    <div class="upload-content">
+                        <!-- 图片上传 -->
+                        <div id="imageTab" class="media-tab active">
+                            <div class="upload-dropzone" onclick="document.getElementById('imageInput').click()">
+                                <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                                <p>点击或拖拽上传图片</p>
+                                <small class="text-muted">支持 JPG, PNG, GIF 格式</small>
+                            </div>
+                            <input type="file" id="imageInput" accept="image/*" multiple
+                                   style="display: none;" onchange="handleMediaUpload(this, 'image')">
+
+                            <div id="imageList" class="media-list"></div>
+                        </div>
+
+                        <!-- 视频上传 -->
+                        <div id="videoTab" class="media-tab">
+                            <div class="upload-dropzone" onclick="document.getElementById('videoInput').click()">
+                                <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                                <p>点击或拖拽上传视频</p>
+                                <small class="text-muted">支持 MP4, AVI, MOV 格式</small>
+                            </div>
+                            <input type="file" id="videoInput" accept="video/*" multiple
+                                   style="display: none;" onchange="handleMediaUpload(this, 'video')">
+
+                            <div id="videoList" class="media-list"></div>
+                        </div>
+
+                        <!-- 音频上传 -->
+                        <div id="audioTab" class="media-tab">
+                            <div class="upload-dropzone" onclick="document.getElementById('audioInput').click()">
+                                <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                                <p>点击或拖拽上传音频</p>
+                                <small class="text-muted">支持 MP3, WAV, OGG 格式</small>
+                            </div>
+                            <input type="file" id="audioInput" accept="audio/*" multiple
+                                   style="display: none;" onchange="handleMediaUpload(this, 'audio')">
+
+                            <div id="audioList" class="media-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="media-help">
+                        <i class="fas fa-info-circle"></i>
+                        <span>上传的资源可以关联到题干或选项，保存题目后会自动上传</span>
+                    </div>
                 </div>
             </div>
 
@@ -678,6 +745,345 @@ document.getElementById('questionForm').addEventListener('submit', function(e) {
         }
     });
 });
+
+// ==================== 多媒体上传功能 ====================
+let mediaFiles = {
+    image: [],
+    video: [],
+    audio: []
+};
+
+// 切换媒体类型标签
+function switchMediaTab(type) {
+    // 隐藏所有标签页
+    document.querySelectorAll('.media-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // 显示选中的标签页
+    document.getElementById(type + 'Tab').classList.add('active');
+    event.target.classList.add('active');
+}
+
+// 处理媒体文件上传
+function handleMediaUpload(input, type) {
+    const files = Array.from(input.files);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+        // 验证文件类型
+        if (!validateMediaFile(file, type)) {
+            showNotification(`不支持的${getMediaTypeName(type)}格式: ${file.name}`, 'error');
+            return;
+        }
+
+        // 验证文件大小 (最大100MB)
+        if (file.size > 100 * 1024 * 1024) {
+            showNotification(`文件过大: ${file.name} (最大100MB)`, 'error');
+            return;
+        }
+
+        const mediaItem = {
+            file: file,
+            preview: URL.createObjectURL(file),
+            association: 'stem', // 默认关联到题干
+            id: Date.now() + Math.random() // 唯一ID
+        };
+
+        mediaFiles[type].push(mediaItem);
+        addMediaPreview(mediaItem, type);
+    });
+
+    // 清空input以允许重复上传同一文件
+    input.value = '';
+}
+
+// 验证媒体文件类型
+function validateMediaFile(file, type) {
+    const validTypes = {
+        image: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'],
+        video: ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv', 'video/webm'],
+        audio: ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/flac']
+    };
+
+    return validTypes[type].includes(file.type) ||
+           validTypes[type].some(t => file.name.toLowerCase().endsWith(t.split('/')[1]));
+}
+
+// 获取媒体类型中文名
+function getMediaTypeName(type) {
+    const names = { image: '图片', video: '视频', audio: '音频' };
+    return names[type] || type;
+}
+
+// 添加媒体预览
+function addMediaPreview(mediaItem, type) {
+    const listDiv = document.getElementById(type + 'List');
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'media-item';
+    itemDiv.setAttribute('data-id', mediaItem.id);
+
+    let previewHtml = '';
+    if (type === 'image') {
+        previewHtml = `
+            <div class="media-preview">
+                <img src="${mediaItem.preview}" alt="预览">
+            </div>
+        `;
+    } else if (type === 'video') {
+        previewHtml = `
+            <div class="media-preview">
+                <video src="${mediaItem.preview}" controls></video>
+            </div>
+        `;
+    } else if (type === 'audio') {
+        previewHtml = `
+            <div class="media-preview audio-preview">
+                <i class="fas fa-music fa-3x"></i>
+                <audio src="${mediaItem.preview}" controls></audio>
+            </div>
+        `;
+    }
+
+    itemDiv.innerHTML = `
+        ${previewHtml}
+        <div class="media-info">
+            <div class="media-name" title="${mediaItem.file.name}">
+                <i class="fas fa-${getMediaIcon(type)}"></i>
+                ${truncateFileName(mediaItem.file.name, 30)}
+            </div>
+            <div class="media-size">${formatFileSize(mediaItem.file.size)}</div>
+            <div class="media-association">
+                <label>关联到:</label>
+                <select class="association-select" onchange="updateMediaAssociation('${type}', '${mediaItem.id}', this.value)">
+                    <option value="stem">题干</option>
+                    <option value="explanation">解析</option>
+                    <option value="option_a">选项 A</option>
+                    <option value="option_b">选项 B</option>
+                    <option value="option_c">选项 C</option>
+                    <option value="option_d">选项 D</option>
+                    <option value="option_e">选项 E</option>
+                    <option value="option_f">选项 F</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeMediaFile('${type}', '${mediaItem.id}')">
+                <i class="fas fa-trash"></i> 删除
+            </button>
+        </div>
+    `;
+
+    listDiv.appendChild(itemDiv);
+}
+
+// 更新媒体关联
+function updateMediaAssociation(type, id, association) {
+    const item = mediaFiles[type].find(m => m.id == id);
+    if (item) {
+        item.association = association;
+    }
+}
+
+// 删除媒体文件
+function removeMediaFile(type, id) {
+    // 从数组中移除
+    const index = mediaFiles[type].findIndex(m => m.id == id);
+    if (index > -1) {
+        URL.revokeObjectURL(mediaFiles[type][index].preview);
+        mediaFiles[type].splice(index, 1);
+    }
+
+    // 从DOM中移除
+    const itemDiv = document.querySelector(`.media-item[data-id="${id}"]`);
+    if (itemDiv) {
+        itemDiv.remove();
+    }
+}
+
+// 获取媒体图标
+function getMediaIcon(type) {
+    const icons = { image: 'image', video: 'video', audio: 'music' };
+    return icons[type] || 'file';
+}
+
+// 截断文件名
+function truncateFileName(name, maxLength) {
+    if (name.length <= maxLength) return name;
+    const ext = name.split('.').pop();
+    const nameWithoutExt = name.substring(0, name.lastIndexOf('.'));
+    const truncated = nameWithoutExt.substring(0, maxLength - ext.length - 4) + '...';
+    return truncated + '.' + ext;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+}
+
+// 上传所有媒体文件到服务器
+async function uploadAllMediaFiles(questionId) {
+    const uploadPromises = [];
+
+    for (const type of ['image', 'video', 'audio']) {
+        for (const mediaItem of mediaFiles[type]) {
+            const formData = new FormData();
+            formData.append('file', mediaItem.file);
+            formData.append('question_id', questionId);
+            formData.append('association', mediaItem.association);
+
+            const uploadPromise = fetch('/api/v1/qbank/resources/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => {
+                if (!response.ok) {
+                    console.error(`上传失败: ${mediaItem.file.name}`);
+                    return { success: false, file: mediaItem.file.name };
+                }
+                return { success: true, file: mediaItem.file.name };
+            }).catch(error => {
+                console.error(`上传错误: ${mediaItem.file.name}`, error);
+                return { success: false, file: mediaItem.file.name };
+            });
+
+            uploadPromises.push(uploadPromise);
+        }
+    }
+
+    if (uploadPromises.length > 0) {
+        const results = await Promise.all(uploadPromises);
+        const failed = results.filter(r => !r.success);
+
+        if (failed.length > 0) {
+            showNotification(`${failed.length} 个媒体文件上传失败`, 'error');
+        } else {
+            showNotification('所有媒体文件上传成功', 'success');
+        }
+    }
+}
+
+// 修改原有的表单提交处理，整合媒体上传
+const originalFormHandler = document.getElementById('submitBtn').onclick;
+document.getElementById('submitBtn').onclick = async function() {
+    const formData = new FormData(document.getElementById('questionForm'));
+
+    // 构建题目数据
+    const questionData = {
+        bank_id: formData.get('bank_id'),
+        question_number: parseInt(formData.get('question_number')) || 0,
+        type: formData.get('type'),
+        difficulty: formData.get('difficulty') || 'medium',
+        category: formData.get('category') || '',
+        stem: formData.get('stem'),
+        explanation: formData.get('explanation') || '',
+        meta_data: {}
+    };
+
+    // 根据题型构建不同的meta_data
+    switch (questionData.type) {
+        case 'single':
+        case 'multiple':
+            questionData.options = [];
+            const correctOptions = questionData.type === 'single' ?
+                [formData.get('correct_option')] :
+                formData.getAll('correct_options[]');
+
+            for (let i = 0; i < optionCount; i++) {
+                const content = formData.get(`option_content_${i}`);
+                if (content) {
+                    questionData.options.push({
+                        label: String.fromCharCode(65 + i),
+                        content: content,
+                        is_correct: correctOptions.includes(String(i))
+                    });
+                }
+            }
+            break;
+
+        case 'judge':
+            questionData.meta_data.answer = formData.get('judge_answer') === 'true';
+            break;
+
+        case 'fill':
+            const blanks = [];
+            const stem = formData.get('stem');
+            const blankMatches = stem.match(/____+/g) || [];
+            blankMatches.forEach((blank, index) => {
+                blanks.push({
+                    position: index,
+                    answer: formData.get(`blank_answer_${index}`),
+                    alternatives: formData.get(`blank_alt_${index}`) ?
+                                  [formData.get(`blank_alt_${index}`)] : []
+                });
+            });
+            questionData.meta_data.blanks = blanks;
+            break;
+
+        case 'essay':
+            questionData.meta_data.reference_answer = formData.get('reference_answer');
+            const keywords = formData.get('keywords');
+            if (keywords) {
+                questionData.meta_data.keywords = keywords.split(',').map(k => k.trim());
+            }
+            break;
+    }
+
+    try {
+        // 先提交题目
+        const response = await fetch('/admin/questions/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(questionData)
+        });
+
+        if (!response.ok && response.status !== 303) {
+            throw new Error('题目保存失败');
+        }
+
+        const result = await response.json();
+        const questionId = result.question_id || result.id;
+
+        // 上传媒体文件
+        if (questionId) {
+            await uploadAllMediaFiles(questionId);
+        }
+
+        // 根据按钮决定后续操作
+        if (formData.get('continue')) {
+            showNotification('题目已保存，请继续添加', 'success');
+
+            // 清空表单但保留题库
+            const bankId = formData.get('bank_id');
+            document.getElementById('questionForm').reset();
+            document.querySelector('[name="bank_id"]').value = bankId;
+            optionCount = 0;
+            document.getElementById('optionsList').innerHTML = '';
+            document.querySelectorAll('.question-specific').forEach(el => {
+                el.style.display = 'none';
+            });
+
+            // 清空媒体文件
+            mediaFiles = { image: [], video: [], audio: [] };
+            document.getElementById('imageList').innerHTML = '';
+            document.getElementById('videoList').innerHTML = '';
+            document.getElementById('audioList').innerHTML = '';
+
+            updateQuestionForm();
+        } else {
+            window.location.href = '/admin/questions';
+        }
+
+    } catch (error) {
+        showNotification('保存失败: ' + error.message, 'error');
+        console.error('Error:', error);
+    }
+};
 </script>
 
 <style>
@@ -713,6 +1119,204 @@ document.getElementById('questionForm').addEventListener('submit', function(e) {
     background-color: #f8d7da;
     border-color: #f5c6cb;
     color: #721c24;
+}
+
+/* 多媒体上传样式 */
+.media-upload-area {
+    margin-top: 10px;
+}
+
+.upload-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+    color: #333;
+    background-color: #f5f5f5;
+}
+
+.tab-btn.active {
+    color: #4CAF50;
+    border-bottom-color: #4CAF50;
+    font-weight: 600;
+}
+
+.tab-btn i {
+    margin-right: 5px;
+}
+
+.media-tab {
+    display: none;
+}
+
+.media-tab.active {
+    display: block;
+}
+
+.upload-dropzone {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #fafafa;
+}
+
+.upload-dropzone:hover {
+    border-color: #4CAF50;
+    background-color: #f0f8f0;
+}
+
+.upload-dropzone i {
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.upload-dropzone p {
+    color: #666;
+    margin: 10px 0 0 0;
+}
+
+.upload-dropzone small {
+    color: #999;
+    font-size: 12px;
+}
+
+.media-list {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.media-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+    transition: box-shadow 0.3s ease;
+}
+
+.media-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.media-preview {
+    width: 100%;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.media-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.media-preview video {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.media-preview.audio-preview {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+}
+
+.media-preview.audio-preview i {
+    color: #999;
+}
+
+.media-preview audio {
+    width: 90%;
+}
+
+.media-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.media-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.media-name i {
+    margin-right: 5px;
+    color: #4CAF50;
+}
+
+.media-size {
+    font-size: 12px;
+    color: #999;
+}
+
+.media-association {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.media-association label {
+    font-weight: 500;
+    color: #666;
+    margin: 0;
+    min-width: 60px;
+}
+
+.association-select {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.association-select:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.media-item .btn-danger {
+    margin-top: 5px;
+    width: 100%;
+}
+
+/* 隐藏文件输入 */
+#imageInput,
+#videoInput,
+#audioInput {
+    display: none;
 }
 </style>
 {% endblock %}
