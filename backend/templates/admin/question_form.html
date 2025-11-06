@@ -103,12 +103,71 @@
             
             <div class="form-group">
                 <label class="form-label" for="explanation">题目解析</label>
-                <textarea id="explanation" 
-                          name="explanation" 
-                          class="form-control" 
+                <textarea id="explanation"
+                          name="explanation"
+                          class="form-control"
                           rows="3">{{ question.explanation if question else '' }}</textarea>
             </div>
-            
+
+            <!-- Media Upload Section -->
+            <div class="card" style="margin: 20px 0;">
+                <div class="card-header">
+                    <h4 style="font-size: 16px; margin: 0;">多媒体资源</h4>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-image"></i> 图片
+                            </label>
+                            <input type="file"
+                                   id="imageUpload"
+                                   class="form-control"
+                                   accept="image/*"
+                                   onchange="handleFileSelect(this, 'image')">
+                            <small class="form-text text-muted">支持 JPG, PNG, GIF 格式</small>
+                            <div id="imagePreview" style="margin-top: 10px;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-video"></i> 视频
+                            </label>
+                            <input type="file"
+                                   id="videoUpload"
+                                   class="form-control"
+                                   accept="video/*"
+                                   onchange="handleFileSelect(this, 'video')">
+                            <small class="form-text text-muted">支持 MP4, AVI, MOV 格式</small>
+                            <div id="videoPreview" style="margin-top: 10px;"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-music"></i> 音频
+                            </label>
+                            <input type="file"
+                                   id="audioUpload"
+                                   class="form-control"
+                                   accept="audio/*"
+                                   onchange="handleFileSelect(this, 'audio')">
+                            <small class="form-text text-muted">支持 MP3, WAV, OGG 格式</small>
+                            <div id="audioPreview" style="margin-top: 10px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Existing media resources -->
+                    {% if question and action == 'edit' %}
+                    <div class="existing-media" style="margin-top: 20px;">
+                        <h5 style="font-size: 14px; margin-bottom: 10px;">已上传的资源</h5>
+                        <div id="existingMediaList">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-save"></i> 保存
@@ -124,6 +183,11 @@
 <script>
 let optionIndex = 0;
 const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+let uploadedFiles = {
+    image: null,
+    video: null,
+    audio: null
+};
 
 function handleTypeChange() {
     const type = document.getElementById('type').value;
@@ -187,13 +251,186 @@ function removeOption(button) {
     optionDiv.remove();
 }
 
+function handleFileSelect(input, type) {
+    const file = input.files[0];
+    if (!file) return;
+
+    uploadedFiles[type] = file;
+
+    // Show preview
+    const previewDiv = document.getElementById(type + 'Preview');
+    previewDiv.innerHTML = '';
+
+    if (type === 'image') {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `
+                <div style="position: relative; display: inline-block;">
+                    <img src="${e.target.result}" style="max-width: 200px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="clearFile('${type}')"
+                            style="position: absolute; top: 5px; right: 5px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        previewDiv.innerHTML = `
+            <div class="alert alert-info" style="display: flex; justify-content: space-between; align-items: center;">
+                <span><i class="fas fa-${type === 'video' ? 'video' : 'music'}"></i> ${file.name}</span>
+                <button type="button" class="btn btn-danger btn-sm" onclick="clearFile('${type}')">
+                    <i class="fas fa-times"></i> 移除
+                </button>
+            </div>
+        `;
+    }
+}
+
+function clearFile(type) {
+    uploadedFiles[type] = null;
+    document.getElementById(type + 'Upload').value = '';
+    document.getElementById(type + 'Preview').innerHTML = '';
+}
+
+async function uploadMediaFiles(questionId) {
+    const uploads = [];
+
+    for (const [type, file] of Object.entries(uploadedFiles)) {
+        if (file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('question_id', questionId);
+
+            try {
+                const response = await fetch('/api/v1/qbank/resources/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    console.error(`Failed to upload ${type}:`, await response.text());
+                }
+            } catch (error) {
+                console.error(`Error uploading ${type}:`, error);
+            }
+        }
+    }
+}
+
+// Override form submission to handle file uploads
+document.getElementById('questionForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    try {
+        // First, submit the question form
+        const response = await fetch(this.action, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save question');
+        }
+
+        const result = await response.json();
+        const questionId = result.question_id || result.id;
+
+        // Then upload media files if any
+        if (questionId && (uploadedFiles.image || uploadedFiles.video || uploadedFiles.audio)) {
+            await uploadMediaFiles(questionId);
+        }
+
+        // Redirect to questions list
+        window.location.href = '/admin/questions';
+    } catch (error) {
+        alert('保存失败: ' + error.message);
+        console.error('Error:', error);
+    }
+});
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     const type = document.getElementById('type').value;
     if (type) {
         handleTypeChange();
     }
+
+    // Load existing media resources if editing
+    {% if question and action == 'edit' %}
+    loadExistingMedia('{{ question.id }}');
+    {% endif %}
 });
+
+async function loadExistingMedia(questionId) {
+    try {
+        const response = await fetch(`/api/v1/qbank/resources/list/${questionId}`);
+        if (response.ok) {
+            const resources = await response.json();
+            const listDiv = document.getElementById('existingMediaList');
+
+            if (resources && resources.length > 0) {
+                listDiv.innerHTML = resources.map(resource => `
+                    <div class="media-item" style="padding: 10px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <i class="fas fa-${getMediaIcon(resource.file_type)}"></i>
+                                <span>${resource.file_name}</span>
+                                <small class="text-muted">(${formatFileSize(resource.file_size)})</small>
+                            </div>
+                            <div>
+                                <a href="${resource.file_url}" target="_blank" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i> 查看
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteMedia('${resource.id}', '${questionId}')">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                listDiv.innerHTML = '<p class="text-muted">暂无媒体资源</p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading media:', error);
+    }
+}
+
+function getMediaIcon(fileType) {
+    if (fileType.startsWith('image/')) return 'image';
+    if (fileType.startsWith('video/')) return 'video';
+    if (fileType.startsWith('audio/')) return 'music';
+    return 'file';
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function deleteMedia(resourceId, questionId) {
+    if (!confirm('确定要删除这个媒体资源吗？')) return;
+
+    try {
+        const response = await fetch(`/api/v1/qbank/resources/${resourceId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            await loadExistingMedia(questionId);
+        } else {
+            alert('删除失败');
+        }
+    } catch (error) {
+        console.error('Error deleting media:', error);
+        alert('删除失败: ' + error.message);
+    }
+}
 </script>
 
 <style>
