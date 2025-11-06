@@ -79,7 +79,7 @@ class _FavoriteQuestionDetailScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('第 ${widget.favorite.questionNumber ?? '?'} 题'),
+        title: Text('第 ${(widget.favorite.questionNumber != null && widget.favorite.questionNumber! > 0) ? widget.favorite.questionNumber : '?'} 题'),
       ),
       body: _isUpdating
           ? const Center(child: CircularProgressIndicator())

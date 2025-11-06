@@ -69,7 +69,7 @@ class _QuestionReviewScreenState extends State<QuestionReviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('第 ${widget.wrongQuestion.questionNumber ?? '?'} 题'),
+        title: Text('第 ${(widget.wrongQuestion.questionNumber != null && widget.wrongQuestion.questionNumber! > 0) ? widget.wrongQuestion.questionNumber : '?'} 题'),
         actions: [
           // Toggle corrected status button
           IconButton(

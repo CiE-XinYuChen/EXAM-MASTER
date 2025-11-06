@@ -286,7 +286,9 @@ class _WrongQuestionsListScreenState extends State<WrongQuestionsListScreen> {
             _deleteWrongQuestion(wrongQuestion.id, index);
           },
           child: _WrongQuestionCard(
-            questionNumber: wrongQuestion.questionNumber ?? (index + 1),
+            questionNumber: (wrongQuestion.questionNumber != null && wrongQuestion.questionNumber! > 0)
+                ? wrongQuestion.questionNumber!
+                : (index + 1),
             questionStem: wrongQuestion.questionStem,
             questionType: _getQuestionTypeLabel(wrongQuestion.questionType),
             difficulty: wrongQuestion.questionDifficulty ?? '未知',
