@@ -15,57 +15,52 @@ from app.api.v2.import_export import router as import_export_router
 
 api_router = APIRouter()
 
-# Core Authentication & User Management
+# === API V2 Routes (Organized & Clean) ===
+
+# Authentication & User Management
 api_router.include_router(
-    auth_router, 
-    prefix="/auth", 
-    tags=["🔐 Authentication"],
-    responses={404: {"description": "Not found"}}
+    auth_router,
+    prefix="/auth",
+    tags=["🔐 Authentication"]
 )
 
 api_router.include_router(
-    users_router, 
-    prefix="/users", 
-    tags=["👥 User Management"],
-    responses={404: {"description": "Not found"}}
-) 
+    users_router,
+    prefix="/users",
+    tags=["👥 Users"]
+)
 
 # Question Bank Management
 api_router.include_router(
-    qbank_router, 
-    prefix="/qbank", 
-    tags=["📚 Question Banks"],
-    responses={404: {"description": "Not found"}}
+    qbank_router,
+    prefix="/qbank",
+    tags=["📚 Question Banks"]
 )
 
 # Exam & Practice Sessions
 api_router.include_router(
-    exams_router, 
-    prefix="/exams", 
-    tags=["📝 Exams & Practice"],
-    responses={404: {"description": "Not found"}}
+    exams_router,
+    prefix="/exams",
+    tags=["📝 Exams & Practice"]
 )
 
 # Import/Export Operations
 api_router.include_router(
-    import_export_router, 
-    prefix="/import-export", 
-    tags=["📥📤 Import & Export"],
-    responses={404: {"description": "Not found"}}
+    import_export_router,
+    prefix="/import-export",
+    tags=["📥 Import/Export"]
 )
 
 # AI & LLM Features
 api_router.include_router(
-    llm_router, 
-    prefix="/llm", 
-    tags=["🤖 LLM & AI Features"],
-    responses={404: {"description": "Not found"}}
+    llm_router,
+    prefix="/llm",
+    tags=["🤖 LLM Management"]
 )
 
 # System Administration & Statistics
 api_router.include_router(
-    admin_router, 
-    prefix="", 
-    tags=["🔧 System Administration"],
-    responses={404: {"description": "Not found"}}
+    admin_router,
+    prefix="",
+    tags=["🔧 System Administration"]
 )

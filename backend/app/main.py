@@ -92,8 +92,9 @@ def admin_required(request: Request):
     return user
 
 
-# Admin Panel Routes
-@app.get("/admin", response_class=HTMLResponse, tags=["🖥️ Admin Dashboard"])
+# ==================== Admin Panel Routes ====================
+# Admin Dashboard & Authentication
+@app.get("/admin", response_class=HTMLResponse, tags=["🏠 Admin - Dashboard"])
 async def admin_dashboard(
     request: Request,
     current_admin = Depends(admin_required),
@@ -126,13 +127,13 @@ async def admin_dashboard(
     })
 
 
-@app.get("/admin/login", response_class=HTMLResponse, tags=["🖥️ Admin Dashboard"])
+@app.get("/admin/login", response_class=HTMLResponse, tags=["🏠 Admin - Dashboard"])
 async def admin_login_page(request: Request):
     """Admin login page"""
     return templates.TemplateResponse("admin/login.html", {"request": request})
 
 
-@app.post("/admin/login", tags=["🖥️ Admin Dashboard"])
+@app.post("/admin/login", tags=["🏠 Admin - Dashboard"])
 async def admin_login(
     request: Request,
     username: str = Form(...),
@@ -173,7 +174,7 @@ async def admin_login(
     return response
 
 
-@app.get("/admin/logout", tags=["🖥️ Admin Dashboard"])
+@app.get("/admin/logout", tags=["🏠 Admin - Dashboard"])
 async def admin_logout(request: Request):
     """Admin logout"""
     session_id = request.cookies.get("admin_session")
@@ -185,7 +186,7 @@ async def admin_logout(request: Request):
     return response
 
 
-@app.get("/admin/users", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
+@app.get("/admin/users", response_class=HTMLResponse, tags=["👥 Admin - Users"])
 async def admin_users(
     request: Request,
     current_admin = Depends(admin_required),
@@ -212,7 +213,7 @@ async def admin_users(
     })
 
 
-@app.get("/admin/users/create", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
+@app.get("/admin/users/create", response_class=HTMLResponse, tags=["👥 Admin - Users"])
 async def admin_users_create_form(
     request: Request,
     current_admin = Depends(admin_required)
@@ -226,7 +227,7 @@ async def admin_users_create_form(
     })
 
 
-@app.post("/admin/users/create", tags=["🖥️ Admin User Management"])
+@app.post("/admin/users/create", tags=["👥 Admin - Users"])
 async def admin_users_create(
     request: Request,
     username: str = Form(...),
@@ -284,7 +285,7 @@ async def admin_users_create(
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
-@app.get("/admin/users/{user_id}/edit", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
+@app.get("/admin/users/{user_id}/edit", response_class=HTMLResponse, tags=["👥 Admin - Users"])
 async def admin_users_edit_form(
     request: Request,
     user_id: int,
@@ -305,7 +306,7 @@ async def admin_users_edit_form(
     })
 
 
-@app.post("/admin/users/{user_id}/edit", tags=["🖥️ Admin User Management"])
+@app.post("/admin/users/{user_id}/edit", tags=["👥 Admin - Users"])
 async def admin_users_edit(
     request: Request,
     user_id: int,
@@ -359,7 +360,7 @@ async def admin_users_edit(
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
-@app.get("/admin/users/{user_id}/password", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
+@app.get("/admin/users/{user_id}/password", response_class=HTMLResponse, tags=["👥 Admin - Users"])
 async def admin_users_password_form(
     request: Request,
     user_id: int,
@@ -379,7 +380,7 @@ async def admin_users_password_form(
     })
 
 
-@app.post("/admin/users/{user_id}/password", tags=["🖥️ Admin User Management"])
+@app.post("/admin/users/{user_id}/password", tags=["👥 Admin - Users"])
 async def admin_users_change_password(
     request: Request,
     user_id: int,
@@ -417,7 +418,7 @@ async def admin_users_change_password(
     })
 
 
-@app.post("/admin/users/{user_id}/delete", tags=["🖥️ Admin User Management"])
+@app.post("/admin/users/{user_id}/delete", tags=["👥 Admin - Users"])
 async def admin_users_delete(
     user_id: int,
     current_admin = Depends(admin_required),
@@ -446,7 +447,7 @@ async def admin_users_delete(
     return RedirectResponse(url="/admin/users", status_code=303)
 
 
-@app.get("/admin/users/{user_id}/statistics", response_class=HTMLResponse, tags=["🖥️ Admin User Management"])
+@app.get("/admin/users/{user_id}/statistics", response_class=HTMLResponse, tags=["👥 Admin - Users"])
 async def admin_user_statistics(
     user_id: int,
     request: Request,
@@ -536,7 +537,7 @@ async def admin_user_statistics(
     })
 
 
-@app.get("/admin/activation-codes", response_class=HTMLResponse, tags=["🖥️ Admin Activation"])
+@app.get("/admin/activation-codes", response_class=HTMLResponse, tags=["🔑 Admin - Activation"])
 async def admin_activation_codes(
     request: Request,
     current_admin = Depends(admin_required),
@@ -555,7 +556,7 @@ async def admin_activation_codes(
     })
 
 
-@app.get("/admin/qbanks", response_class=HTMLResponse, tags=["🖥️ Admin Question Banks"])
+@app.get("/admin/qbanks", response_class=HTMLResponse, tags=["📚 Admin - Question Banks"])
 async def admin_qbanks(
     request: Request,
     current_admin = Depends(admin_required),
@@ -590,7 +591,7 @@ async def admin_qbanks(
     })
 
 
-@app.get("/admin/qbanks/create", response_class=HTMLResponse, tags=["🖥️ Admin Question Banks"])
+@app.get("/admin/qbanks/create", response_class=HTMLResponse, tags=["📚 Admin - Question Banks"])
 async def admin_qbanks_create_form(
     request: Request,
     current_admin = Depends(admin_required)
@@ -604,7 +605,7 @@ async def admin_qbanks_create_form(
     })
 
 
-@app.post("/admin/qbanks/create", tags=["🖥️ Admin Question Banks"])
+@app.post("/admin/qbanks/create", tags=["📚 Admin - Question Banks"])
 async def admin_qbanks_create(
     request: Request,
     name: str = Form(...),
@@ -641,7 +642,7 @@ async def admin_qbanks_create(
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
 
-@app.get("/admin/qbanks/{bank_id}/edit", response_class=HTMLResponse, tags=["🖥️ Admin Question Banks"])
+@app.get("/admin/qbanks/{bank_id}/edit", response_class=HTMLResponse, tags=["📚 Admin - Question Banks"])
 async def admin_qbanks_edit_form(
     request: Request,
     bank_id: str,
@@ -662,7 +663,7 @@ async def admin_qbanks_edit_form(
     })
 
 
-@app.post("/admin/qbanks/{bank_id}/edit", tags=["🖥️ Admin Question Banks"])
+@app.post("/admin/qbanks/{bank_id}/edit", tags=["📚 Admin - Question Banks"])
 async def admin_qbanks_edit(
     request: Request,
     bank_id: str,
@@ -690,7 +691,7 @@ async def admin_qbanks_edit(
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
 
-@app.post("/admin/qbanks/{bank_id}/delete", tags=["🖥️ Admin Question Banks"])
+@app.post("/admin/qbanks/{bank_id}/delete", tags=["📚 Admin - Question Banks"])
 async def admin_qbanks_delete(
     bank_id: str,
     current_admin = Depends(admin_required),
@@ -715,7 +716,7 @@ async def admin_qbanks_delete(
     return RedirectResponse(url="/admin/qbanks", status_code=303)
 
 
-@app.get("/admin/questions", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
+@app.get("/admin/questions", response_class=HTMLResponse, tags=["❓ Admin - Questions"])
 async def admin_questions(
     request: Request,
     current_admin = Depends(admin_required),
@@ -758,7 +759,7 @@ async def admin_questions(
     })
 
 
-@app.get("/admin/questions/create", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
+@app.get("/admin/questions/create", response_class=HTMLResponse, tags=["❓ Admin - Questions"])
 async def admin_questions_create_form(
     request: Request,
     current_admin = Depends(admin_required),
@@ -778,7 +779,7 @@ async def admin_questions_create_form(
     })
 
 
-@app.post("/admin/questions/create", tags=["🖥️ Admin Questions"])
+@app.post("/admin/questions/create", tags=["❓ Admin - Questions"])
 async def admin_questions_create(
     request: Request,
     current_admin = Depends(admin_required),
@@ -913,7 +914,7 @@ async def admin_questions_create(
     return RedirectResponse(url=f"/admin/questions?bank_id={data['bank_id']}", status_code=303)
 
 
-@app.get("/admin/questions/{question_id}/preview", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
+@app.get("/admin/questions/{question_id}/preview", response_class=HTMLResponse, tags=["❓ Admin - Questions"])
 async def admin_questions_preview(
     request: Request,
     question_id: str,
@@ -940,7 +941,7 @@ async def admin_questions_preview(
     })
 
 
-@app.get("/admin/questions/{question_id}/edit", response_class=HTMLResponse, tags=["🖥️ Admin Questions"])
+@app.get("/admin/questions/{question_id}/edit", response_class=HTMLResponse, tags=["❓ Admin - Questions"])
 async def admin_questions_edit_form(
     request: Request,
     question_id: str,
@@ -976,7 +977,7 @@ async def admin_questions_edit_form(
     })
 
 
-@app.post("/admin/questions/{question_id}/edit", tags=["🖥️ Admin Questions"])
+@app.post("/admin/questions/{question_id}/edit", tags=["❓ Admin - Questions"])
 async def admin_questions_edit(
     request: Request,
     question_id: str,
@@ -1133,7 +1134,7 @@ async def admin_questions_edit(
     return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
 
 
-@app.post("/admin/questions/{question_id}/delete", tags=["🖥️ Admin Questions"])
+@app.post("/admin/questions/{question_id}/delete", tags=["❓ Admin - Questions"])
 async def admin_questions_delete(
     question_id: str,
     current_admin = Depends(admin_required),
@@ -1154,7 +1155,7 @@ async def admin_questions_delete(
     return RedirectResponse(url=f"/admin/questions?bank_id={bank_id}", status_code=303)
 
 
-@app.post("/admin/questions/{question_id}/resources/upload", tags=["🖥️ Admin Questions"])
+@app.post("/admin/questions/{question_id}/resources/upload", tags=["❓ Admin - Questions"])
 async def admin_upload_resource(
     question_id: str,
     file: UploadFile = File(...),
@@ -1265,7 +1266,7 @@ async def admin_upload_resource(
     })
 
 
-@app.get("/admin/questions/{question_id}/resources/{resource_id}/download", tags=["🖥️ Admin Questions"])
+@app.get("/admin/questions/{question_id}/resources/{resource_id}/download", tags=["❓ Admin - Questions"])
 async def admin_download_resource(
     question_id: str,
     resource_id: str,
@@ -1354,7 +1355,7 @@ async def admin_imports(
 
 # ==================== AI Configuration Management Routes ====================
 
-@app.get("/admin/ai-configs", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+@app.get("/admin/ai-configs", response_class=HTMLResponse, tags=["🤖 Admin - AI Config"])
 async def admin_ai_configs(
     request: Request,
     current_admin = Depends(admin_required),
@@ -1390,7 +1391,7 @@ async def admin_ai_configs(
     })
 
 
-@app.get("/admin/ai-configs/create", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+@app.get("/admin/ai-configs/create", response_class=HTMLResponse, tags=["🤖 Admin - AI Config"])
 async def admin_ai_configs_create_form(
     request: Request,
     current_admin = Depends(admin_required)
@@ -1403,7 +1404,7 @@ async def admin_ai_configs_create_form(
     })
 
 
-@app.post("/admin/ai-configs/create", tags=["🤖 AI Configuration"])
+@app.post("/admin/ai-configs/create", tags=["🤖 Admin - AI Config"])
 async def admin_ai_configs_create(
     request: Request,
     name: str = Form(...),
@@ -1462,7 +1463,7 @@ async def admin_ai_configs_create(
         })
 
 
-@app.get("/admin/ai-configs/{config_id}/edit", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+@app.get("/admin/ai-configs/{config_id}/edit", response_class=HTMLResponse, tags=["🤖 Admin - AI Config"])
 async def admin_ai_configs_edit_form(
     request: Request,
     config_id: str,
@@ -1484,7 +1485,7 @@ async def admin_ai_configs_edit_form(
     })
 
 
-@app.post("/admin/ai-configs/{config_id}/edit", tags=["🤖 AI Configuration"])
+@app.post("/admin/ai-configs/{config_id}/edit", tags=["🤖 Admin - AI Config"])
 async def admin_ai_configs_edit(
     request: Request,
     config_id: str,
@@ -1545,7 +1546,7 @@ async def admin_ai_configs_edit(
         })
 
 
-@app.post("/admin/ai-configs/{config_id}/delete", tags=["🤖 AI Configuration"])
+@app.post("/admin/ai-configs/{config_id}/delete", tags=["🤖 Admin - AI Config"])
 async def admin_ai_configs_delete(
     config_id: str,
     current_admin = Depends(admin_required),
@@ -1566,7 +1567,7 @@ async def admin_ai_configs_delete(
     return RedirectResponse(url="/admin/ai-configs", status_code=303)
 
 
-@app.get("/admin/ai-sessions/{session_id}", response_class=HTMLResponse, tags=["🤖 AI Configuration"])
+@app.get("/admin/ai-sessions/{session_id}", response_class=HTMLResponse, tags=["🤖 Admin - AI Config"])
 async def admin_ai_session_detail(
     request: Request,
     session_id: str,
@@ -1594,7 +1595,7 @@ async def admin_ai_session_detail(
     })
 
 
-@app.post("/admin/ai-sessions/{session_id}/delete", tags=["🤖 AI Configuration"])
+@app.post("/admin/ai-sessions/{session_id}/delete", tags=["🤖 Admin - AI Config"])
 async def admin_ai_session_delete(
     session_id: str,
     current_admin = Depends(admin_required),
@@ -1615,7 +1616,7 @@ async def admin_ai_session_delete(
     return RedirectResponse(url="/admin/ai-configs", status_code=303)
 
 
-@app.post("/admin/ai-configs/test-api", tags=["🤖 AI Configuration"])
+@app.post("/admin/ai-configs/test-api", tags=["🤖 Admin - AI Config"])
 async def test_ai_api_connection(request: Request):
     """Test AI API connection"""
     import time
@@ -1711,7 +1712,7 @@ async def test_ai_api_connection(request: Request):
         })
 
 
-@app.post("/admin/ai-configs/test-chat", tags=["🤖 AI Configuration"])
+@app.post("/admin/ai-configs/test-chat", tags=["🤖 Admin - AI Config"])
 async def test_ai_chat(request: Request):
     """Test AI chat conversation"""
     from app.services.ai.base import AIModelConfig, Message, MessageRole
@@ -2412,7 +2413,7 @@ async def root():
 
 
 # V2 Import/Export Routes
-@app.post("/admin/v2/imports/{bank_id}", tags=["📥 Legacy Import/Export"])
+@app.post("/admin/v2/imports/{bank_id}", tags=["📦 Admin - Legacy Import/Export"])
 async def admin_import_v2(
     bank_id: str,
     file: UploadFile = File(...),
@@ -2440,7 +2441,7 @@ async def admin_import_v2(
         os.unlink(tmp_path)
 
 
-@app.get("/admin/v2/exports/{bank_id}", tags=["📥 Legacy Import/Export"])
+@app.get("/admin/v2/exports/{bank_id}", tags=["📦 Admin - Legacy Import/Export"])
 async def admin_export_v2(
     bank_id: str,
     format: str = "json",
@@ -2564,7 +2565,7 @@ async def get_public_resource(
 
 # ==================== Agent Testing ====================
 
-@app.get("/admin/agent-test", response_class=HTMLResponse, tags=["🤖 Agent Testing"])
+@app.get("/admin/agent-test", response_class=HTMLResponse, tags=["🧪 Admin - Agent Testing"])
 async def admin_agent_test(
     request: Request,
     current_admin = Depends(admin_required),
@@ -2585,7 +2586,7 @@ async def admin_agent_test(
     })
 
 
-@app.post("/admin/agent-test/chat", tags=["🤖 Agent Testing"])
+@app.post("/admin/agent-test/chat", tags=["🧪 Admin - Agent Testing"])
 async def admin_agent_test_chat(
     request: Request,
     current_admin = Depends(admin_required),
@@ -2688,7 +2689,7 @@ async def admin_agent_test_chat(
 
 # ==================== Admin Activation Code API Endpoints (Session Auth) ====================
 
-@app.get("/admin/api/activation-codes", tags=["🔑 Admin Activation API"])
+@app.get("/admin/api/activation-codes", tags=["🔑 Admin API - Activation"])
 async def admin_api_get_activation_codes(
     request: Request,
     skip: int = 0,
@@ -2768,7 +2769,7 @@ async def admin_api_get_activation_codes(
     }
 
 
-@app.post("/admin/api/activation-codes", tags=["🔑 Admin Activation API"])
+@app.post("/admin/api/activation-codes", tags=["🔑 Admin API - Activation"])
 async def admin_api_create_activation_codes(
     request: Request,
     current_admin = Depends(admin_required),
@@ -2868,7 +2869,7 @@ async def admin_api_create_activation_codes(
     ]
 
 
-@app.delete("/admin/api/activation-codes/{code_id}", tags=["🔑 Admin Activation API"])
+@app.delete("/admin/api/activation-codes/{code_id}", tags=["🔑 Admin API - Activation"])
 async def admin_api_delete_activation_code(
     code_id: str,
     current_admin = Depends(admin_required),

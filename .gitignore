@@ -17,9 +17,17 @@ ExamMasterAndroid/*.aab
 ExamMasterAndroid/*.idsig
 !ExamMasterAndroid/exammaster-release-signed.apk
 
-# Keystore files
+# Keystore files (私钥文件 - 绝不提交！)
 ExamMasterAndroid/*.keystore
 ExamMasterAndroid/*.jks
+flutter_app/android/app/*.jks
+flutter_app/android/app/*.keystore
+flutter_app/android/app/key.properties
+
+# Android 签名信息（包含敏感信息 - 不提交！）
+ANDROID_SIGNING_INFO.md
+SIGNING_SUMMARY_PRIVATE.txt
+generate_android_signing.sh
 
 # Python virtual environment
 venv/
@@ -30,3 +38,30 @@ __pycache__/
 gradle-8.4/
 gradle-8.4-bin.zip
 .gradle/
+
+# iOS 签名文件（私钥文件 - 绝不提交！）
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+!flutter_app/build/ios/*/Runner.app/embedded.mobileprovision
+
+# iOS 签名信息（包含敏感信息 - 不提交！）
+IOS_SIGNING_INFO.md
+ios-*-cert.pem
+ios-*-key.pem
+
+# Xcode 用户特定文件
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+
+# 所有包含敏感信息的私有文档
+*_PRIVATE.txt
+*_PRIVATE.md
+
+# 证书导出文件
+*-cert.pem
+*-key.pem
+android-cert.pem
+ios-dev-cert.pem
