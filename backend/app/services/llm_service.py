@@ -356,8 +356,8 @@ JSON格式要求，每个题目包含：
             logger.info(f"请求URL: {api_url}")
             logger.info(f"OpenAI��容接口请求体: {json.dumps(request_body, ensure_ascii=False)}")
             
-            # 获取超时设置，默认为300秒（5分钟），适应聚合API的延迟
-            timeout = max(config.get("timeout", 300), 300)
+            # 获取超时设置，默认为600秒（10分钟），适应聚合API的极端延迟
+            timeout = max(config.get("timeout", 600), 600)
             
             response = requests.post(
                 api_url,
