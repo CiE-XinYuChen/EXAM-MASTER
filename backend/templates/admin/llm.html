@@ -357,9 +357,10 @@ LLM配置
                     <div class="mb-3">
                         <label class="form-label">接口类型</label>
                         <select class="form-select" id="interfaceType" onchange="updateInterfaceFields()">
-                            <option value="openai-compatible">OpenAI兼容</option>
-                            <option value="anthropic">Anthropic Claude</option>
-                            <option value="zhipu-ai">智谱AI (Zhipu)</option>
+                            <option value="openai-compatible">OpenAI 兼容 (ChatGPT, DeepSeek, NewAPI)</option>
+                            <option value="linkerai">LinkerAI (Kimi, GPT, Claude)</option>
+                            <option value="anthropic">Anthropic Claude (官方)</option>
+                            <option value="zhipu-ai">智谱AI (Zhipu SDK)</option>
                         </select>
                     </div>
                     
@@ -934,9 +935,15 @@ function saveInterface() {
     const interfaceId = form.dataset.interfaceId;
     const isEdit = !!interfaceId;
     
+    // 前端类型映射：linkerai -> openai-compatible
+    let interfaceType = document.getElementById('interfaceType').value;
+    if (interfaceType === 'linkerai') {
+        interfaceType = 'openai-compatible';
+    }
+    
     const data = {
         name: document.getElementById('interfaceName').value,
-        type: document.getElementById('interfaceType').value,
+        type: interfaceType,
         config: {
             base_url: document.getElementById('baseUrl').value,
             api_key: document.getElementById('apiKey').value,
@@ -1309,6 +1316,11 @@ function updateInterfaceFields() {
         case 'openai-compatible':
             baseUrlInput.placeholder = 'https://api.openai.com/v1';
             modelInput.placeholder = 'gpt-3.5-turbo';
+            break;
+        case 'linkerai':
+            baseUrlInput.placeholder = 'https://linkerai.cn/v1';
+            baseUrlInput.value = 'https://linkerai.cn/v1';
+            modelInput.placeholder = 'kimi-k2-0711-preview';
             break;
         case 'anthropic':
             baseUrlInput.placeholder = 'https://api.anthropic.com/v1';
