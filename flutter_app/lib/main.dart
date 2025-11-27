@@ -18,6 +18,8 @@ import 'presentation/providers/practice_provider.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/register_screen.dart';
+import 'presentation/screens/auth/change_password_screen.dart';
+import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/home/main_screen.dart';
 import 'presentation/screens/question_bank/question_bank_detail_screen.dart';
 import 'presentation/screens/practice/practice_screen.dart';
@@ -110,6 +112,8 @@ class MyApp extends StatelessWidget {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
           '/home': (context) => const MainScreen(),
+          '/settings': (context) => const SettingsScreen(),
+          '/change-password': (context) => const ChangePasswordScreen(),
         },
         onGenerateRoute: (settings) {
           // Handle routes with arguments

@@ -6,7 +6,7 @@ class ApiConstants {
 
   // Base URLs
   static const String productionUrl = 'https://exam.shaynechen.tech';
-  static const String developmentUrl = 'http://127.0.0.1:8000';
+  static const String developmentUrl = 'https://exam.shaynechen.tech';
 
   // Base URL - 根据环境切换
   static String get baseUrl => useProduction ? productionUrl : developmentUrl;
@@ -114,7 +114,7 @@ class ApiConstants {
   static const String userProfile = '/users/me';
   static const String userMe = '/users/me'; // Alias for currentUser
   static const String userUpdate = '/users/me';
-  static const String userChangePassword = '/users/me/password';
+  static const String changePassword = '/auth/change-password';
 
   // Aliases for consistency
   static const String chatSessions = aiChatSessions;

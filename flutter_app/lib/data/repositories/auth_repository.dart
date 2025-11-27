@@ -270,6 +270,60 @@ class AuthRepository {
     return await _localStorage.getString(StorageKeys.role);
   }
 
+  /// Change Password
+  /// 修改密码
+  ///
+  /// Returns:
+  /// - Right(true) on success
+  /// - Left(Failure) on error
+  Future<Either<Failure, bool>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      AppLogger.info('AuthRepository.changePassword');
+
+      final request = ChangePasswordRequest(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+
+      await _authApi.changePassword(request);
+
+      AppLogger.debug('Password changed successfully');
+      return const Right(true);
+    } on ServerException catch (e) {
+      AppLogger.error('Change password failed: ${e.message}');
+      return Left(ServerFailure(
+        message: e.message,
+        statusCode: e.statusCode,
+      ));
+    } on NetworkException catch (e) {
+      AppLogger.error('Network error: ${e.message}');
+      return Left(NetworkFailure(message: e.message));
+    } on ValidationException catch (e) {
+      AppLogger.error('Validation error: ${e.message}');
+      return Left(ValidationFailure(
+        message: e.message,
+        statusCode: e.statusCode,
+      ));
+    } on AuthenticationException catch (e) {
+      AppLogger.error('Authentication failed: ${e.message}');
+      return Left(AuthenticationFailure(
+        message: e.message,
+        statusCode: e.statusCode,
+      ));
+    } on TimeoutException catch (e) {
+      AppLogger.error('Request timeout: ${e.message}');
+      return Left(TimeoutFailure(message: e.message));
+    } catch (e) {
+      AppLogger.error('Unknown error: $e');
+      return Left(UnknownFailure(message: 'Unexpected error: $e'));
+    }
+  }
+
   /// Clear authentication data from local storage
   Future<void> _clearAuthData() async {
     await _localStorage.remove(StorageKeys.accessToken);

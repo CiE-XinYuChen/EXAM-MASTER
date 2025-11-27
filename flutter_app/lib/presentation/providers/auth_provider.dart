@@ -243,6 +243,57 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Change Password
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    _isLoading(true);
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      AppLogger.info('AuthProvider.changePassword');
+
+      final result = await _authRepository.changePassword(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+
+      return result.fold(
+        (failure) {
+          AppLogger.error('Change password failed: ${failure.message}');
+          _errorMessage = _getErrorMessage(failure);
+          _isLoading(false);
+          notifyListeners();
+          return false;
+        },
+        (success) {
+          AppLogger.info('Password changed successfully');
+          _isLoading(false);
+          notifyListeners();
+          return true;
+        },
+      );
+    } catch (e) {
+      AppLogger.error('Unexpected error changing password: $e');
+      _errorMessage = '修改密码失败，请稍后重试';
+      _isLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void _isLoading(bool value) {
+    if (value) {
+      _state = AuthState.loading;
+    } else {
+      _state = AuthState.authenticated;
+    }
+  }
+
   /// Clear error message
   void clearError() {
     _errorMessage = null;

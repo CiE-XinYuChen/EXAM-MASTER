@@ -107,7 +107,7 @@ class ProfileTab extends StatelessWidget {
                 title: const Text('设置'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // TODO: Navigate to settings
+                  Navigator.pushNamed(context, '/settings');
                 },
               ),
               ListTile(

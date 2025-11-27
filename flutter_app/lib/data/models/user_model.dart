@@ -121,3 +121,22 @@ class LoginRequest {
 
   Map<String, dynamic> toJson() => _$LoginRequestToJson(this);
 }
+
+/// Change Password Request
+@JsonSerializable()
+class ChangePasswordRequest {
+  @JsonKey(name: 'old_password')
+  final String oldPassword;
+  @JsonKey(name: 'new_password')
+  final String newPassword;
+  @JsonKey(name: 'confirm_password')
+  final String confirmPassword;
+
+  const ChangePasswordRequest({
+    required this.oldPassword,
+    required this.newPassword,
+    required this.confirmPassword,
+  });
+
+  Map<String, dynamic> toJson() => _$ChangePasswordRequestToJson(this);
+}

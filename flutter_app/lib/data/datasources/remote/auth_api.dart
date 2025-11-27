@@ -150,6 +150,40 @@ class AuthApi {
     }
   }
 
+  /// Change Password
+  /// 修改密码
+  ///
+  /// Throws:
+  /// - [ServerException]
+  /// - [NetworkException]
+  /// - [ValidationException]
+  Future<void> changePassword(ChangePasswordRequest request) async {
+    try {
+      AppLogger.info('AuthApi.changePassword');
+      
+      final response = await _dioClient.post(
+        ApiConstants.changePassword,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200) {
+        AppLogger.debug('Password changed successfully');
+      } else {
+        AppLogger.error('Change password failed: ${response.statusCode}');
+        throw ServerException(
+          message: 'Change password failed',
+          statusCode: response.statusCode,
+        );
+      }
+    } on DioException catch (e) {
+      AppLogger.error('Change password error: ${e.message}');
+      throw _handleDioException(e);
+    } catch (e) {
+      AppLogger.error('Unexpected change password error: $e');
+      throw UnknownException(message: 'Unexpected error during password change: $e');
+    }
+  }
+
   /// Handle Dio exceptions and convert to app exceptions
   Exception _handleDioException(DioException e) {
     if (e.type == DioExceptionType.connectionTimeout ||
