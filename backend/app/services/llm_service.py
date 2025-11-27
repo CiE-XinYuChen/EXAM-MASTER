@@ -354,6 +354,7 @@ JSON格式要求，每个题目包含：
         # 发送请求
         try:
             logger.info(f"请求URL: {api_url}")
+            logger.info(f"OpenAI��容接口请求体: {json.dumps(request_body, ensure_ascii=False)}")
             
             # 获取超时设置，默认为300秒（5分钟），适应聚合API的延迟
             timeout = max(config.get("timeout", 300), 300)
@@ -406,6 +407,8 @@ JSON格式要求，每个题目包含：
             
         except requests.exceptions.RequestException as e:
             logger.error(f"请求失败: {e}")
+            if e.response is not None:
+                logger.error(f"错误响应内容: {e.response.text}")
             raise
         except json.JSONDecodeError as e:
             logger.error(f"JSON解析失败: {e}, 响应: {response.text[:500] if 'response' in locals() else 'N/A'}")
