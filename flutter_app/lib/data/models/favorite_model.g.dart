@@ -39,6 +39,7 @@ FavoriteModel _$FavoriteModelFromJson(Map<String, dynamic> json) =>
           ?.map((e) => QuestionOption.fromJson(e as Map<String, dynamic>))
           .toList(),
       questionExplanation: json['question_explanation'] as String?,
+      correctAnswer: json['correct_answer'] as Map<String, dynamic>?,
       hasImage: json['has_image'] as bool?,
       hasVideo: json['has_video'] as bool?,
       hasAudio: json['has_audio'] as bool?,
@@ -59,6 +60,7 @@ Map<String, dynamic> _$FavoriteModelToJson(FavoriteModel instance) =>
       'question_tags': instance.questionTags,
       'question_options': instance.questionOptions,
       'question_explanation': instance.questionExplanation,
+      'correct_answer': instance.correctAnswer,
       'has_image': instance.hasImage,
       'has_video': instance.hasVideo,
       'has_audio': instance.hasAudio,
