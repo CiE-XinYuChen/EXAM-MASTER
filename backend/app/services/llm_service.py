@@ -358,17 +358,20 @@ JSON格式要求，每个题目包含：
         request_format: Dict[str, Any],
         prompt: str
     ) -> Dict[str, Any]:
-        """调用智谱AI接口"""
+        """调用智谱AI接口 (使用官方SDK)"""
+        try:
+            from zhipuai import ZhipuAI
+        except ImportError:
+            raise ValueError("未安装 zhipuai 库，请运行 pip install zhipuai>=2.0.0")
+        
         api_key = config.get('api_key', '').strip()
         if not api_key:
             raise ValueError("智谱AI API密钥未配置")
             
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        # 初始化客户端
+        client = ZhipuAI(api_key=api_key, base_url=config.get('base_url'))
         
-        logger.info(f"调用智谱AI，模型: {config.get('model', 'glm-4')}")
+        logger.info(f"调用智谱AI (SDK)，模型: {config.get('model', 'glm-4')}")
         
         # 对于智谱AI，强调只返回JSON
         enhanced_prompt = prompt + "\n\n重要：直接输出JSON数组，不要包含任何解释、思考过程或其他文字。"
@@ -382,94 +385,48 @@ JSON格式要求，每个题目包含：
             system_prompt = request_format["system_prompt"] + "\n" + system_prompt
         messages.insert(0, {"role": "system", "content": system_prompt})
         
-        request_body = {
+        # 准备参数
+        kwargs = {
             "model": config.get("model", "glm-4"),
             "messages": messages,
             "temperature": request_format.get("temperature", 0.3) if request_format else 0.3,
             "top_p": request_format.get("top_p", 1.0) if request_format else 1.0
-            # 不设置max_tokens，让模型自由输出完整内容
         }
         
         # 只有在用户明确指定max_tokens时才添加限制
         if request_format and "max_tokens" in request_format and request_format["max_tokens"] is not None:
-            request_body["max_tokens"] = request_format["max_tokens"]
-        
-        # 添加可选参数
-        if request_format:
-            if "stop" in request_format and request_format["stop"]:
-                request_body["stop"] = request_format["stop"]
-            if "tools" in request_format:
-                request_body["tools"] = request_format["tools"]
-            if "tool_choice" in request_format:
-                request_body["tool_choice"] = request_format["tool_choice"]
-        
-        # 构建API地址
-        base_url = config.get("base_url", "https://open.bigmodel.cn/api/paas/v4")
-        
-        # 如果base_url已经包含完整路径，直接使用
-        if base_url.endswith("/chat/completions"):
-            api_url = base_url
-        # 如果是基础API地址，添加chat/completions端点
-        elif base_url.endswith("/api/paas/v4") or base_url.endswith("/v4"):
-            api_url = f"{base_url}/chat/completions"
-        # 其他情况，假设需要添加完整路径
-        else:
-            api_url = f"{base_url.rstrip('/')}/api/paas/v4/chat/completions"
-        
+            kwargs["max_tokens"] = request_format["max_tokens"]
+            
         try:
-            logger.info(f"请求URL: {api_url}")
-            response = requests.post(
-                api_url,
-                headers=headers,
-                json=request_body,
-                timeout=config.get("timeout", 120)  # 增加到120秒
-            )
+            # 调用SDK
+            response = client.chat.completions.create(**kwargs)
             
-            logger.info(f"响应状态: {response.status_code}")
+            # 构造兼容的返回结果
+            choice = response.choices[0]
+            result = {
+                "choices": [
+                    {
+                        "message": {
+                            "content": choice.message.content,
+                            "role": choice.message.role
+                        },
+                        "finish_reason": choice.finish_reason
+                    }
+                ],
+                "usage": response.usage.model_dump() if response.usage else {}
+            }
             
-            # 检查响应状态
-            if response.status_code != 200:
-                logger.error(f"API错误: {response.status_code} - {response.text[:500]}")
-                response.raise_for_status()
+            logger.info("智谱AI调用成功")
             
-            # 获取响应文本
-            response_text = response.text
-            logger.info(f"原始响应长度: {len(response_text)}")
-            
-            # 尝试解析JSON
-            if not response_text:
-                raise ValueError("Empty response")
-                
-            result = response.json()
-            logger.info(f"JSON解析成功")
-            
-            # 记录完整响应结构（仅用于调试）
+            # 记录响应内容用于调试
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug(f"完整响应: {json.dumps(result, ensure_ascii=False, indent=2)[:1000]}")
-            else:
-                # 在INFO级别记录关键字段
-                if isinstance(result, dict):
-                    logger.info(f"响应包含的键: {list(result.keys())}")
-                    if 'choices' in result and result['choices']:
-                        first_choice = result['choices'][0]
-                        logger.info(f"第一个choice的键: {list(first_choice.keys())}")
-                        if 'message' in first_choice:
-                            msg = first_choice['message']
-                            logger.info(f"message的键: {list(msg.keys()) if isinstance(msg, dict) else type(msg)}")
-                            if isinstance(msg, dict):
-                                if 'content' in msg:
-                                    logger.info(f"message.content长度: {len(msg['content'])}, 前100字符: {msg['content'][:100] if msg['content'] else 'EMPTY'}")
-                                if 'reasoning_content' in msg:
-                                    logger.info(f"message.reasoning_content长度: {len(msg['reasoning_content']) if msg['reasoning_content'] else 0}, 前100字符: {msg['reasoning_content'][:100] if msg['reasoning_content'] else 'EMPTY'}")
             
             return result
             
-        except requests.exceptions.RequestException as e:
-            logger.error(f"请求失败: {e}")
+        except Exception as e:
+            logger.error(f"智谱AI SDK调用失败: {e}")
             raise
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON解析失败: {e}, 响应: {response.text[:500] if 'response' in locals() else 'N/A'}")
-            raise ValueError(f"Failed to parse response: {e}")
     
     def _call_custom_http(
         self,

@@ -35,6 +35,15 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting up...")
     init_databases()
+    
+    # Initialize prompt templates
+    try:
+        from app.core.init_templates import init_preset_templates
+        print("Initializing prompt templates...")
+        init_preset_templates()
+    except Exception as e:
+        print(f"Failed to initialize prompt templates: {e}")
+        
     yield
     # Shutdown
     print("Shutting down...")

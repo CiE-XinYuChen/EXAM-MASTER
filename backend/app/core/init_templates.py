@@ -1,19 +1,14 @@
 """
 Initialize preset prompt templates in database
 """
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from app.core.database import get_qbank_db
 from app.models.llm_models import PromptTemplate
 from app.services.prompt_templates import PRESET_TEMPLATES
-import uuid
-
 
 def init_preset_templates():
     """初始化预设提示词模板"""
-    db = next(get_qbank_db())
+    db_gen = get_qbank_db()
+    db = next(db_gen)
     
     try:
         # 检查是否已有系统模板
@@ -52,6 +47,3 @@ def init_preset_templates():
     finally:
         db.close()
 
-
-if __name__ == "__main__":
-    init_preset_templates()
