@@ -302,7 +302,7 @@ async def delete_template(
 # ============ Question Parsing ============
 
 @router.post("/parse", response_model=QuestionParseResponse, tags=["🤖 AI Question Parsing"])
-async def parse_questions(
+def parse_questions(
     request: QuestionParseRequest,
     req: Request,
     current_user=Depends(get_admin_user_from_session),
