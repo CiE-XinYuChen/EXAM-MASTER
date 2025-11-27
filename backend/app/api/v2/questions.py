@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_qbank_db
-from app.core.security import get_current_admin_user
+from app.core.security import get_admin_user_from_session
 from app.services.question_bank_service import QuestionBankService
 
 router = APIRouter()
@@ -9,7 +9,7 @@ router = APIRouter()
 @router.post("/qbanks/{bank_id}/renumber", tags=["📚 Admin - Question Banks"])
 async def renumber_questions(
     bank_id: str,
-    current_admin = Depends(get_current_admin_user),
+    current_admin = Depends(get_admin_user_from_session),
     db: Session = Depends(get_qbank_db)
 ):
     """
