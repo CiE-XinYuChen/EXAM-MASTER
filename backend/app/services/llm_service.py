@@ -62,6 +62,13 @@ class LLMService:
         # 预处理：检查文本长度，决定是否分块
         CHUNK_SIZE = 2000  # 字符数阈值
         
+        # 检查是否禁用分块
+        disable_chunking = False
+        if request.custom_variables and str(request.custom_variables.get("disable_chunking", "")).lower() == "true":
+            disable_chunking = True
+        
+        # 如果接口配置中禁用了分块（可选，这里暂不从接口配置读，主要看请求参数）
+        
         all_errors = []
         # 用于存储分块结果: {index: [questions], ...}
         chunk_results = {}
@@ -69,7 +76,9 @@ class LLMService:
         chunk_raw_responses = {}
         
         # 简单的分块策略：按题号或段落
-        if len(request.raw_text) < CHUNK_SIZE:
+        if disable_chunking or len(request.raw_text) < CHUNK_SIZE:
+            if disable_chunking:
+                logger.info(f"用户请求禁用分块处理 (文本长度: {len(request.raw_text)})")
             chunks = [request.raw_text]
         else:
             logger.info(f"文本较长 ({len(request.raw_text)} chars)，启用自动分块处理")
