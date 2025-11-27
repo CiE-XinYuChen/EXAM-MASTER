@@ -8,6 +8,7 @@ import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +37,7 @@ class LLMService:
         request: QuestionParseRequest,
         user_id: int
     ) -> QuestionParseResponse:
-        """解析题目文本 (支持长文本自动分块)"""
+        """解析题目文本 (支持长文本自动分块和并发处理)"""
         start_time = time.time()
         
         # 获取接口配置
@@ -59,15 +60,15 @@ class LLMService:
             )
             
         # 预处理：检查文本长度，决定是否分块
-        # 假设大约 1000 字符或者 10 道题可能接近输出上限（保守估计）
         CHUNK_SIZE = 2000  # 字符数阈值
         
-        all_parsed_questions = []
         all_errors = []
-        raw_responses = []
+        # 用于存储分块结果: {index: [questions], ...}
+        chunk_results = {}
+        # 用于存储原始响应: {index: raw_response_str, ...}
+        chunk_raw_responses = {}
         
         # 简单的分块策略：按题号或段落
-        # 如果文本较短，直接处理
         if len(request.raw_text) < CHUNK_SIZE:
             chunks = [request.raw_text]
         else:
@@ -75,38 +76,86 @@ class LLMService:
             chunks = self._chunk_text(request.raw_text)
             logger.info(f"分块完成，共 {len(chunks)} 块")
             
-        # 逐块处理
-        for i, chunk in enumerate(chunks):
-            logger.info(f"处理第 {i+1}/{len(chunks)} 块，长度: {len(chunk)}")
+        # 定义单个块的处理函数
+        def process_chunk(chunk_index: int, chunk_text: str):
+            logger.info(f"开始处理第 {chunk_index+1}/{len(chunks)} 块 (长度: {len(chunk_text)})")
+            chunk_start = time.time()
             
             # 构建提示词
-            prompt = self._build_prompt(template, chunk, request.custom_variables)
+            prompt = self._build_prompt(template, chunk_text, request.custom_variables)
             
             try:
                 # 调用LLM接口
                 response = self._call_interface(interface, prompt)
                 
-                # 记录响应（用于调试）
+                # 记录响应
+                raw_resp = ""
                 if isinstance(response, dict):
                     if 'choices' in response and response['choices']:
                         msg = response['choices'][0].get('message', {})
-                        content = msg.get('content', '') or msg.get('reasoning_content', '')
-                        raw_responses.append(content)
+                        raw_resp = msg.get('content', '') or msg.get('reasoning_content', '')
                     elif 'content' in response:
-                        raw_responses.append(str(response['content']))
+                        raw_resp = str(response['content'])
                 else:
-                    raw_responses.append(str(response))
+                    raw_resp = str(response)
                 
                 # 解析响应
-                parsed_questions = self._parse_response(response, interface.response_parser)
+                parsed = self._parse_response(response, interface.response_parser)
                 
-                # 修正题号（如果是分块处理，可能需要调整顺序，暂时不处理，依赖后续逻辑）
-                all_parsed_questions.extend(parsed_questions)
+                elapsed = time.time() - chunk_start
+                logger.info(f"第 {chunk_index+1} 块处理完成，耗时 {elapsed:.2f}s，解析出 {len(parsed)} 道题")
+                
+                return {
+                    "index": chunk_index,
+                    "parsed": parsed,
+                    "raw": raw_resp,
+                    "success": True
+                }
                 
             except Exception as e:
-                logger.error(f"Chunk {i+1} parsing error: {str(e)}")
-                all_errors.append({"chunk_index": i, "error": str(e)})
-                # 继续处理下一个块，不中断整个流程
+                elapsed = time.time() - chunk_start
+                logger.error(f"第 {chunk_index+1} 块处理失败 (耗时 {elapsed:.2f}s): {str(e)}")
+                return {
+                    "index": chunk_index,
+                    "error": str(e),
+                    "success": False
+                }
+
+        # 使用线程池并发处理
+        # 限制并发数为3，避免触发API速率限制
+        max_workers = min(3, len(chunks))
+        logger.info(f"启动并发处理，线程数: {max_workers}")
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 提交所有任务
+            future_to_chunk = {
+                executor.submit(process_chunk, i, chunk): i 
+                for i, chunk in enumerate(chunks)
+            }
+            
+            # 处理完成的任务
+            for future in as_completed(future_to_chunk):
+                result = future.result()
+                idx = result["index"]
+                
+                if result["success"]:
+                    chunk_results[idx] = result["parsed"]
+                    chunk_raw_responses[idx] = result["raw"]
+                else:
+                    all_errors.append({"chunk_index": idx, "error": result["error"]})
+                    # 失败时也要占位，保证顺序（或者直接忽略，取决于策略）
+                    chunk_results[idx] = []
+                    chunk_raw_responses[idx] = f"[Error in chunk {idx}: {result['error']}]"
+
+        # 按顺序合并结果
+        all_parsed_questions = []
+        ordered_raw_responses = []
+        
+        for i in range(len(chunks)):
+            if i in chunk_results:
+                all_parsed_questions.extend(chunk_results[i])
+            if i in chunk_raw_responses:
+                ordered_raw_responses.append(chunk_raw_responses[i])
         
         # 记录总日志
         response_time = int((time.time() - start_time) * 1000)
@@ -120,7 +169,7 @@ class LLMService:
             response_time=response_time
         )
         
-        # 更新使用统计 (只更新一次)
+        # 更新使用统计
         interface.usage_count += 1
         interface.last_used_at = datetime.utcnow()
         template.usage_count += 1
@@ -131,7 +180,7 @@ class LLMService:
             parsed_questions=all_parsed_questions,
             parse_errors=all_errors,
             suggestions=self._generate_suggestions(all_parsed_questions),
-            raw_response="\n---\n".join(raw_responses)  # 合并所有响应
+            raw_response="\n\n--- Chunk Separator ---\n\n".join(ordered_raw_responses)
         )
 
     def _chunk_text(self, text: str, max_chunk_size: int = 1500) -> List[str]:
