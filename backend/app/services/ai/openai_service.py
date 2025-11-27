@@ -42,9 +42,11 @@ class OpenAIService(BaseAIService):
             "model": self.config.model_name,
             "messages": openai_messages,
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
             "top_p": self.config.top_p
         }
+        
+        if self.config.max_tokens is not None:
+            request_body["max_tokens"] = self.config.max_tokens
 
         # 添加工具（如果有）
         if tools:
@@ -100,10 +102,12 @@ class OpenAIService(BaseAIService):
             "model": self.config.model_name,
             "messages": openai_messages,
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
             "top_p": self.config.top_p,
             "stream": True
         }
+        
+        if self.config.max_tokens is not None:
+            request_body["max_tokens"] = self.config.max_tokens
 
         # 添加工具（如果有）
         if tools:

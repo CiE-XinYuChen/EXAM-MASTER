@@ -49,10 +49,12 @@ class ZhipuService(BaseAIService):
             "model": self.config.model_name,
             "messages": self._format_messages(messages),
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
             "top_p": self.config.top_p,
             "stream": False
         }
+        
+        if self.config.max_tokens is not None:
+            kwargs["max_tokens"] = self.config.max_tokens
 
         # 如果启用工具
         if tools:
@@ -104,10 +106,12 @@ class ZhipuService(BaseAIService):
             "model": self.config.model_name,
             "messages": self._format_messages(messages),
             "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
             "top_p": self.config.top_p,
             "stream": True
         }
+        
+        if self.config.max_tokens is not None:
+            kwargs["max_tokens"] = self.config.max_tokens
         
         if tools:
             kwargs["tools"] = tools

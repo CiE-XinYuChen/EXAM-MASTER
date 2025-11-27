@@ -31,7 +31,7 @@ class AIModelConfig(BaseModel):
     api_key: str
     base_url: Optional[str] = None
     temperature: float = 0.7
-    max_tokens: int = 2000
+    max_tokens: Optional[int] = None
     top_p: float = 1.0
 
 

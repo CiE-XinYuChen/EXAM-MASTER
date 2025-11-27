@@ -1422,7 +1422,7 @@ async def admin_ai_configs_create(
     api_key: str = Form(...),
     base_url: Optional[str] = Form(None),
     temperature: float = Form(0.7),
-    max_tokens: int = Form(2000),
+    max_tokens: Optional[int] = Form(None),
     top_p: float = Form(1.0),
     is_default: bool = Form(False),
     description: Optional[str] = Form(None),
@@ -1503,7 +1503,7 @@ async def admin_ai_configs_edit(
     api_key: Optional[str] = Form(None),
     base_url: Optional[str] = Form(None),
     temperature: float = Form(0.7),
-    max_tokens: int = Form(2000),
+    max_tokens: Optional[int] = Form(None),
     top_p: float = Form(1.0),
     is_default: bool = Form(False),
     description: Optional[str] = Form(None),
@@ -1648,7 +1648,7 @@ async def test_ai_api_connection(request: Request):
         logger.info(f"API Key: {data.get('api_key', '')[:15]}...{data.get('api_key', '')[-4:]}")
         logger.info(f"Base URL: {data.get('base_url')}")
         logger.info(f"Temperature: {data.get('temperature', 0.7)}")
-        logger.info(f"Max Tokens: {data.get('max_tokens', 2000)}")
+        logger.info(f"Max Tokens: {data.get('max_tokens')}")
         logger.info("=" * 70)
 
         # Create AI config
@@ -1657,7 +1657,7 @@ async def test_ai_api_connection(request: Request):
             api_key=data['api_key'],
             base_url=data.get('base_url'),
             temperature=data.get('temperature', 0.7),
-            max_tokens=data.get('max_tokens', 2000),
+            max_tokens=data.get('max_tokens'),
             top_p=data.get('top_p', 1.0)
         )
 
@@ -1740,7 +1740,7 @@ async def test_ai_chat(request: Request):
             api_key=config_data['api_key'],
             base_url=config_data.get('base_url'),
             temperature=config_data.get('temperature', 0.7),
-            max_tokens=config_data.get('max_tokens', 2000),
+            max_tokens=config_data.get('max_tokens'),
             top_p=config_data.get('top_p', 1.0)
         )
 

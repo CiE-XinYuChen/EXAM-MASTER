@@ -48,10 +48,12 @@ class ClaudeService(BaseAIService):
         claude_messages = self._format_messages(conversation_messages)
 
         # 构建请求体
+        max_tokens = self.config.max_tokens if self.config.max_tokens is not None else 4096
+        
         request_body = {
             "model": self.config.model_name,
             "messages": claude_messages,
-            "max_tokens": self.config.max_tokens,
+            "max_tokens": max_tokens,
             "temperature": self.config.temperature,
             "top_p": self.config.top_p
         }
@@ -139,10 +141,12 @@ class ClaudeService(BaseAIService):
         claude_messages = self._format_messages(conversation_messages)
 
         # 构建请求体
+        max_tokens = self.config.max_tokens if self.config.max_tokens is not None else 4096
+        
         request_body = {
             "model": self.config.model_name,
             "messages": claude_messages,
-            "max_tokens": self.config.max_tokens,
+            "max_tokens": max_tokens,
             "temperature": self.config.temperature,
             "top_p": self.config.top_p,
             "stream": True
