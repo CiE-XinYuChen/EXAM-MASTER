@@ -22,6 +22,7 @@ from app.models.llm_models import LLMInterface, PromptTemplate, LLMParseLog
 from app.services.question_bank_service import QuestionBankService
 from app.api.v1 import api_router as v1_api_router
 from app.api.v2 import api_router
+from app.api.v2.questions import router as questions_router
 from app.api.mcp.router import router as mcp_router
 
 
@@ -78,6 +79,7 @@ app.include_router(v1_api_router, prefix="/api/v1")
 
 # Include V2 API routes
 app.include_router(api_router, prefix="/api/v2")
+app.include_router(questions_router, prefix="/api/v2")
 
 # Include MCP routes
 app.include_router(mcp_router, prefix="/api/mcp")

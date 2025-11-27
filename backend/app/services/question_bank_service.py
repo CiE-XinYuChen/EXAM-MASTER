@@ -555,6 +555,35 @@ class QuestionBankService:
         with open(questions_path, "w", encoding="utf-8") as f:
             json.dump(questions_data, f, ensure_ascii=False, indent=2)
     
+    def renumber_questions(self, bank_id: str) -> int:
+        """
+        重新编号所有题目
+        按创建时间排序，重新分配从1开始的序号
+        """
+        bank = self.get_question_bank(bank_id)
+        if not bank:
+            raise HTTPException(status_code=404, detail="题库不存在")
+            
+        # 获取该题库所有���目，按创建时间排序
+        questions = self.db.query(QuestionV2).filter(
+            QuestionV2.bank_id == bank_id
+        ).order_by(QuestionV2.created_at).all()
+        
+        # 重新编号
+        count = 0
+        for index, question in enumerate(questions):
+            new_number = index + 1
+            if question.question_number != new_number:
+                question.question_number = new_number
+                count += 1
+        
+        if count > 0:
+            self.db.commit()
+            # 同步更新到文件
+            self._sync_questions_to_file(bank_id)
+            
+        return count
+
     def _backup_before_delete(self, bank: QuestionBankV2):
         """删除前备份"""
         backup_dir = "storage/backups/deleted"
