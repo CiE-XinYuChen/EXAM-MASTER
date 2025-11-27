@@ -36,7 +36,7 @@ class LLMService:
         request: QuestionParseRequest,
         user_id: int
     ) -> QuestionParseResponse:
-        """解析题目文本"""
+        """解析题目文本 (支持长文本自动分块)"""
         start_time = time.time()
         
         # 获取接口配置
@@ -57,106 +57,114 @@ class LLMService:
                 parsed_questions=[],
                 parse_errors=[{"error": "Template not found"}]
             )
+            
+        # 预处理：检查文本长度，决定是否分块
+        # 假设大约 1000 字符或者 10 道题可能接近输出上限（保守估计）
+        CHUNK_SIZE = 2000  # 字符数阈值
         
-        # 构建提示词
-        prompt = self._build_prompt(template, request.raw_text, request.custom_variables)
+        all_parsed_questions = []
+        all_errors = []
+        raw_responses = []
         
-        # 调用LLM接口
-        try:
-            response = self._call_interface(interface, prompt)
+        # 简单的分块策略：按题号或段落
+        # 如果文本较短，直接处理
+        if len(request.raw_text) < CHUNK_SIZE:
+            chunks = [request.raw_text]
+        else:
+            logger.info(f"文本较长 ({len(request.raw_text)} chars)，启用自动分块处理")
+            chunks = self._chunk_text(request.raw_text)
+            logger.info(f"分块完成，共 {len(chunks)} 块")
             
-            # 记录响应结构以便调试
-            logger.info(f"响应类型: {type(response)}")
-            logger.info(f"响应键: {response.keys() if isinstance(response, dict) else 'Not a dict'}")
-            if isinstance(response, dict):
-                # 记录每个键的值类型和部分内容
-                for key in list(response.keys())[:5]:  # 只看前5个键
-                    value = response[key]
-                    if isinstance(value, str):
-                        logger.info(f"  {key}: string[{len(value)}] = {value[:100]}...")
-                    elif isinstance(value, (list, dict)):
-                        logger.info(f"  {key}: {type(value).__name__} with {len(value)} items")
-                    else:
-                        logger.info(f"  {key}: {type(value).__name__} = {value}")
+        # 逐块处理
+        for i, chunk in enumerate(chunks):
+            logger.info(f"处理第 {i+1}/{len(chunks)} 块，长度: {len(chunk)}")
             
-            # 解析响应
-            parsed_questions = self._parse_response(response, interface.response_parser)
+            # 构建提示词
+            prompt = self._build_prompt(template, chunk, request.custom_variables)
             
-            # 记录日志
-            response_time = int((time.time() - start_time) * 1000)
-            self._log_parse(
-                interface_id=interface.id,
-                user_id=user_id,
-                input_text=request.raw_text,
-                parsed_result={"questions": [q.dict() for q in parsed_questions]},
-                success=True,
-                response_time=response_time
-            )
+            try:
+                # 调用LLM接口
+                response = self._call_interface(interface, prompt)
+                
+                # 记录响应（用于调试）
+                if isinstance(response, dict):
+                    if 'choices' in response and response['choices']:
+                        msg = response['choices'][0].get('message', {})
+                        content = msg.get('content', '') or msg.get('reasoning_content', '')
+                        raw_responses.append(content)
+                    elif 'content' in response:
+                        raw_responses.append(str(response['content']))
+                else:
+                    raw_responses.append(str(response))
+                
+                # 解析响应
+                parsed_questions = self._parse_response(response, interface.response_parser)
+                
+                # 修正题号（如果是分块处理，可能需要调整顺序，暂时不处理，依赖后续逻辑）
+                all_parsed_questions.extend(parsed_questions)
+                
+            except Exception as e:
+                logger.error(f"Chunk {i+1} parsing error: {str(e)}")
+                all_errors.append({"chunk_index": i, "error": str(e)})
+                # 继续处理下一个块，不中断整个流程
+        
+        # 记录总日志
+        response_time = int((time.time() - start_time) * 1000)
+        self._log_parse(
+            interface_id=interface.id,
+            user_id=user_id,
+            input_text=request.raw_text, # 记录完整文本
+            parsed_result={"questions": [q.dict() for q in all_parsed_questions]},
+            success=len(all_errors) == 0,
+            error_message=str(all_errors) if all_errors else None,
+            response_time=response_time
+        )
+        
+        # 更新使用统计 (只更新一次)
+        interface.usage_count += 1
+        interface.last_used_at = datetime.utcnow()
+        template.usage_count += 1
+        self.db.commit()
+        
+        return QuestionParseResponse(
+            success=len(all_parsed_questions) > 0,
+            parsed_questions=all_parsed_questions,
+            parse_errors=all_errors,
+            suggestions=self._generate_suggestions(all_parsed_questions),
+            raw_response="\n---\n".join(raw_responses)  # 合并所有响应
+        )
+
+    def _chunk_text(self, text: str, max_chunk_size: int = 1500) -> List[str]:
+        """
+        智能文本分块
+        尝试按题目编号或段落分割，保持每块大小适中
+        """
+        lines = text.split('\n')
+        chunks = []
+        current_chunk = []
+        current_size = 0
+        
+        # 题号匹配正则 (支持 "1.", "1、", "(1)", "一、", "Question 1")
+        question_start_pattern = re.compile(r'^\s*(\d+[\.、\)]|\(\d+\)|[一二三四五六七八九十]+[\.、]|Question\s+\d+|第\d+题)')
+        
+        for line in lines:
+            line_len = len(line)
+            is_new_question = bool(question_start_pattern.match(line))
             
-            # 更新使用统计
-            interface.usage_count += 1
-            interface.last_used_at = datetime.utcnow()
-            template.usage_count += 1
-            self.db.commit()
+            # 如果当前块加上新行会过大，且当前行看起来是新题目的开始，或者当前块已经非常大
+            if (current_size + line_len > max_chunk_size and is_new_question) or (current_size > max_chunk_size * 1.5):
+                if current_chunk:
+                    chunks.append('\n'.join(current_chunk))
+                    current_chunk = []
+                    current_size = 0
             
-            # 获取原始响应内容用于调试
-            raw_response = None
-            if isinstance(response, dict):
-                if 'choices' in response and response['choices']:
-                    msg = response['choices'][0].get('message', {})
-                    raw_response = msg.get('content', '') or msg.get('reasoning_content', '')
+            current_chunk.append(line)
+            current_size += line_len
             
-            return QuestionParseResponse(
-                success=True,
-                parsed_questions=parsed_questions,
-                parse_errors=[],
-                suggestions=self._generate_suggestions(parsed_questions),
-                raw_response=raw_response  # 即使成功也返回原始响应，方便用户查看
-            )
+        if current_chunk:
+            chunks.append('\n'.join(current_chunk))
             
-        except Exception as e:
-            logger.error(f"LLM parsing error: {str(e)}")
-            
-            # 记录错误日志
-            self._log_parse(
-                interface_id=interface.id,
-                user_id=user_id,
-                input_text=request.raw_text,
-                parsed_result=None,
-                success=False,
-                error_message=str(e),
-                response_time=int((time.time() - start_time) * 1000)
-            )
-            
-            # 尝试返回原始响应供手动编辑
-            raw_response = None
-            if 'response' in locals():
-                # 如果有响应对象，尝试提取内容
-                try:
-                    if isinstance(response, dict):
-                        # 提取响应内容
-                        if 'choices' in response and response['choices']:
-                            msg = response['choices'][0].get('message', {})
-                            # 优先使用content，如果为空则使用reasoning_content
-                            raw_response = msg.get('content', '') or msg.get('reasoning_content', '')
-                        elif 'content' in response:
-                            raw_response = str(response['content'])
-                        else:
-                            raw_response = json.dumps(response, ensure_ascii=False)
-                except:
-                    raw_response = str(response)
-            
-            # 如果错误信息中包含JSON解析错误，尝试提取部分JSON
-            if raw_response and 'JSON' in str(e):
-                logger.info(f"JSON解析失败，返回原始响应供手动编辑，长度: {len(raw_response)}")
-            
-            return QuestionParseResponse(
-                success=False,
-                parsed_questions=[],
-                parse_errors=[{"error": str(e)}],
-                raw_response=raw_response,  # 添加原始响应
-                needs_manual_edit=True if raw_response else False  # 标记需要手动编辑
-            )
+        return chunks
     
     def _get_interface(self, interface_id: str) -> Optional[LLMInterface]:
         """获取接口配置"""
