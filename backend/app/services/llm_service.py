@@ -342,11 +342,15 @@ JSON格式要求，每个题目包含：
         # 发送请求
         try:
             logger.info(f"请求URL: {api_url}")
+            
+            # 获取超时设置，默认为300秒（5分钟），适应聚合API的延迟
+            timeout = max(config.get("timeout", 300), 300)
+            
             response = requests.post(
                 api_url,
                 headers=headers,
                 json=request_body,
-                timeout=config.get("timeout", 120)  # 增加到120秒
+                timeout=timeout
             )
             
             logger.info(f"响应状态: {response.status_code}")
