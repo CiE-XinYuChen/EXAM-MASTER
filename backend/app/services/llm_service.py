@@ -416,16 +416,23 @@ JSON格式要求，每个题目包含：
         
         # 准备参数
         # 基础参数
+        temp = request_format.get("temperature") if request_format else 0.3
+        if temp is None: temp = 0.3
+        
+        top_p = request_format.get("top_p") if request_format else 1.0
+        if top_p is None: top_p = 1.0
+
         kwargs = {
             "model": config.get("model", "glm-4"),
             "messages": messages,
-            "temperature": request_format.get("temperature", 0.3) if request_format else 0.3,
-            "top_p": request_format.get("top_p", 1.0) if request_format else 1.0
+            "temperature": float(temp),
+            "top_p": float(top_p),
+            "stream": False
         }
         
         # 只有在用户明确指定max_tokens时才添加限制
         if request_format and "max_tokens" in request_format and request_format["max_tokens"] is not None:
-            kwargs["max_tokens"] = request_format["max_tokens"]
+            kwargs["max_tokens"] = int(request_format["max_tokens"])
             
         # 添加其他智谱AI支持的可选参数
         # 显式白名单过滤，防止传入API不支持的参数导致400错误
@@ -436,9 +443,13 @@ JSON格式要求，每个题目包含：
         if request_format:
             for key, value in request_format.items():
                 if key in supported_params and value is not None:
+                    # 特殊处理：如果列表为空，则不传递（防止API报错）
+                    if key in ["stop", "tools"] and isinstance(value, list) and len(value) == 0:
+                        continue
                     kwargs[key] = value
         
         try:
+            logger.info(f"发送给智谱AI SDK的参数: {json.dumps({k: v for k, v in kwargs.items() if k != 'messages'}, ensure_ascii=False)}")
             # 调用SDK
             response = client.chat.completions.create(**kwargs)
             
