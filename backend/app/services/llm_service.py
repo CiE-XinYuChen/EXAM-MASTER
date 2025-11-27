@@ -368,8 +368,17 @@ JSON格式要求，每个题目包含：
         if not api_key:
             raise ValueError("智谱AI API密钥未配置")
             
+        # 处理 base_url
+        base_url = config.get('base_url')
+        if not base_url or base_url.strip() == "":
+            base_url = None
+        elif base_url.rstrip("/") == "https://open.bigmodel.cn":
+            # 如果用户错误地设置了根域名��强制使用默认值（None）
+            logger.warning("检测到错误的智谱AI Base URL配置，已自动修正为默认值")
+            base_url = None
+            
         # 初始化客户端
-        client = ZhipuAI(api_key=api_key, base_url=config.get('base_url'))
+        client = ZhipuAI(api_key=api_key, base_url=base_url)
         
         logger.info(f"调用智谱AI (SDK)，模型: {config.get('model', 'glm-4')}")
         

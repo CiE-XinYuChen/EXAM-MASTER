@@ -25,8 +25,16 @@ class ZhipuService(BaseAIService):
 
     def __init__(self, config: AIModelConfig):
         super().__init__(config)
+        
+        # 处理 base_url
+        base_url = config.base_url
+        if not base_url or base_url.strip() == "":
+            base_url = None
+        elif base_url.rstrip("/") == "https://open.bigmodel.cn":
+            base_url = None
+            
         # 初始化智谱AI客户端
-        self.client = ZhipuAI(api_key=config.api_key, base_url=config.base_url)
+        self.client = ZhipuAI(api_key=config.api_key, base_url=base_url)
 
     async def chat(
         self,
