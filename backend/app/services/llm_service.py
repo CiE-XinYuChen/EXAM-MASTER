@@ -251,9 +251,18 @@ JSON格式要求，每个题目包含：
         }
         
         # 不设置max_tokens，除非明确指定
-        # OpenAI API会使用模型的默认最大值
         if request_format and "max_tokens" in request_format and request_format["max_tokens"] is not None:
             request_body["max_tokens"] = request_format["max_tokens"]
+            
+        # 添加其他OpenAI支持的可选参数
+        supported_params = {
+            "top_p", "stop", "presence_penalty", "frequency_penalty", "logit_bias", "user", "seed"
+        }
+        
+        if request_format:
+            for key, value in request_format.items():
+                if key in supported_params and value is not None:
+                    request_body[key] = value
         
         # 构建API URL
         base_url = config['base_url']
@@ -331,6 +340,7 @@ JSON格式要求，每个题目包含：
             "content-type": "application/json"
         }
         
+        # 构建请求体
         request_body = {
             "model": config.get("model", "claude-3-sonnet-20240229"),
             "messages": [{"role": "user", "content": prompt}],
@@ -341,6 +351,16 @@ JSON格式要求，每个题目包含：
         # 如果用户指定了max_tokens，使用用户的值
         if request_format and "max_tokens" in request_format and request_format["max_tokens"] is not None:
             request_body["max_tokens"] = request_format["max_tokens"]
+            
+        # 添加其他Claude支持的可选参数
+        supported_params = {
+            "top_p", "top_k", "stop_sequences", "system", "metadata"
+        }
+        
+        if request_format:
+            for key, value in request_format.items():
+                if key in supported_params and value is not None:
+                    request_body[key] = value
         
         response = requests.post(
             f"{config['base_url']}/messages",
