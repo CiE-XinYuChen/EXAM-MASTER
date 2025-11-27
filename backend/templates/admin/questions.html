@@ -12,9 +12,18 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">题目列表</h3>
-        <a href="/admin/questions/create{% if bank_filter %}?bank_id={{ bank_filter }}{% endif %}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> 创建题目
-        </a>
+        <div class="btn-group">
+            {% if bank_filter %}
+            <form method="POST" action="/admin/qbanks/{{ bank_filter }}/renumber" style="display: inline;" onsubmit="return confirm('确定要重新生成所有题号吗？这将按创建时间重新排序并覆盖现有序号。');">
+                <button type="submit" class="btn btn-warning btn-sm mr-2">
+                    <i class="fas fa-sort-numeric-down"></i> 自动重编序号
+                </button>
+            </form>
+            {% endif %}
+            <a href="/admin/questions/create{% if bank_filter %}?bank_id={{ bank_filter }}{% endif %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> 创建题目
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <!-- Filter Bar -->
