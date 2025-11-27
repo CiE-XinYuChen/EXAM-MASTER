@@ -559,18 +559,14 @@ JSON格式要求，每个题目包含：
             logger.info(f"准备解析内容长度: {len(content) if content else 0}, 前100字符: {content[:100] if content else 'EMPTY'}")
             
             # 清理content，移除可能的markdown代码块标记
-            if '```json' in content:
-                # 提取```json和```之间的内容
-                json_match = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
-                if json_match:
-                    content = json_match.group(1)
-                else:
+            # 尝试匹配 ```json ... ``` 或 ``` ... ```
+            code_block_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL | re.IGNORECASE)
+            if code_block_match:
+                content = code_block_match.group(1)
+            else:
+                # 如果没有匹配到成对的 code block，尝试简单的移除
+                if '```' in content:
                     content = content.replace('```json', '').replace('```', '')
-            elif '```' in content:
-                # 提取普通代码块
-                code_match = re.search(r'```\s*(.*?)\s*```', content, re.DOTALL)
-                if code_match:
-                    content = code_match.group(1)
             
             # 尝试从content中提取JSON
             json_str = None
