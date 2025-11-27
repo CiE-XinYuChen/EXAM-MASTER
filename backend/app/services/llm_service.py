@@ -638,25 +638,28 @@ JSON格式要求，每个题目包含：
             # 尝试从content中提取JSON
             json_str = None
             
-            # 方法1: 查找标记了JSON代码块的内容
-            json_block_match = re.search(r'```(?:json)?\s*(\[.*?\])\s*```', content, re.DOTALL)
-            if json_block_match:
-                json_str = json_block_match.group(1)
-                logger.info("从代码块中提取JSON")
+            # 方法1: 查找标记了JSON代码块的内容 (已经在前面处理过)
+            # 如果前面匹配成功，content已经是纯JSON字符串
+            # 如果前面没有匹配成功，尝试最后的手段：查找首尾的大括号或方括号
+            
+            # 简单的 heuristic: 检查是否以 [ 或 { 开始 (允许空白)
+            stripped_content = content.strip()
+            if stripped_content.startswith('[') or stripped_content.startswith('{'):
+                json_str = content
             else:
-                # 方法2: 查找最后一个完整的JSON数组
-                # 从后往前找，因为通常实际结果在最后
-                all_arrays = re.findall(r'\[(?:[^[\]]*|\[(?:[^[\]]*|\[[^[\]]*\])*\])*\]', content)
-                if all_arrays:
-                    # 选择最长的数组（通常是最完整的）
-                    json_str = max(all_arrays, key=len)
-                    logger.info(f"找到{len(all_arrays)}个JSON数组，选择最长的")
+                # 方法2 (原方法3): 简单查找[到]
+                json_start = content.find('[')
+                json_end = content.rfind(']') + 1
+                if json_start >= 0 and json_end > json_start:
+                    json_str = content[json_start:json_end]
+                    logger.info("通过查找方括号提取JSON")
                 else:
-                    # 方法3: 简单查找[到]
-                    json_start = content.find('[')
-                    json_end = content.rfind(']') + 1
+                    # 尝试找对象
+                    json_start = content.find('{')
+                    json_end = content.rfind('}') + 1
                     if json_start >= 0 and json_end > json_start:
                         json_str = content[json_start:json_end]
+                        logger.info("通过查找大括号提取JSON")
             
             if json_str:
                 # 清理可能的非法字符和注释
