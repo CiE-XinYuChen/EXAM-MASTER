@@ -327,9 +327,20 @@ JSON格式要求，每个题目包含：
             "top_p", "stop", "presence_penalty", "frequency_penalty", "logit_bias", "user", "seed"
         }
         
+        # 针对Kimi模型的特殊处理：移除不支持的参数
+        model_name = config.get("model", "").lower()
+        if "kimi" in model_name or "moonshot" in model_name:
+            supported_params.discard("frequency_penalty")
+            supported_params.discard("presence_penalty")
+            supported_params.discard("logit_bias")
+            # Kimi可能对stop参数格式有特殊要求，或者不支持空列表，暂且保留但在下面做空检查
+        
         if request_format:
             for key, value in request_format.items():
                 if key in supported_params and value is not None:
+                    # 再次检查：空列表不传递
+                    if key == "stop" and isinstance(value, list) and not value:
+                        continue
                     request_body[key] = value
         
         # 构建API URL
