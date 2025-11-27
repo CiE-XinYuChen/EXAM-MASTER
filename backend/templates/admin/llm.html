@@ -215,6 +215,13 @@ LLM配置
                             </select>
                         </div>
                         
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="disableChunking">
+                            <label class="form-check-label" for="disableChunking">
+                                禁用自动分块处理 (适用于保持长文本上下文连贯性，但可能受限于Token上限)
+                            </label>
+                        </div>
+                        
                         <div class="form-actions">
                             <button type="button" class="btn btn-outline-secondary" onclick="loadExample()">
                                 <i class="fas fa-file-alt"></i> 加载示例
@@ -1123,7 +1130,10 @@ document.getElementById('parseForm').addEventListener('submit', function(e) {
         interface_id: document.getElementById('parseInterface').value,
         prompt_template_id: document.getElementById('parseTemplate').value,
         raw_text: document.getElementById('parseText').value,
-        bank_id: document.getElementById('targetBank').value
+        bank_id: document.getElementById('targetBank').value,
+        custom_variables: {
+            disable_chunking: document.getElementById('disableChunking').checked ? "true" : "false"
+        }
     };
     
     // 开始进度动画
