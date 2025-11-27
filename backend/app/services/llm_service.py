@@ -333,6 +333,7 @@ JSON格式要求，每个题目包含：
             supported_params.discard("frequency_penalty")
             supported_params.discard("presence_penalty")
             supported_params.discard("logit_bias")
+            supported_params.discard("stop")  # Kimi 对 stop 参数也很敏感，暂时移除
             # Kimi可能对stop参数格式有特殊要求，或者不支持空列表，暂且保留但在下面做空检查
         
         if request_format:
