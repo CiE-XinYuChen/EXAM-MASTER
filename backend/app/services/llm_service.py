@@ -510,13 +510,23 @@ JSON格式要求，每个题目包含：
             # 调用SDK
             response = client.chat.completions.create(**kwargs)
             
-            # 构造兼容的返回结果
+            # 获取第一个choice
             choice = response.choices[0]
+            content = choice.message.content
+            
+            logger.info(f"智谱AI SDK返回内容长度: {len(content) if content else 0}")
+            if not content:
+                logger.warning(f"智谱AI SDK返回空内容! Finish reason: {choice.finish_reason}")
+                # 检查是否有工具调用
+                if choice.message.tool_calls:
+                    logger.info(f"检测到工具调用: {choice.message.tool_calls}")
+            
+            # 构造兼容的返回结果
             result = {
                 "choices": [
                     {
                         "message": {
-                            "content": choice.message.content,
+                            "content": content,
                             "role": choice.message.role
                         },
                         "finish_reason": choice.finish_reason
@@ -526,10 +536,6 @@ JSON格式要求，每个题目包含：
             }
             
             logger.info("智谱AI调用成功")
-            
-            # 记录响应内容用于调试
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug(f"完整响应: {json.dumps(result, ensure_ascii=False, indent=2)[:1000]}")
             
             return result
             
