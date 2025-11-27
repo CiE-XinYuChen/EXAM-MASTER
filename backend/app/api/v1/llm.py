@@ -4,6 +4,7 @@ LLM Interface and Template Management API
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.core.database import get_qbank_db, get_main_db
 from app.core.security import get_current_admin_user, get_admin_user_from_session
 from app.models.llm_models import LLMInterface, PromptTemplate
@@ -332,6 +333,13 @@ async def batch_import_questions(
     failed_count = 0
     errors = []
     
+    # 获取当前最大题号
+    max_number = db.query(func.max(Question.question_number)).filter(
+        Question.bank_id == request.bank_id
+    ).scalar() or 0
+    
+    current_number = max_number + 1
+    
     for parsed_q in request.questions:
         try:
             # 检查重复（根据题干）
@@ -348,6 +356,7 @@ async def batch_import_questions(
             question = Question(
                 id=str(uuid.uuid4()),
                 bank_id=request.bank_id,
+                question_number=current_number,
                 stem=parsed_q.stem,
                 stem_format="text",
                 type=parsed_q.type,
@@ -384,6 +393,7 @@ async def batch_import_questions(
             
             db.add(question)
             imported_count += 1
+            current_number += 1
             
         except Exception as e:
             failed_count += 1
