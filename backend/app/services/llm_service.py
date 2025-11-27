@@ -561,7 +561,6 @@ JSON格式要求，每个题目包含：
             # 清理content，移除可能的markdown代码块标记
             if '```json' in content:
                 # 提取```json和```之间的内容
-                import re
                 json_match = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
                 if json_match:
                     content = json_match.group(1)
@@ -569,7 +568,6 @@ JSON格式要求，每个题目包含：
                     content = content.replace('```json', '').replace('```', '')
             elif '```' in content:
                 # 提取普通代码块
-                import re
                 code_match = re.search(r'```\s*(.*?)\s*```', content, re.DOTALL)
                 if code_match:
                     content = code_match.group(1)
