@@ -571,10 +571,14 @@ JSON格式要求，每个题目包含：
             code_block_match = re.search(r'```(?:json)?\s*(.*?)\s*```', content, re.DOTALL | re.IGNORECASE)
             if code_block_match:
                 content = code_block_match.group(1)
+                logger.info("已移除Markdown代码块标记")
             else:
                 # 如果没有匹配到成对的 code block，尝试简单的移除
                 if '```' in content:
                     content = content.replace('```json', '').replace('```', '')
+                    logger.info("已移除Markdown标记 (Fallback)")
+            
+            logger.info(f"清理后内容前100字符: {content[:100] if content else 'EMPTY'}")
             
             # 尝试从content中提取JSON
             json_str = None
