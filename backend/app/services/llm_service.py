@@ -248,9 +248,11 @@ class LLMService:
         for key, value in custom_variables.items():
             prompt = prompt.replace(f"{{{key}}}", value)
         
-        # 对于智谱AI，添加额外的JSON输出提示
-        if "glm" in str(self.interfaces_cache.values()):
-            prompt += "\n\n请确保输出纯JSON数组，不要包含任何解释或思考过程。"
+        # 针对长文本分块处理的补充指令
+        prompt += "\n\n【重要补充规则】\n"
+        prompt += "1. 输入文本可能是长试卷的其中一个片段（分块）。\n"
+        prompt += "2. 如果文本的开头或结尾包含不完整的题目（例如只有选项没有题干，或只有题干没有选项），请**直接忽略**这些残缺的题目，不要强行解析或输出。\n"
+        prompt += "3. 确保输出格式为合法的JSON数组，不要包含Markdown标记、代码块符号（```）或其他解释性文字。\n"
         
         return prompt
     
