@@ -35,6 +35,7 @@ class QuestionBankBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
     category: Optional[str] = None
+    tags: Optional[List[str]] = None
     is_public: bool = False
     meta_data: Optional[Dict[str, Any]] = None
 
@@ -47,6 +48,7 @@ class QuestionBankUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     category: Optional[str] = None
+    tags: Optional[List[str]] = None
     is_public: Optional[bool] = None
     meta_data: Optional[Dict[str, Any]] = None
 
@@ -58,6 +60,7 @@ class QuestionBankResponse(QuestionBankBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     question_count: Optional[int] = 0
+    total_questions: Optional[int] = 0
     
     model_config = ConfigDict(from_attributes=True)
 

@@ -96,12 +96,20 @@ async def get_question_banks(
 
         if bank.is_public or check_bank_permission(bank.id, "read", current_user, main_db):
             # Add question count from V2 table
-            bank.question_count = qbank_db.query(QuestionV2).filter(
+            count = qbank_db.query(QuestionV2).filter(
                 QuestionV2.bank_id == bank.id
             ).count()
+            bank.question_count = count
+            bank.total_questions = count
+            
             # Set metadata fields for compatibility
             if not hasattr(bank, 'metadata') or bank.metadata is None:
                 bank.metadata = bank.meta_data
+            
+            # Ensure tags are a list (handle JSON storage)
+            if hasattr(bank, 'tags') and bank.tags is None:
+                bank.tags = []
+                
             # Ensure all boolean fields have defaults for schema compatibility
             if bank.is_published is None:
                 bank.is_published = False

@@ -76,9 +76,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                   CustomTextField(
                     controller: _oldPasswordController,
-                    label: '当前密码',
-                    hint: '请输入当前密码',
-                    isPassword: true,
+                    labelText: '当前密码',
+                    hintText: '请输入当前密码',
+                    obscureText: true,
                     prefixIcon: Icons.lock_outline,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -93,9 +93,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   const SizedBox(height: 16),
                   CustomTextField(
                     controller: _newPasswordController,
-                    label: '新密码',
-                    hint: '请输入新密码',
-                    isPassword: true,
+                    labelText: '新密码',
+                    hintText: '请输入新密码',
+                    obscureText: true,
                     prefixIcon: Icons.lock_outline,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -110,9 +110,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   const SizedBox(height: 16),
                   CustomTextField(
                     controller: _confirmPasswordController,
-                    label: '确认新密码',
-                    hint: '请再次输入新密码',
-                    isPassword: true,
+                    labelText: '确认新密码',
+                    hintText: '请再次输入新密码',
+                    obscureText: true,
                     prefixIcon: Icons.lock_outline,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
