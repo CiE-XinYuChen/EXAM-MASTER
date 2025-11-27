@@ -395,6 +395,7 @@ JSON格式要求，每个题目包含：
         messages.insert(0, {"role": "system", "content": system_prompt})
         
         # 准备参数
+        # 基础参数
         kwargs = {
             "model": config.get("model", "glm-4"),
             "messages": messages,
@@ -406,6 +407,17 @@ JSON格式要求，每个题目包含：
         if request_format and "max_tokens" in request_format and request_format["max_tokens"] is not None:
             kwargs["max_tokens"] = request_format["max_tokens"]
             
+        # 添加其他智谱AI支持的可选参数
+        # 显式白名单过滤，防止传入API不支持的参数导致400错误
+        supported_params = {
+            "stop", "tools", "tool_choice", "request_id", "do_sample", "user_id", "thinking"
+        }
+        
+        if request_format:
+            for key, value in request_format.items():
+                if key in supported_params and value is not None:
+                    kwargs[key] = value
+        
         try:
             # 调用SDK
             response = client.chat.completions.create(**kwargs)
