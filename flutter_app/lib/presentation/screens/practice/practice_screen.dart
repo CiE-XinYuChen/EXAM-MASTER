@@ -275,7 +275,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
-            value: provider.progress,
+            value: provider.totalQuestions > 0
+                ? (provider.currentQuestionIndex + 1) / provider.totalQuestions
+                : 0.0,
             backgroundColor: Colors.grey.shade200,
             minHeight: 6,
             borderRadius: BorderRadius.circular(3),
