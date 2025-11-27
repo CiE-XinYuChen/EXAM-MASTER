@@ -126,11 +126,12 @@ async def create_question_bank(
     bank_id = str(uuid.uuid4())
     
     # Create question bank
-    bank = QuestionBank(
+    bank = QuestionBankV2(
         id=bank_id,
         **bank_data.model_dump(),
         creator_id=current_user.id,
-        version="1.0.0"
+        folder_path=f"question_banks/{bank_id}",
+        storage_type="local"
     )
     
     qbank_db.add(bank)
@@ -149,6 +150,17 @@ async def create_question_bank(
     main_db.commit()
     
     bank.question_count = 0
+    
+    # Ensure compatibility fields for response
+    if not hasattr(bank, 'metadata') or bank.metadata is None:
+        bank.metadata = bank.meta_data
+    if bank.is_published is None:
+        bank.is_published = False
+    if bank.allow_download is None:
+        bank.allow_download = True
+    if bank.allow_fork is None:
+        bank.allow_fork = True
+        
     return bank
 
 
@@ -209,7 +221,7 @@ async def update_question_bank(
     main_db: Session = Depends(get_main_db)
 ):
     """Update question bank"""
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
     
     if not bank:
         raise HTTPException(
@@ -227,15 +239,32 @@ async def update_question_bank(
     # Update fields
     update_data = bank_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(bank, field, value)
+        if field == 'metadata':
+            # Handle metadata/meta_data compatibility
+            if hasattr(bank, 'meta_data'):
+                bank.meta_data = value
+            else:
+                setattr(bank, field, value)
+        else:
+            setattr(bank, field, value)
     
     qbank_db.commit()
     qbank_db.refresh(bank)
     
-    # Add question count
-    bank.question_count = qbank_db.query(Question).filter(
-        Question.bank_id == bank_id
+    # Add question count from V2 table
+    bank.question_count = qbank_db.query(QuestionV2).filter(
+        QuestionV2.bank_id == bank_id
     ).count()
+    
+    # Ensure compatibility fields for response
+    if not hasattr(bank, 'metadata') or bank.metadata is None:
+        bank.metadata = bank.meta_data
+    if bank.is_published is None:
+        bank.is_published = False
+    if bank.allow_download is None:
+        bank.allow_download = True
+    if bank.allow_fork is None:
+        bank.allow_fork = True
     
     return bank
 
@@ -248,7 +277,7 @@ async def delete_question_bank(
     main_db: Session = Depends(get_main_db)
 ):
     """Delete question bank"""
-    bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
     
     if not bank:
         raise HTTPException(
@@ -286,7 +315,7 @@ async def clone_question_bank(
 ):
     """Clone an existing question bank"""
     # Get source bank
-    source_bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == bank_id).first()
+    source_bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
     
     if not source_bank:
         raise HTTPException(
@@ -303,26 +332,27 @@ async def clone_question_bank(
     
     # Create new bank
     new_bank_id = str(uuid.uuid4())
-    new_bank = QuestionBank(
+    new_bank = QuestionBankV2(
         id=new_bank_id,
         name=new_name,
         description=f"Cloned from {source_bank.name}",
         category=source_bank.category,
         is_public=False,
-        metadata=source_bank.metadata,
+        meta_data=source_bank.meta_data,
         creator_id=current_user.id,
-        version="1.0.0"
+        folder_path=f"question_banks/{new_bank_id}",
+        storage_type="local"
     )
     
     qbank_db.add(new_bank)
     
     # Clone questions
-    source_questions = qbank_db.query(Question).filter(
-        Question.bank_id == bank_id
+    source_questions = qbank_db.query(QuestionV2).filter(
+        QuestionV2.bank_id == bank_id
     ).all()
     
     for source_q in source_questions:
-        new_q = Question(
+        new_q = QuestionV2(
             id=str(uuid.uuid4()),
             bank_id=new_bank_id,
             question_number=source_q.question_number,
@@ -334,7 +364,7 @@ async def clone_question_bank(
             tags=source_q.tags,
             explanation=source_q.explanation,
             explanation_format=source_q.explanation_format,
-            metadata=source_q.metadata
+            meta_data=source_q.meta_data
         )
         qbank_db.add(new_q)
     
@@ -353,4 +383,15 @@ async def clone_question_bank(
     main_db.commit()
     
     new_bank.question_count = len(source_questions)
+    
+    # Ensure compatibility fields for response
+    if not hasattr(new_bank, 'metadata') or new_bank.metadata is None:
+        new_bank.metadata = new_bank.meta_data
+    if new_bank.is_published is None:
+        new_bank.is_published = False
+    if new_bank.allow_download is None:
+        new_bank.allow_download = True
+    if new_bank.allow_fork is None:
+        new_bank.allow_fork = True
+        
     return new_bank
