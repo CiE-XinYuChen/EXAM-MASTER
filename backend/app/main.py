@@ -5,12 +5,13 @@ Main FastAPI application with integrated admin panel
 from fastapi import FastAPI, Request, Depends, HTTPException, Form, File, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from typing import Optional
 import secrets
+import os
 
 from app.core.config import settings
 from app.core.database import init_databases, get_main_db, get_qbank_db
@@ -2910,3 +2911,13 @@ async def admin_api_delete_activation_code(
     qbank_db.commit()
 
     return {"success": True, "message": "激活码已删除"}
+
+
+# ==================== Flutter Web App Support ====================
+# Serve Flutter Web app at /app-web
+
+WEB_APP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web_app")
+
+# Mount Flutter Web static files
+if os.path.exists(WEB_APP_DIR):
+    app.mount("/app-web", StaticFiles(directory=WEB_APP_DIR, html=True), name="flutter_web")
