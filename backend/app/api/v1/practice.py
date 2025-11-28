@@ -45,6 +45,12 @@ def check_bank_access(main_db: Session, qbank_db: Session, user: User, bank_id: 
     if user.role == "admin":
         return True
 
+    # Check if bank is public
+    from app.models.question_models_v2 import QuestionBankV2
+    bank = qbank_db.query(QuestionBankV2).filter(QuestionBankV2.id == bank_id).first()
+    if bank and bank.is_public:
+        return True
+
     # Check UserBankPermission (legacy system) - in main_db
     perm = main_db.query(UserBankPermission).filter(
         and_(
