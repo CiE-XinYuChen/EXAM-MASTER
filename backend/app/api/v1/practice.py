@@ -39,13 +39,13 @@ router = APIRouter()
 
 # ==================== Helper Functions ====================
 
-def check_bank_access(main_db: Session, user: User, bank_id: str) -> bool:
+def check_bank_access(main_db: Session, qbank_db: Session, user: User, bank_id: str) -> bool:
     """检查用户是否有权限访问题库"""
     # Admin users have access to all banks
     if user.role == "admin":
         return True
 
-    # Check UserBankPermission (legacy system)
+    # Check UserBankPermission (legacy system) - in main_db
     perm = main_db.query(UserBankPermission).filter(
         and_(
             UserBankPermission.user_id == user.id,
@@ -56,8 +56,8 @@ def check_bank_access(main_db: Session, user: User, bank_id: str) -> bool:
     if perm and perm.permission in ["read", "write", "admin"]:
         return True
 
-    # Check UserBankAccess (new activation system)
-    access = main_db.query(UserBankAccess).filter(
+    # Check UserBankAccess (new activation system) - in qbank_db
+    access = qbank_db.query(UserBankAccess).filter(
         and_(
             UserBankAccess.user_id == user.id,
             UserBankAccess.bank_id == bank_id,
@@ -267,7 +267,7 @@ async def create_practice_session(
     """创建答题会话"""
 
     # 检查题库访问权限
-    if not check_bank_access(main_db, current_user, session_data.bank_id):
+    if not check_bank_access(main_db, qbank_db, current_user, session_data.bank_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="您没有访问该题库的权限"
