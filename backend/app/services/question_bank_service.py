@@ -21,6 +21,8 @@ from app.models.question_models_v2 import (
     StorageType, ResourceType, QuestionType
 )
 from app.models.activation import ActivationCode, UserBankAccess
+from app.models.user_statistics import UserBankStatistics
+from app.models.user_practice import PracticeSession, UserAnswerRecord, UserFavorite, UserWrongQuestion
 
 
 class QuestionBankService:
@@ -163,10 +165,20 @@ class QuestionBankService:
         if os.path.exists(bank_folder):
             shutil.rmtree(bank_folder)
 
-        # 先删除关联的用户访问记录
+        # 删除所有关联记录（按依赖顺序）
+        # 1. 用户答题记录
+        self.db.query(UserAnswerRecord).filter(UserAnswerRecord.bank_id == bank_id).delete()
+        # 2. 答题会话
+        self.db.query(PracticeSession).filter(PracticeSession.bank_id == bank_id).delete()
+        # 3. 用户收藏
+        self.db.query(UserFavorite).filter(UserFavorite.bank_id == bank_id).delete()
+        # 4. 用户错题
+        self.db.query(UserWrongQuestion).filter(UserWrongQuestion.bank_id == bank_id).delete()
+        # 5. 用户题库统计
+        self.db.query(UserBankStatistics).filter(UserBankStatistics.bank_id == bank_id).delete()
+        # 6. 用户访问记录
         self.db.query(UserBankAccess).filter(UserBankAccess.bank_id == bank_id).delete()
-
-        # 再删除关联的激活码
+        # 7. 激活码
         self.db.query(ActivationCode).filter(ActivationCode.bank_id == bank_id).delete()
 
         # 删除数据库记录
