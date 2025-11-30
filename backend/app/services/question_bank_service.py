@@ -473,7 +473,7 @@ class QuestionBankService:
         """从JSON导入"""
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        
+
         # 创建新题库
         bank_info = data.get("bank_info", {})
         new_bank = self.create_question_bank(
@@ -482,21 +482,38 @@ class QuestionBankService:
             category=bank_info.get("category", ""),
             creator_id=creator_id
         )
-        
+
         # 导入题目
         for q_data in data.get("questions", []):
+            # 构建 meta_data，合并 correct_answer 信息
+            meta_data = q_data.get("meta_data") or {}
+            correct_answer = q_data.get("correct_answer")
+
+            if correct_answer:
+                # 根据题型将 correct_answer 合并到 meta_data
+                q_type = q_data.get("type", "single")
+                if q_type == "fill" and "blanks" in correct_answer:
+                    meta_data["blanks"] = correct_answer["blanks"]
+                elif q_type == "judge" and "answer" in correct_answer:
+                    meta_data["answer"] = correct_answer["answer"]
+                elif q_type == "essay":
+                    if "reference_answer" in correct_answer:
+                        meta_data["reference_answer"] = correct_answer["reference_answer"]
+                    if "keywords" in correct_answer:
+                        meta_data["keywords"] = correct_answer["keywords"]
+
             self.add_question(
                 bank_id=new_bank.id,
                 stem=q_data["stem"],
                 type=QuestionType(q_data["type"]),
                 options=q_data.get("options"),
-                meta_data=q_data.get("meta_data"),
+                meta_data=meta_data,
                 difficulty=q_data.get("difficulty", "medium"),
                 category=q_data.get("category"),
                 explanation=q_data.get("explanation"),
                 question_number=q_data.get("number")
             )
-        
+
         return new_bank
     
     def _update_metadata_file(self, bank: QuestionBankV2):
