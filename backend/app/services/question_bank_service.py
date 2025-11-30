@@ -16,10 +16,11 @@ from sqlalchemy.orm import Session
 from fastapi import UploadFile, HTTPException
 
 from app.models.question_models_v2 import (
-    QuestionBankV2, QuestionV2, QuestionOptionV2, 
+    QuestionBankV2, QuestionV2, QuestionOptionV2,
     QuestionResourceV2, QuestionBankResource,
     StorageType, ResourceType, QuestionType
 )
+from app.models.activation import ActivationCode, UserBankAccess
 
 
 class QuestionBankService:
@@ -153,19 +154,25 @@ class QuestionBankService:
         bank = self.get_question_bank(bank_id)
         if not bank:
             raise HTTPException(status_code=404, detail="题库不存在")
-        
+
         # 备份到回收站（可选）
         self._backup_before_delete(bank)
-        
+
         # 删除文件夹
         bank_folder = f"{self.BASE_STORAGE_PATH}/{bank_id}"
         if os.path.exists(bank_folder):
             shutil.rmtree(bank_folder)
-        
+
+        # 先删除关联的用户访问记录
+        self.db.query(UserBankAccess).filter(UserBankAccess.bank_id == bank_id).delete()
+
+        # 再删除关联的激活码
+        self.db.query(ActivationCode).filter(ActivationCode.bank_id == bank_id).delete()
+
         # 删除数据库记录
         self.db.delete(bank)
         self.db.commit()
-        
+
         return True
     
     def add_question(
