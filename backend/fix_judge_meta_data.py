@@ -1,6 +1,7 @@
 """
-修复数据库中判断题的 meta_data.answer 格式
-将中文字符串 "正确"/"错误" 转换为布尔值 true/false
+修复数据库中判断题的 meta_data 格式
+1. 将 correct_answer 字段改为 answer
+2. 将字符串 "true"/"false" 转换为布尔值 true/false
 """
 import sqlite3
 import json
@@ -69,18 +70,27 @@ def fix_database(db_path):
                 print(f"  警告: 题目 {question_id} 的 meta_data 不是有效JSON")
                 continue
 
-            # 检查是否需要修复
-            if "answer" in meta_data:
-                old_value = meta_data["answer"]
+            need_fix = False
+            old_value = None
 
-                # 如果已经是布尔值，跳过
-                if isinstance(old_value, bool):
-                    continue
-
-                # 转换为布尔值
+            # 检查 correct_answer 字段（需要改为 answer）
+            if "correct_answer" in meta_data:
+                old_value = meta_data["correct_answer"]
                 new_value = parse_bool_answer(old_value)
+                # 删除旧字段，添加新字段
+                del meta_data["correct_answer"]
                 meta_data["answer"] = new_value
+                need_fix = True
 
+            # 检查 answer 字段是否需要转换类型
+            elif "answer" in meta_data:
+                old_value = meta_data["answer"]
+                if not isinstance(old_value, bool):
+                    new_value = parse_bool_answer(old_value)
+                    meta_data["answer"] = new_value
+                    need_fix = True
+
+            if need_fix:
                 # 更新数据库
                 new_meta_data_str = json.dumps(meta_data, ensure_ascii=False)
                 cursor.execute(
@@ -88,7 +98,7 @@ def fix_database(db_path):
                     (new_meta_data_str, question_id)
                 )
 
-                print(f"  修复: {question_id[:8]}... '{old_value}' -> {new_value}")
+                print(f"  修复: {question_id[:8]}... '{old_value}' -> {meta_data['answer']}")
                 fixed_count += 1
 
         conn.commit()
@@ -109,7 +119,7 @@ def fix_database(db_path):
 def main():
     print("=" * 50)
     print("判断题 meta_data 修复工具")
-    print("将 '正确'/'错误' 转换为 true/false")
+    print("correct_answer -> answer, 字符串 -> 布尔值")
     print("=" * 50)
 
     databases = find_databases()

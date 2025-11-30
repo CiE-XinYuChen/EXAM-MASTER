@@ -374,8 +374,15 @@ async def batch_import_questions(
                 }
             elif parsed_q.type == "judge":
                 # 判断题：存储答案到meta_data
+                # correct_answer 可能是 {"answer": true} 或直接是 true/false/"true"/"false"
+                answer_value = parsed_q.correct_answer
+                if isinstance(answer_value, dict):
+                    answer_value = answer_value.get("answer", answer_value)
+                # 转换为布尔值
+                if isinstance(answer_value, str):
+                    answer_value = answer_value.lower() in ["true", "正确", "对", "是", "yes", "t", "√"]
                 question.meta_data = {
-                    "correct_answer": parsed_q.correct_answer
+                    "answer": bool(answer_value) if answer_value is not None else False
                 }
             elif parsed_q.type in ["single", "multiple"]:
                 # 选择题：创建选项

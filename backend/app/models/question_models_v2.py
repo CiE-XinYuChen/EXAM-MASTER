@@ -201,8 +201,15 @@ class QuestionV2(BaseQBank):
 
         elif self.type == QuestionType.judge:
             # 判断题：从meta_data获取答案（保持布尔类型）
-            if self.meta_data and "answer" in self.meta_data:
-                answer_value = self.meta_data["answer"]
+            # 兼容两种字段名: "answer" 和 "correct_answer"
+            answer_value = None
+            if self.meta_data:
+                if "answer" in self.meta_data:
+                    answer_value = self.meta_data["answer"]
+                elif "correct_answer" in self.meta_data:
+                    answer_value = self.meta_data["correct_answer"]
+
+            if answer_value is not None:
                 # 确保返回布尔类型
                 if isinstance(answer_value, bool):
                     return {"answer": answer_value}
