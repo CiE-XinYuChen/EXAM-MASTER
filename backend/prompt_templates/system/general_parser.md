@@ -27,16 +27,24 @@ variables:
 - **问答题** (`essay`)：需要文字回答的开放性题目
 
 ### 2. 填空题处理
-- 将空位用 `{}` 标记，从0开始编号
-- 提取每个空的正确答案
+- 保留原始空位标记（如`____`、`()`等）在题干中
+- 答案放在 `correct_answer.blanks` 数组中
+- 每个空按顺序编号（position从0开始）
 - 如果有多个可接受的答案，列为 `alternatives`
 
 ### 3. 选择题处理
 - 提取所有选项，标记为A、B、C、D等
-- 明确标记正确答案
+- 在选项中用 `is_correct` 标记正确答案
 - 保持选项内容完整性
 
-### 4. 输出格式
+### 4. 判断题处理
+- 答案放在 `correct_answer.answer` 中，必须是布尔值 `true` 或 `false`
+
+### 5. 问答题处理
+- 参考答案放在 `correct_answer.reference_answer` 中
+- 提取关键词放在 `correct_answer.keywords` 数组中
+
+### 6. 输出格式
 {{output_format}}
 
 ## 需要解析的文本
@@ -64,15 +72,16 @@ variables:
 [
     {
         "type": "fill",
-        "stem": "Python中定义函数使用{}关键字。",
-        "stem_display": "Python中定义函数使用____关键字。",
-        "blanks": [
-            {
-                "position": 0,
-                "answer": "def",
-                "alternatives": []
-            }
-        ],
+        "stem": "Python中定义函数使用____关键字。",
+        "correct_answer": {
+            "blanks": [
+                {
+                    "position": 0,
+                    "answer": "def",
+                    "alternatives": []
+                }
+            ]
+        },
         "difficulty": "easy",
         "category": "编程基础"
     },
@@ -86,6 +95,25 @@ variables:
             {"label": "D", "content": "array", "is_correct": false}
         ],
         "difficulty": "easy",
+        "category": "编程基础"
+    },
+    {
+        "type": "judge",
+        "stem": "Python是一种解释型语言。",
+        "correct_answer": {
+            "answer": true
+        },
+        "difficulty": "easy",
+        "category": "编程基础"
+    },
+    {
+        "type": "essay",
+        "stem": "请简述Python的优点。",
+        "correct_answer": {
+            "reference_answer": "Python语法简洁易读，拥有丰富的标准库和第三方库，支持多种编程范式，跨平台性好。",
+            "keywords": ["简洁", "库丰富", "跨平台"]
+        },
+        "difficulty": "medium",
         "category": "编程基础"
     }
 ]

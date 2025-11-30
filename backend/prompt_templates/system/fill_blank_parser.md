@@ -24,9 +24,9 @@ variables:
 - 其他：`……`、`***`、`???`
 
 ### 2. 格式标准化
-- 将所有空位统一转换为 `{}` 格式
-- 保留原始显示格式在 `stem_display` 字段
-- 空位从0开始编号
+- 保留原始空位标记在 `stem` 字段（如`____`、`【】`等）
+- 答案放在 `correct_answer.blanks` 数组中
+- 空位从0开始编号（position字段）
 
 ### 3. 答案提取
 答案通常出现在：
@@ -62,13 +62,14 @@ variables:
 ```json
 [{
     "type": "fill",
-    "stem": "中华人民共和国成立于{}年{}月{}日。",
-    "stem_display": "中华人民共和国成立于____年____月____日。",
-    "blanks": [
-        {"position": 0, "answer": "1949", "alternatives": []},
-        {"position": 1, "answer": "10", "alternatives": []},
-        {"position": 2, "answer": "1", "alternatives": []}
-    ],
+    "stem": "中华人民共和国成立于____年____月____日。",
+    "correct_answer": {
+        "blanks": [
+            {"position": 0, "answer": "1949", "alternatives": []},
+            {"position": 1, "answer": "10", "alternatives": []},
+            {"position": 2, "answer": "1", "alternatives": []}
+        ]
+    },
     "difficulty": "easy",
     "category": "历史",
     "tags": ["中国历史", "重要日期"]
@@ -86,12 +87,13 @@ variables:
 ```json
 [{
     "type": "fill",
-    "stem": "在Python中，使用{}关键字定义函数，使用{}语句返回值。",
-    "stem_display": "在Python中，使用【】关键字定义函数，使用【】语句返回值。",
-    "blanks": [
-        {"position": 0, "answer": "def", "alternatives": []},
-        {"position": 1, "answer": "return", "alternatives": []}
-    ],
+    "stem": "在Python中，使用【】关键字定义函数，使用【】语句返回值。",
+    "correct_answer": {
+        "blanks": [
+            {"position": 0, "answer": "def", "alternatives": []},
+            {"position": 1, "answer": "return", "alternatives": []}
+        ]
+    },
     "difficulty": "easy",
     "category": "编程",
     "tags": ["Python", "函数"]
@@ -108,15 +110,16 @@ HTTP协议的默认端口是____。（答案：80/80端口）
 ```json
 [{
     "type": "fill",
-    "stem": "HTTP协议的默认端口是{}。",
-    "stem_display": "HTTP协议的默认端口是____。",
-    "blanks": [
-        {
-            "position": 0,
-            "answer": "80",
-            "alternatives": ["80端口"]
-        }
-    ],
+    "stem": "HTTP协议的默认端口是____。",
+    "correct_answer": {
+        "blanks": [
+            {
+                "position": 0,
+                "answer": "80",
+                "alternatives": ["80端口"]
+            }
+        ]
+    },
     "difficulty": "easy",
     "category": "网络",
     "tags": ["HTTP", "网络协议"]
