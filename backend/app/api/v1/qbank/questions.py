@@ -28,14 +28,15 @@ def check_bank_permission(
     bank_id: str,
     permission: str,
     user: User,
-    db: Session
+    main_db: Session,
+    qbank_db: Session = None
 ) -> bool:
     """Check if user has permission for a question bank"""
     if user.role == "admin":
         return True
 
-    # Check UserBankPermission (legacy)
-    perm = db.query(UserBankPermission).filter(
+    # Check UserBankPermission (legacy) - in main_db
+    perm = main_db.query(UserBankPermission).filter(
         UserBankPermission.user_id == user.id,
         UserBankPermission.bank_id == bank_id
     ).first()
@@ -48,19 +49,20 @@ def check_bank_permission(
         elif permission == "admin":
             return perm.permission == "admin"
 
-    # Check UserBankAccess (new activation system)
-    access = db.query(UserBankAccess).filter(
-        UserBankAccess.user_id == user.id,
-        UserBankAccess.bank_id == bank_id,
-        UserBankAccess.is_active == True
-    ).first()
+    # Check UserBankAccess (new activation system) - in qbank_db
+    if qbank_db:
+        access = qbank_db.query(UserBankAccess).filter(
+            UserBankAccess.user_id == user.id,
+            UserBankAccess.bank_id == bank_id,
+            UserBankAccess.is_active == True
+        ).first()
 
-    if access:
-        # Check if not expired
-        if access.expire_at is None or access.expire_at > datetime.utcnow():
-            # UserBankAccess grants read permission
-            if permission == "read":
-                return True
+        if access:
+            # Check if not expired
+            if access.expire_at is None or access.expire_at > datetime.utcnow():
+                # UserBankAccess grants read permission
+                if permission == "read":
+                    return True
 
     return False
 
@@ -97,7 +99,7 @@ async def get_questions(
         if bank.is_public is None:
             bank.is_public = False
 
-        if not bank.is_public and not check_bank_permission(bank_id, "read", current_user, main_db):
+        if not bank.is_public and not check_bank_permission(bank_id, "read", current_user, main_db, qbank_db):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No permission to access this question bank"
@@ -128,7 +130,7 @@ async def get_questions(
         if bank:
             if bank.is_public is None:
                 bank.is_public = False
-            if bank.is_public or check_bank_permission(question.bank_id, "read", current_user, main_db):
+            if bank.is_public or check_bank_permission(question.bank_id, "read", current_user, main_db, qbank_db):
                 # Sanitize difficulty - set to None if not in valid set
                 if question.difficulty and question.difficulty not in valid_difficulties:
                     question.difficulty = None
@@ -153,7 +155,7 @@ async def create_question(
             detail="Question bank not found"
         )
     
-    if not check_bank_permission(question_data.bank_id, "write", current_user, main_db):
+    if not check_bank_permission(question_data.bank_id, "write", current_user, main_db, qbank_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to add questions to this bank"
@@ -225,7 +227,7 @@ async def get_question(
     
     # Check bank permission
     bank = qbank_db.query(QuestionBank).filter(QuestionBank.id == question.bank_id).first()
-    if not bank.is_public and not check_bank_permission(question.bank_id, "read", current_user, main_db):
+    if not bank.is_public and not check_bank_permission(question.bank_id, "read", current_user, main_db, qbank_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to access this question"
@@ -252,12 +254,12 @@ async def update_question(
         )
     
     # Check permission
-    if not check_bank_permission(question.bank_id, "write", current_user, main_db):
+    if not check_bank_permission(question.bank_id, "write", current_user, main_db, qbank_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to modify this question"
         )
-    
+
     # Store old data for version history
     old_data = {
         "stem": question.stem,
@@ -317,7 +319,7 @@ async def delete_question(
         )
     
     # Check permission
-    if not check_bank_permission(question.bank_id, "write", current_user, main_db):
+    if not check_bank_permission(question.bank_id, "write", current_user, main_db, qbank_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to delete this question"
@@ -348,12 +350,12 @@ async def add_option(
         )
     
     # Check permission
-    if not check_bank_permission(question.bank_id, "write", current_user, main_db):
+    if not check_bank_permission(question.bank_id, "write", current_user, main_db, qbank_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to modify this question"
         )
-    
+
     # Generate next option label if not provided
     if not option_data.option_label:
         existing_options = qbank_db.query(QuestionOption).filter(
@@ -411,7 +413,7 @@ async def duplicate_question(
     ).first()
     
     if not source_bank.is_public and not check_bank_permission(
-        source_question.bank_id, "read", current_user, main_db
+        source_question.bank_id, "read", current_user, main_db, qbank_db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -422,7 +424,7 @@ async def duplicate_question(
     target_bank_id = target_bank_id or source_question.bank_id
     
     # Check write permission on target
-    if not check_bank_permission(target_bank_id, "write", current_user, main_db):
+    if not check_bank_permission(target_bank_id, "write", current_user, main_db, qbank_db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No permission to add questions to target bank"
