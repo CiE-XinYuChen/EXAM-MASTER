@@ -207,7 +207,8 @@ class QuestionV2(BaseQBank):
                 if isinstance(answer_value, bool):
                     return {"answer": answer_value}
                 elif isinstance(answer_value, str):
-                    return {"answer": answer_value.lower() == "true"}
+                    # 支持多种表示"正确"的字符串
+                    return {"answer": answer_value.lower() in ["true", "正确", "对", "是", "yes", "t", "√"]}
                 else:
                     return {"answer": bool(answer_value)}
             return {"answer": None}
