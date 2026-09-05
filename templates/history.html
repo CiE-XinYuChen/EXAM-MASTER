@@ -1,57 +1,12 @@
-<!-- templates/history.html -->
 {% extends 'base.html' %}
-
-{% block title %}答题历史 - ExamMaster{% endblock %}
-
+{% from '_components.html' import icon, pagination %}
+{% block title %}学习记录{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="card-title d-flex justify-content-between align-items-center">
-        <div>
-            <i class="fas fa-history"></i> 答题历史记录
-        </div>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">
-            <i class="fas fa-home"></i> 返回主页
-        </a>
-    </div>
-    
-    {% if history %}
-    <div class="table-container">
-        <div class="table-scroll-hint mobile-only">← 左右滑动查看更多 →</div>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>题号</th>
-                    <th>题干</th>
-                    <th>你的答案</th>
-                    <th>是否正确</th>
-                    <th>答题时间</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for record in history %}
-                <tr>
-                    <td>{{ record.id }}</td>
-                    <td>{{ record.question_id }}</td>
-                    <td><a href="{{ url_for('show_question', qid=record.question_id) }}" class="question-text-truncate" title="{{ record.stem }}">{{ record.stem }}</a></td>
-                    <td>{{ record.user_answer }}</td>
-                    <td>
-                        {% if record.correct == 1 %}
-                        <span class="badge badge-success">是</span>
-                        {% else %}
-                        <span class="badge badge-danger">否</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ record.timestamp }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i> 你还没有任何答题历史记录。
-    </div>
-    {% endif %}
-</div>
+<section class="page">
+  <div class="page-heading"><div><p class="eyebrow">PROGRESS, IN YOUR OWN PACE</p><h1>学习记录</h1><p class="lede">每一次认真作答，都值得被记录。</p></div><a class="button primary" href="{{ url_for('modes') }}">继续练习 {{ icon('arrow') }}</a></div>
+  <section class="panel"><div class="library-top"><h2>答题足迹 <span class="quiet small">{{ total }} 次作答</span></h2><form method="post" action="{{ url_for('reset_history') }}" data-confirm="清空你的答题历史与顺序进度？收藏和考试结果仍会保留。"><button class="text-button danger">重置记录</button></form></div>
+    {% if history %}<div class="table-wrap"><table class="history-table"><thead><tr><th>题目</th><th>我的答案</th><th>结果</th><th>作答时间</th></tr></thead><tbody>{% for row in history %}<tr><td>{% if row.stem %}<a class="question-title" href="{{ url_for('show_question',qid=row.question_id) }}">{{ row.stem }}</a>{% else %}<span class="muted">题目已删除或待补全 · {{ row.question_id }}</span>{% endif %}</td><td>{{ row.user_answer or '未作答' }}</td><td><span class="pill {{ 'success' if row.correct else 'error' }}">{{ '正确' if row.correct else '待巩固' }}</span></td><td class="quiet small">{{ row.display_time }}</td></tr>{% endfor %}</tbody></table></div>{{ pagination(page, pages, total) }}
+    {% else %}<div class="empty-state">{{ icon('history') }}<h3>从第一道题，留下足迹</h3><p>你的练习和考试作答会自动记录在这里。</p><a class="button" href="{{ url_for('modes') }}">开始学习</a></div>{% endif %}
+  </section>
+</section>
 {% endblock %}

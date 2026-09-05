@@ -1,1494 +1,407 @@
-#!/usr/bin/env python3
-"""
-EXAM-MASTER - A Flask-based Online Quiz System
-
-This application provides a complete quiz system with features including:
-- User registration and authentication
-- Question management with import from CSV
-- Multiple quiz modes (random, sequential, timed, exam)
-- User progress tracking and statistics
-- Favorites, tags, and search functionality
-
-Author: ShayneChen (xinyu-c@outlook.com)
-License: MIT
-"""
-
-# Standard library imports
-import csv
+"""EXAM-MASTER: a small, server-rendered question bank and study app."""
 import json
 import os
 import random
-import sqlite3
-import time
 from datetime import datetime, timedelta
-from functools import wraps
+from pathlib import Path
 
-# Third-party imports
-from flask import (
-    Flask, 
-    request, 
-    render_template, 
-    session, 
-    redirect, 
-    url_for, 
-    flash, 
-    jsonify, 
-    abort,
-    send_file
-)
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, Response, abort, flash, g, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
-# Initialize Flask application
+from db import (FIELDS, LETTERS, TYPES, UPSERT, close_db, export_csv, get_db, grade,
+                import_csv, init_db, parse_question, query, question, unpack)
+
+ROOT = Path(__file__).resolve().parent
 app = Flask(__name__)
-# Use environment variable for secret key with a fallback default
-# In production, always set this through environment variables
-app.secret_key = os.environ.get('SECRET_KEY', 'change_this_in_production')
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+app.config.update(SECRET_KEY=os.environ.get('SECRET_KEY', 'exam-master-local'),
+                  DATABASE=os.environ.get('EXAM_DATABASE', str(ROOT / 'database.db')),
+                  SEED_CSV=os.environ.get('EXAM_SEED_CSV', str(ROOT / 'questions.csv')),
+                  PERMANENT_SESSION_LIFETIME=timedelta(days=7))
+app.teardown_appcontext(close_db)
+with app.app_context():
+    init_db()
 
-#############################
-# Database Helper Functions #
-#############################
 
-def get_db():
-    """
-    Create a database connection and configure it to return rows as dictionaries.
-    
-    Returns:
-        sqlite3.Connection: The configured database connection
-    """
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db():
-    """
-    Initialize the database by creating necessary tables if they don't exist.
-    Also loads initial question data from CSV if the questions table is empty.
-    """
-    conn = get_db()
-    c = conn.cursor()
-    
-    # Users table
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        current_seq_qid TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # History table for tracking user answers
-    c.execute('''CREATE TABLE IF NOT EXISTS history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        question_id TEXT NOT NULL,
-        user_answer TEXT NOT NULL,
-        correct INTEGER NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    
-    # Questions table for storing question data
-    c.execute('''CREATE TABLE IF NOT EXISTS questions (
-        id TEXT PRIMARY KEY,
-        stem TEXT NOT NULL,
-        answer TEXT NOT NULL,
-        difficulty TEXT,
-        qtype TEXT,
-        category TEXT,
-        options TEXT, -- JSON stored options
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Favorites table for user bookmarks
-    c.execute('''CREATE TABLE IF NOT EXISTS favorites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        question_id TEXT NOT NULL,
-        tag TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, question_id),
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (question_id) REFERENCES questions(id)
-    )''')
-    
-    # Exam sessions table for timed mode and exams
-    c.execute('''CREATE TABLE IF NOT EXISTS exam_sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        mode TEXT NOT NULL, -- 'exam' or 'timed'
-        question_ids TEXT NOT NULL, -- JSON list
-        start_time DATETIME NOT NULL,
-        duration INTEGER NOT NULL, -- seconds
-        completed BOOLEAN DEFAULT 0,
-        score REAL,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    
-    conn.commit()
-
-    # Load questions from CSV if the table is empty
-    c.execute('SELECT COUNT(*) as cnt FROM questions')
-    if c.fetchone()['cnt'] == 0:
-        load_questions_to_db(conn)
-    
-    conn.close()
-
-def load_questions_to_db(conn):
-    """
-    Load questions from a CSV file into the database.
-    
-    Args:
-        conn (sqlite3.Connection): The database connection
-    """
-    try:
-        with open('questions.csv', 'r', encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            c = conn.cursor()
-            for row in reader:
-                options = {}
-                for opt in ['A', 'B', 'C', 'D', 'E']:
-                    if row.get(opt) and row[opt].strip():
-                        options[opt] = row[opt]
-                c.execute(
-                    "INSERT INTO questions (id, stem, answer, difficulty, qtype, category, options) VALUES (?,?,?,?,?,?,?)",
-                    (
-                        row["题号"],
-                        row["题干"],
-                        row["答案"],
-                        row["难度"],
-                        row["题型"],
-                        row.get("类别", "未分类"),
-                        json.dumps(options, ensure_ascii=False),
-                    ),
-                )
-            conn.commit()
-    except FileNotFoundError:
-        print("Warning: questions.csv file not found. No questions loaded.")
-    except Exception as e:
-        print(f"Error loading questions: {e}")
-
-# Initialize the database
-init_db()
-
-################################
-# Authentication Helper Functions #
-################################
-
-def login_required(f):
-    """
-    Decorator to require login for a route.
-    
-    Args:
-        f (function): The route function to decorate
-        
-    Returns:
-        function: The decorated function
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not is_logged_in():
-            flash("请先登录后再访问该页面", "error")
-            return redirect(url_for('login', next=request.url))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def is_logged_in():
-    """
-    Check if the user is logged in.
-    
-    Returns:
-        bool: True if user is logged in, False otherwise
-    """
-    return 'user_id' in session
-
-def get_user_id():
-    """
-    Get the current user's ID from the session.
-    
-    Returns:
-        int: The user ID if logged in, None otherwise
-    """
-    return session.get('user_id')
-
-##############################
-# Question Helper Functions #
-##############################
-
-def fetch_question(qid):
-    """
-    Fetch a question by ID from the database.
-    
-    Args:
-        qid (str): The question ID
-        
-    Returns:
-        dict: The question data or None if not found
-    """
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM questions WHERE id=?', (qid,))
-    row = c.fetchone()
-    conn.close()
-    
-    if row:
-        return {
-            'id': row['id'],
-            'stem': row['stem'],
-            'answer': row['answer'],
-            'difficulty': row['difficulty'],
-            'type': row['qtype'],
-            'category': row['category'],
-            'options': json.loads(row['options'])
-        }
-    return None
-
-def random_question_id(user_id):
-    """
-    Get a random question ID for a user, excluding questions they've already answered.
-    
-    Args:
-        user_id (int): The user ID
-        
-    Returns:
-        str: A random question ID or None if all questions have been answered
-    """
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        SELECT id FROM questions 
-        WHERE id NOT IN (
-            SELECT question_id FROM history WHERE user_id=?
-        )
-        ORDER BY RANDOM() 
-        LIMIT 1
-    ''', (user_id,))
-    row = c.fetchone()
-    conn.close()
-    
-    if row:
-        return row['id']
-    return None
-
-def fetch_random_question_ids(num):
-    """
-    Fetch multiple random question IDs.
-    
-    Args:
-        num (int): The number of question IDs to fetch
-        
-    Returns:
-        list: A list of random question IDs
-    """
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT id FROM questions ORDER BY RANDOM() LIMIT ?', (num,))
-    rows = c.fetchall()
-    conn.close()
-    return [r['id'] for r in rows]
-
-def is_favorite(user_id, question_id):
-    """
-    Check if a question is favorited by a user.
-    
-    Args:
-        user_id (int): The user ID
-        question_id (str): The question ID
-        
-    Returns:
-        bool: True if favorited, False otherwise
-    """
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT 1 FROM favorites WHERE user_id=? AND question_id=?',
-              (user_id, question_id))
-    is_fav = bool(c.fetchone())
-    conn.close()
-    return is_fav
-
-##############################
-# Authentication Routes #
-##############################
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    """Route for user registration."""
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-        
-        # Input validation
-        if not username or not password:
-            flash("用户名和密码不能为空", "error")
-            return render_template('register.html')
-            
-        if password != confirm_password:
-            flash("两次输入的密码不一致", "error")
-            return render_template('register.html')
-            
-        if len(password) < 6:
-            flash("密码长度不能少于6个字符", "error")
-            return render_template('register.html')
-        
-        conn = get_db()
-        c = conn.cursor()
-        
-        # Check if username exists
-        c.execute('SELECT id FROM users WHERE username=?', (username,))
-        if c.fetchone():
-            conn.close()
-            flash("用户名已存在，请更换用户名", "error")
-            return render_template('register.html')
-        
-        # Create new user
-        password_hash = generate_password_hash(password)
-        c.execute('INSERT INTO users (username, password_hash) VALUES (?,?)', 
-                  (username, password_hash))
-        conn.commit()
-        conn.close()
-        
-        flash("注册成功，请登录", "success")
+@app.before_request
+def current_user():
+    g.user = query('SELECT * FROM users WHERE id=?', (session.get('user_id'),), one=True)
+    if request.endpoint and request.endpoint not in ('login', 'register', 'static') and not g.user:
         return redirect(url_for('login'))
-        
-    return render_template('register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """Route for user login."""
+
+@app.context_processor
+def shared_context():
+    counts = {row['qtype']: row['n'] for row in query('SELECT qtype,COUNT(*) AS n FROM questions GROUP BY qtype')}
+    return dict(types=TYPES, letters=LETTERS, today=datetime.now().strftime('%Y年%m月%d日'),
+                type_counts={key: counts[key] for key in TYPES if key in counts}, bank_total=sum(counts.values()))
+
+
+@app.route('/login', methods=['GET', 'POST'], endpoint='login')
+@app.route('/register', methods=['GET', 'POST'], endpoint='register')
+def auth():
+    register = request.endpoint == 'register'
+    error = None
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if not username or not password:
-            flash("用户名和密码不能为空", "error")
-            return render_template('login.html')
-        
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('SELECT id, password_hash FROM users WHERE username=?', (username,))
-        user = c.fetchone()
-        conn.close()
-        
-        if user and check_password_hash(user['password_hash'], password):
+        name, password = request.form.get('username', '').strip(), request.form.get('password', '')
+        user = query('SELECT * FROM users WHERE username=?', (name,), one=True)
+        if not name or not password:
+            error = '请填写用户名和密码。'
+        elif register:
+            if user:
+                error = '这个用户名已被使用。'
+            elif len(password) < 6 or password != request.form.get('confirm_password'):
+                error = '密码至少 6 位，两次输入需要一致。'
+            else:
+                with get_db() as conn:
+                    conn.execute('INSERT INTO users (username,password_hash) VALUES (?,?)',
+                                 (name, generate_password_hash(password)))
+                flash('账号已创建，请登录。', 'success')
+                return redirect(url_for('login'))
+        elif user and check_password_hash(user['password_hash'], password):
             session['user_id'] = user['id']
-            
-            # Redirect to 'next' parameter if provided
-            next_page = request.args.get('next')
-            if next_page and next_page.startswith('/'):
-                return redirect(next_page)
-                
+            session.permanent = True
             return redirect(url_for('index'))
         else:
-            flash("登录失败，用户名或密码错误", "error")
-            
-    return render_template('login.html')
+            error = '用户名或密码不正确。'
+    return render_template('auth.html', register=register, error=error), 400 if error else 200
 
-@app.route('/logout')
+
+@app.get('/logout')
 def logout():
-    """Route for user logout."""
     session.clear()
-    flash("您已成功退出登录", "success")
     return redirect(url_for('login'))
 
-##############################
-# Main Application Routes #
-##############################
 
-@app.route('/')
-@login_required
-def index():
-    """Home page route."""
-    # Fetch current sequential question ID if exists
-    user_id = get_user_id()
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT current_seq_qid FROM users WHERE id = ?', (user_id,))
-    user_data = c.fetchone()
-    current_seq_qid = user_data['current_seq_qid'] if user_data and user_data['current_seq_qid'] else None
-    conn.close()
-    
-    return render_template('index.html', 
-                          current_year=datetime.now().year,
-                          current_seq_qid=current_seq_qid)
+def filters(scope='all'):
+    values = {key: request.values.get(key, '').strip() for key in ('search', 'type', 'category', 'difficulty')}
+    values['search'] = values['search'] or request.values.get('query', '').strip()
+    clauses, params = [], []
+    if values['search']:
+        clauses.append('(q.stem LIKE ? OR q.id LIKE ?)')
+        params += ['%' + values['search'] + '%'] * 2
+    for key, column in [('type', 'qtype'), ('category', 'category'), ('difficulty', 'difficulty')]:
+        if values[key] and values[key] != 'all':
+            clauses.append(f'q.{column}=?')
+            params.append(values[key])
+    if scope in ('favorites', 'wrong'):
+        table = 'favorites' if scope == 'favorites' else 'history'
+        clauses.append(f'EXISTS (SELECT 1 FROM {table} h WHERE h.question_id=q.id AND h.user_id=?'
+                       + (' AND h.correct=0)' if scope == 'wrong' else ')'))
+        params.append(g.user['id'])
+    return values, (' WHERE ' + ' AND '.join(clauses) if clauses else ''), params
 
-@app.route('/reset_history', methods=['POST'])
-@login_required
-def reset_history():
-    """Route to reset a user's answer history."""
-    user_id = get_user_id()
-    
-    try:
-        conn = get_db()
-        c = conn.cursor()
-        c.execute('DELETE FROM history WHERE user_id=?', (user_id,))
-        # Also clear the current sequential question ID
-        c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?', (user_id,))
-        conn.commit()
-        conn.close()
-        flash("答题历史已重置。现在您可以重新开始答题。", "success")
-    except Exception as e:
-        flash(f"重置历史时出错: {str(e)}", "error")
-        
-    return redirect(url_for('random_question'))
 
-##############################
-# Question Routes #
-##############################
+def choices():
+    return {key: [row['value'] for row in query(f'SELECT DISTINCT {key} AS value FROM questions '
+                                               f'WHERE {key} IS NOT NULL AND {key}!="" ORDER BY {key}')]
+            for key in ('category', 'difficulty')}
 
-@app.route('/random', methods=['GET'])
-@login_required
-def random_question():
-    """Route to get a random question."""
-    user_id = get_user_id()
-    qid = random_question_id(user_id)
-    
-    conn = get_db()
-    c = conn.cursor()
-    # Get total questions count
-    c.execute('SELECT COUNT(*) as total FROM questions')
-    total = c.fetchone()['total']
-    # Get answered questions count
-    c.execute('SELECT COUNT(DISTINCT question_id) as answered FROM history WHERE user_id=?', (user_id,))
-    answered = c.fetchone()['answered']
-    conn.close()
-    
-    if not qid:
-        flash("您已完成所有题目！可以重置历史以重新开始。", "info")
-        return render_template('question.html', question=None, answered=answered, total=total)
-        
-    q = fetch_question(qid)
-    is_fav = is_favorite(user_id, qid)
-    
-    return render_template('question.html', 
-                          question=q, 
-                          answered=answered, 
-                          total=total,
-                          is_favorite=is_fav)
 
-@app.route('/question/<qid>', methods=['GET', 'POST'])
-@login_required
-def show_question(qid):
-    """Route to view and answer a specific question."""
-    user_id = get_user_id()
-    q = fetch_question(qid)
-    
-    if q is None:
-        flash("题目不存在", "error")
-        return redirect(url_for('index'))
+def question_list(scope='all'):
+    values, where, params = filters(scope)
+    total = query('SELECT COUNT(*) AS n FROM questions q' + where, params, one=True)['n']
+    pages = max(1, (total + 19) // 20)
+    page = min(max(1, request.args.get('page', 1, type=int)), pages)
+    rows = query('SELECT q.*, f.tag, f.id IS NOT NULL AS favorite FROM questions q '
+                 'LEFT JOIN favorites f ON f.question_id=q.id AND f.user_id=?' + where +
+                 ' ORDER BY CAST(q.id AS INTEGER), q.id LIMIT 20 OFFSET ?',
+                 [g.user['id'], *params, (page - 1) * 20])
+    return render_template('questions.html', questions=[unpack(row) for row in rows], scope=scope,
+                           total=total, page=page, pages=pages, filters=values, choices=choices(),
+                           incomplete=total - len(practice_ids(scope)))
 
-    # Update last browsed question when viewing any question
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?', (qid, user_id))
-    conn.commit()
 
-    # Handle form submission (answer)
+@app.get('/questions')
+def questions():
+    return question_list()
+
+
+@app.get('/favorites')
+def favorites():
+    return question_list('favorites')
+
+
+@app.get('/wrong')
+def wrong():
+    return question_list('wrong')
+
+
+@app.route('/questions/new', methods=['GET', 'POST'])
+@app.route('/questions/<path:qid>/edit', methods=['GET', 'POST'])
+def edit_question(qid=None):
+    used_ids = {row['id'] for row in query('SELECT id FROM questions UNION SELECT question_id FROM history '
+                                         'UNION SELECT value FROM exam_sessions,json_each(question_ids)')} if not qid else set()
+    row = question(qid) if qid else dict(id=str(max((int(value) for value in used_ids if value.isdecimal()), default=0) + 1),
+                                       stem='', answer='', options={}, qtype=TYPES[0],
+                                       category='', difficulty='无', explanation='')
+    if row is None:
+        abort(404)
+    error = None
     if request.method == 'POST':
-        user_answer = request.form.getlist('answer')
-        user_answer_str = "".join(sorted(user_answer))
-        correct = int(user_answer_str == "".join(sorted(q['answer'])))
+        try:
+            data = parse_question(dict(request.form) | ({'id': qid} if qid else {}))
+            if not qid and data['id'] in used_ids:
+                raise ValueError('这个题号已用于题目或学习记录，请使用新题号；修改已有题目请使用编辑。')
+            with get_db() as conn:
+                conn.execute(UPSERT, tuple(data[key] for key in FIELDS))
+            flash('题目已保存。', 'success')
+            return redirect(url_for('questions'))
+        except ValueError as exc:
+            error = str(exc)
+            row = dict(request.form) | {'id': qid or request.form.get('id', ''),
+                                       'options': {key: request.form.get(key, '') for key in LETTERS}}
+    return render_template('edit.html', question=row, editing=bool(qid), error=error, choices=choices()), 400 if error else 200
 
-        # Save answer to history
-        c.execute(
-            'INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-            (user_id, qid, user_answer_str, correct)
-        )
-        conn.commit()
 
-        # Get updated stats
-        c.execute('SELECT COUNT(*) AS total FROM questions')
-        total = c.fetchone()['total']
-        c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?', (user_id,))
-        answered = c.fetchone()['answered']
-        conn.close()
+@app.post('/questions/<path:qid>/delete')
+def delete_question(qid):
+    with get_db() as conn:
+        conn.execute('DELETE FROM questions WHERE id=?', (qid,))
+        conn.execute('DELETE FROM favorites WHERE question_id=?', (qid,))
+        conn.execute('UPDATE users SET current_seq_qid=NULL WHERE current_seq_qid=?', (qid,))
+    flash('题目已删除，已有答题记录仍保留。', 'success')
+    return redirect(url_for('questions'))
 
-        result_msg = "回答正确" if correct else f"回答错误，正确答案：{q['answer']}"
-        flash(result_msg, "success" if correct else "error")
-        
-        is_fav = is_favorite(user_id, qid)
-        
-        return render_template('question.html',
-                              question=q,
-                              result_msg=result_msg,
-                              answered=answered,
-                              total=total,
-                              is_favorite=is_fav)
 
-    # Handle GET request
-    c.execute('SELECT COUNT(*) AS total FROM questions')
-    total = c.fetchone()['total']
-    c.execute('SELECT COUNT(DISTINCT question_id) AS answered FROM history WHERE user_id=?', (user_id,))
-    answered = c.fetchone()['answered']
-    conn.close()
-    
-    is_fav = is_favorite(user_id, qid)
+@app.route('/questions/import', methods=['GET', 'POST'])
+def import_questions():
+    error = None
+    if request.method == 'POST':
+        try:
+            upload = request.files.get('file')
+            if not upload or not upload.filename:
+                raise ValueError('请选择 CSV 文件。')
+            added, updated = import_csv(upload.read().decode('utf-8-sig'))
+            flash(f'导入完成：新增 {added} 题，更新 {updated} 题。', 'success')
+            return redirect(url_for('questions'))
+        except (ValueError, UnicodeError) as exc:
+            error = '请使用 UTF-8 编码的 CSV 文件。' if isinstance(exc, UnicodeError) else str(exc)
+    return render_template('import.html', error=error), 400 if error else 200
 
-    return render_template('question.html',
-                          question=q,
-                          answered=answered,
-                          total=total,
-                          is_favorite=is_fav)
 
-@app.route('/history')
-@login_required
-def show_history():
-    """Route to view answer history."""
-    user_id = get_user_id()
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM history WHERE user_id=? ORDER BY timestamp DESC', (user_id,))
-    rows = c.fetchall()
-    conn.close()
-    
-    history_data = []
-    for r in rows:
-        q = fetch_question(r['question_id'])
-        stem = q['stem'] if q else '题目已删除'
-        history_data.append({
-            'id': r['id'],
-            'question_id': r['question_id'],
-            'stem': stem,
-            'user_answer': r['user_answer'],
-            'correct': r['correct'],
-            'timestamp': r['timestamp']
-        })
-    
-    return render_template('history.html', history=history_data)
+@app.get('/questions/export')
+def export_questions():
+    if request.args.get('template'):
+        return Response(export_csv([]), mimetype='text/csv',
+                        headers={'Content-Disposition': 'attachment; filename=question-template.csv'})
+    _, where, params = filters(request.args.get('scope', 'all'))
+    rows = query('SELECT q.* FROM questions q' + where + ' ORDER BY CAST(q.id AS INTEGER),q.id', params)
+    return Response(export_csv(rows), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename=questions.csv'})
 
-@app.route('/search', methods=['GET', 'POST'])
-@login_required
-def search():
-    """Route to search for questions by keyword."""
-    query = request.form.get('query', '')
-    results = []
-    
-    if query:
-        conn = get_db()
-        c = conn.cursor()
-        c.execute("SELECT * FROM questions WHERE stem LIKE ?", ('%'+query+'%',))
-        rows = c.fetchall()
-        conn.close()
-        
-        for row in rows:
-            q = {
-                'id': row['id'],
-                'stem': row['stem']
-            }
-            results.append(q)
-    
-    return render_template('search.html', query=query, results=results)
 
-@app.route('/wrong')
-@login_required
-def wrong_questions():
-    """Route to view wrong answers."""
-    user_id = get_user_id()
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT question_id FROM history WHERE user_id=? AND correct=0', (user_id,))
-    rows = c.fetchall()
-    conn.close()
-    
-    wrong_ids = set(r['question_id'] for r in rows)
-    questions_list = []
-    
-    for qid in wrong_ids:
-        q = fetch_question(qid)
-        if q:
-            questions_list.append(q)
-    
-    return render_template('wrong.html', questions=questions_list)
+@app.get('/', endpoint='index')
+@app.get('/statistics', endpoint='statistics')
+def index():
+    uid = g.user['id']
+    stats = query('SELECT COUNT(*) AS attempts, COALESCE(SUM(correct),0) AS correct FROM history WHERE user_id=?',
+                  (uid,), one=True)
+    stats['total'] = query('SELECT COUNT(*) AS n FROM questions', one=True)['n']
+    stats['answered'] = query('SELECT COUNT(DISTINCT h.question_id) AS n FROM history h '
+                             'JOIN questions q ON q.id=h.question_id WHERE h.user_id=?', (uid,), one=True)['n']
+    stats['accuracy'] = round(100 * stats['correct'] / stats['attempts']) if stats['attempts'] else 0
+    stats['progress'] = round(100 * stats['answered'] / stats['total']) if stats['total'] else 0
+    stats['wrong'] = query('SELECT COUNT(DISTINCT h.question_id) AS n FROM history h JOIN questions q '
+                          'ON q.id=h.question_id WHERE h.user_id=? AND h.correct=0', (uid,), one=True)['n']
+    groups = {}
+    for field in ('category', 'difficulty'):
+        groups[field] = query(f'SELECT COALESCE(NULLIF(q.{field},""),"未分类") AS name, '
+                               'COUNT(*) AS n, ROUND(AVG(h.correct)*100) AS accuracy FROM history h '
+                               f'JOIN questions q ON h.question_id=q.id WHERE h.user_id=? GROUP BY q.{field}', (uid,))
+    recent = query('SELECT * FROM exam_sessions WHERE user_id=? AND completed=1 ORDER BY id DESC LIMIT 5', (uid,))
+    worst = query('SELECT q.id,q.stem,COUNT(*) AS n FROM history h JOIN questions q ON q.id=h.question_id '
+                  'WHERE h.user_id=? AND h.correct=0 GROUP BY q.id ORDER BY n DESC LIMIT 5', (uid,))
+    return render_template('dashboard.html', stats=stats, groups=groups, recent=recent, worst=worst)
 
-@app.route('/only_wrong')
-@login_required
-def only_wrong_mode():
-    """Route to practice only wrong questions."""
-    user_id = get_user_id()
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT question_id FROM history WHERE user_id=? AND correct=0', (user_id,))
-    rows = c.fetchall()
-    conn.close()
-    
-    wrong_ids = [r['question_id'] for r in rows]
-    
-    if not wrong_ids:
-        flash("你没有错题或还未答题", "info")
-        return redirect(url_for('index'))
-    
-    qid = random.choice(wrong_ids)
-    q = fetch_question(qid)
-    is_fav = is_favorite(user_id, qid)
-    
-    return render_template('question.html', 
-                          question=q, 
-                          is_favorite=is_fav)
 
-##############################
-# Browse Routes #
-##############################
+@app.get('/history')
+def history():
+    total = query('SELECT COUNT(*) AS n FROM history WHERE user_id=?', (g.user['id'],), one=True)['n']
+    pages = max(1, (total + 19) // 20)
+    page = min(max(1, request.args.get('page', 1, type=int)), pages)
+    rows = query('SELECT h.*,q.stem,datetime(h.timestamp,"localtime") AS display_time FROM history h '
+                 'LEFT JOIN questions q ON q.id=h.question_id WHERE h.user_id=? ORDER BY h.id DESC LIMIT 20 OFFSET ?',
+                 (g.user['id'], (page - 1) * 20))
+    return render_template('history.html', history=rows, total=total, page=page, pages=pages)
+
+
+@app.post('/reset_history')
+def reset_history():
+    with get_db() as conn:
+        conn.execute('DELETE FROM history WHERE user_id=?', (g.user['id'],))
+        conn.execute('UPDATE users SET current_seq_qid=NULL WHERE id=?', (g.user['id'],))
+    flash('答题历史与顺序进度已重置。', 'success')
+    return redirect(url_for('index'))
+
+
+def practice_ids(mode):
+    _, where, params = filters(mode if mode in ('wrong', 'favorites') else 'all')
+    return [row['id'] for row in query('SELECT q.* FROM questions q' + where +
+                                      ' ORDER BY CAST(q.id AS INTEGER),q.id', params) if not unpack(row)['issue']]
+
+
+@app.get('/practice/<mode>')
+def practice(mode):
+    if mode not in ('random', 'sequential', 'wrong', 'favorites'):
+        abort(404)
+    ids = practice_ids(mode)
+    answered = {row['question_id'] for row in query('SELECT DISTINCT question_id FROM history WHERE user_id=?', (g.user['id'],))}
+    remaining = [qid for qid in ids if qid not in answered] if mode in ('random', 'sequential') else ids
+    if mode == 'sequential':
+        saved = g.user['current_seq_qid']
+        qid = saved if saved in ids else next(iter(remaining or ids), None)
+    else:
+        qid = random.choice(remaining) if remaining else None
+    if not qid:
+        return render_template('question.html', question=None, mode=mode)
+    return redirect(url_for('show_question', qid=qid, **(dict(request.args) | {'mode': mode})))
+
+
+@app.route('/question/<path:qid>', methods=['GET', 'POST'])
+def show_question(qid, mode=None):
+    mode = mode or request.args.get('mode', 'single')
+    row = question(qid)
+    if row is None:
+        abort(404)
+    uid = g.user['id']
+    ids = practice_ids(mode)
+    values, _, _ = filters()
+    practice_filters = {key: value for key, value in values.items() if value}
+    answered = {item['question_id'] for item in query('SELECT DISTINCT question_id FROM history WHERE user_id=?', (uid,))}
+    result = query('SELECT * FROM history WHERE id=? AND user_id=? AND question_id=?',
+                   (request.args.get('attempt'), uid, qid), one=True)
+    start = ids.index(qid) + 1 if qid in ids else 0
+    following = ids[start:] + ids[:start]
+    next_id = next((item for item in following if item not in answered | {qid}), next(iter(following), None))
+    if request.method == 'POST':
+        if row['issue']:
+            flash('请先在题库管理中补全这道题。', 'error')
+            return redirect(url_for('edit_question', qid=qid))
+        answer, correct = grade(row, request.form.getlist('answer'))
+        if not answer:
+            flash('请先填写或选择答案。', 'error')
+            return redirect(url_for('show_question', qid=qid, mode=mode, **practice_filters))
+        with get_db() as conn:
+            attempt = conn.execute('INSERT INTO history (user_id,question_id,user_answer,correct) VALUES (?,?,?,?)',
+                                   (uid, qid, answer, correct)).lastrowid
+            if mode == 'sequential':
+                conn.execute('UPDATE users SET current_seq_qid=? WHERE id=?', (next_id, uid))
+        return redirect(url_for('show_question', qid=qid, mode=mode, attempt=attempt, **practice_filters))
+    if mode == 'sequential' and not result:
+        with get_db() as conn:
+            conn.execute('UPDATE users SET current_seq_qid=? WHERE id=?', (qid, uid))
+    favorite = query('SELECT * FROM favorites WHERE user_id=? AND question_id=?', (uid, qid), one=True)
+    next_url = url_for('show_question', qid=next_id, mode=mode, **practice_filters) if mode == 'sequential' and next_id else url_for('practice', mode=mode if mode != 'single' else 'random', **practice_filters)
+    return render_template('question.html', question=row, mode=mode, result=result, favorite=favorite,
+                           next_url=next_url, position=ids.index(qid) + 1 if qid in ids else 1,
+                           total=len(ids), answered=len(set(ids) & answered), practice_filters=practice_filters)
+
+
+@app.route('/sequential/<path:qid>', methods=['GET', 'POST'])
+def sequential_question(qid):
+    return show_question(qid, 'sequential')
+
+
+@app.post('/favorite/<path:qid>', endpoint='favorite')
+@app.post('/unfavorite/<path:qid>', endpoint='unfavorite')
+@app.post('/update_tag/<path:qid>', endpoint='update_tag')
+def bookmark(qid):
+    if question(qid) is None:
+        abort(404)
+    with get_db() as conn:
+        if request.endpoint == 'unfavorite':
+            conn.execute('DELETE FROM favorites WHERE user_id=? AND question_id=?', (g.user['id'], qid))
+        else:
+            conn.execute('INSERT INTO favorites (user_id,question_id,tag) VALUES (?,?,?) '
+                         'ON CONFLICT(user_id,question_id) DO UPDATE SET tag=excluded.tag',
+                         (g.user['id'], qid, request.form.get('tag', '')))
+    return redirect(request.form.get('next') or url_for('show_question', qid=qid))
+
+
+@app.get('/modes')
+def modes():
+    return render_template('modes.html', total=query('SELECT COUNT(*) AS n FROM questions', one=True)['n'], choices=choices())
+
+
+@app.post('/start_exam', endpoint='start_exam')
+@app.post('/start_timed_mode', endpoint='start_timed_mode')
+def start_exam():
+    timed = request.endpoint == 'start_timed_mode' or request.form.get('mode') == 'timed'
+    count = request.form.get('question_count', 10, type=int)
+    minutes = request.form.get('duration', 10, type=int) if timed else 0
+    if count < 1 or (timed and minutes < 1):
+        flash('题量和限时需要大于 0。', 'error')
+        return redirect(url_for('modes'))
+    _, where, params = filters()
+    available = [unpack(row) for row in query('SELECT q.* FROM questions q' + where, params) if not unpack(row)['issue']]
+    paper = random.sample(available, min(count, len(available)))
+    if not paper:
+        flash('当前条件下没有题目，请先添加题目或调整筛选。', 'error')
+        return redirect(url_for('modes'))
+    with get_db() as conn:
+        exam_id = conn.execute('INSERT INTO exam_sessions (user_id,mode,question_ids,start_time,duration,paper) VALUES (?,?,?,?,?,?)',
+                              (g.user['id'], 'timed' if timed else 'exam', json.dumps([q['id'] for q in paper]),
+                               datetime.now().isoformat(timespec='seconds'), minutes * 60,
+                               json.dumps(paper, ensure_ascii=False))).lastrowid
+    session['current_exam_id'] = exam_id
+    return redirect(url_for('exam', exam_id=exam_id))
+
+
+@app.route('/exam/<int:exam_id>', methods=['GET', 'POST'])
+def exam(exam_id):
+    record = query('SELECT * FROM exam_sessions WHERE id=? AND user_id=?', (exam_id, g.user['id']), one=True)
+    if record is None:
+        abort(404)
+    paper = json.loads(record['paper'] or '[]')
+    legacy = not paper and record['completed']
+    if not paper and not record['completed']:
+        paper = [row for qid in json.loads(record['question_ids']) if (row := question(qid))]
+    if request.method == 'POST' and not record['completed']:
+        for row in paper:
+            row['user_answer'], row['correct'] = grade(row, request.form.getlist('answer_' + row['id']))
+        score = round(100 * sum(row['correct'] for row in paper) / len(paper), 1) if paper else 0
+        with get_db() as conn:
+            changed = conn.execute('UPDATE exam_sessions SET completed=1,score=?,paper=? WHERE id=? AND completed=0',
+                                   (score, json.dumps(paper, ensure_ascii=False), exam_id)).rowcount
+            if changed:
+                conn.executemany('INSERT INTO history (user_id,question_id,user_answer,correct) VALUES (?,?,?,?)',
+                                 [(g.user['id'], row['id'], row['user_answer'], row['correct']) for row in paper])
+        if session.get('current_exam_id') == exam_id:
+            session.pop('current_exam_id', None)
+        return redirect(url_for('exam', exam_id=exam_id))
+    deadline = (datetime.fromisoformat(record['start_time']) + timedelta(seconds=record['duration'])).timestamp() * 1000 if record['duration'] else 0
+    return render_template('exam.html', exam=record, questions=paper, deadline=deadline, legacy=legacy)
+
+
+@app.route('/exam', methods=['GET'])
+@app.route('/timed_mode', methods=['GET'])
+@app.route('/submit_exam', methods=['POST'])
+@app.route('/submit_timed_mode', methods=['GET', 'POST'])
+def current_exam():
+    exam_id = session.get('current_exam_id')
+    if exam_id and request.method == 'POST':
+        return exam(exam_id)
+    return redirect(url_for('exam', exam_id=exam_id) if exam_id else url_for('modes'))
+
 
 @app.route('/browse')
-@login_required
-def browse_questions():
-    """Route to browse all questions."""
-    user_id = get_user_id()
-    page = request.args.get('page', 1, type=int)
-    question_type = request.args.get('type', '')
-    search_query = request.args.get('search', '')
-    per_page = 20  # Questions per page
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    # Build SQL query with filters
-    where_conditions = []
-    params = []
-    
-    if question_type and question_type != 'all':
-        where_conditions.append('qtype = ?')
-        params.append(question_type)
-    
-    if search_query:
-        where_conditions.append('(stem LIKE ? OR id LIKE ?)')
-        params.extend(['%' + search_query + '%', '%' + search_query + '%'])
-    
-    where_clause = ' WHERE ' + ' AND '.join(where_conditions) if where_conditions else ''
-    
-    # Get total count with filters
-    count_sql = f'SELECT COUNT(*) as total FROM questions{where_clause}'
-    c.execute(count_sql, params)
-    total = c.fetchone()['total']
-    
-    # Get questions with pagination and filters
-    offset = (page - 1) * per_page
-    query_params = params + [per_page, offset]
-    c.execute(f'''
-        SELECT id, stem, answer, difficulty, qtype, category, options 
-        FROM questions 
-        {where_clause}
-        ORDER BY CAST(id AS INTEGER) ASC 
-        LIMIT ? OFFSET ?
-    ''', query_params)
-    
-    rows = c.fetchall()
-    questions = []
-    
-    for row in rows:
-        question_data = {
-            'id': row['id'],
-            'stem': row['stem'],
-            'answer': row['answer'],
-            'difficulty': row['difficulty'],
-            'type': row['qtype'],
-            'category': row['category'],
-            'options': json.loads(row['options']) if row['options'] else {}
-        }
-        
-        # Check if favorited by current user
-        c.execute('SELECT 1 FROM favorites WHERE user_id=? AND question_id=?', 
-                  (user_id, row['id']))
-        question_data['is_favorite'] = bool(c.fetchone())
-        
-        questions.append(question_data)
-    
-    # Get available question types for filter chips
-    c.execute('SELECT DISTINCT qtype FROM questions WHERE qtype IS NOT NULL AND qtype != ""')
-    available_types = [r['qtype'] for r in c.fetchall()]
-    
-    conn.close()
-    
-    # Calculate pagination info
-    total_pages = (total + per_page - 1) // per_page
-    has_prev = page > 1
-    has_next = page < total_pages
-    
-    return render_template('browse.html',
-                          questions=questions,
-                          total=total,
-                          page=page,
-                          per_page=per_page,
-                          total_pages=total_pages,
-                          has_prev=has_prev,
-                          has_next=has_next,
-                          current_type=question_type,
-                          current_search=search_query,
-                          available_types=available_types)
-
-##############################
-# Filter Routes #
-##############################
-
+@app.route('/search', methods=['GET', 'POST'])
 @app.route('/filter', methods=['GET', 'POST'])
-@login_required
-def filter_questions():
-    """Route to filter questions by category and difficulty."""
-    conn = get_db()
-    c = conn.cursor()
-    
-    # Get all categories and difficulties for dropdown selection
-    c.execute('SELECT DISTINCT category FROM questions WHERE category IS NOT NULL AND category != ""')
-    categories = [r['category'] for r in c.fetchall()]
-    
-    c.execute('SELECT DISTINCT difficulty FROM questions WHERE difficulty IS NOT NULL AND difficulty != ""')
-    difficulties = [r['difficulty'] for r in c.fetchall()]
+def old_list():
+    return redirect(url_for('questions', **request.values))
 
-    selected_category = ''
-    selected_difficulty = ''
-    results = []
-    
-    if request.method == 'POST':
-        selected_category = request.form.get('category', '')
-        selected_difficulty = request.form.get('difficulty', '')
-        
-        sql = "SELECT id, stem FROM questions WHERE 1=1"
-        params = []
-        
-        if selected_category:
-            sql += " AND category=?"
-            params.append(selected_category)
-            
-        if selected_difficulty:
-            sql += " AND difficulty=?"
-            params.append(selected_difficulty)
-            
-        c.execute(sql, params)
-        rows = c.fetchall()
-        
-        for row in rows:
-            results.append({'id': row['id'], 'stem': row['stem']})
 
-    conn.close()
-    
-    return render_template('filter.html', 
-                          categories=categories, 
-                          difficulties=difficulties,
-                          selected_category=selected_category,
-                          selected_difficulty=selected_difficulty,
-                          results=results)
+@app.get('/random')
+@app.get('/sequential_start')
+@app.get('/only_wrong')
+def old_practice():
+    return practice({'/random': 'random', '/sequential_start': 'sequential', '/only_wrong': 'wrong'}[request.path])
 
-##############################
-# Favorites Routes #
-##############################
-
-@app.route('/favorite/<qid>', methods=['POST'])
-@login_required
-def favorite_question(qid):
-    """Route to add a question to favorites."""
-    user_id = get_user_id()
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    try:
-        c.execute('INSERT OR IGNORE INTO favorites (user_id, question_id, tag) VALUES (?,?,?)',
-                  (user_id, qid, ''))
-        conn.commit()
-        flash("收藏成功！", "success")
-    except Exception as e:
-        flash(f"收藏失败: {str(e)}", "error")
-    finally:
-        conn.close()
-    
-    # Redirect back to the question page
-    referrer = request.referrer
-    if referrer and '/question/' in referrer:
-        return redirect(referrer)
-    return redirect(url_for('show_question', qid=qid))
-
-@app.route('/unfavorite/<qid>', methods=['POST'])
-@login_required
-def unfavorite_question(qid):
-    """Route to remove a question from favorites."""
-    user_id = get_user_id()
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    try:
-        c.execute('DELETE FROM favorites WHERE user_id=? AND question_id=?', 
-                  (user_id, qid))
-        conn.commit()
-        flash("已取消收藏", "success")
-    except Exception as e:
-        flash(f"取消收藏失败: {str(e)}", "error")
-    finally:
-        conn.close()
-    
-    # Redirect back to the question page
-    referrer = request.referrer
-    if referrer and '/question/' in referrer:
-        return redirect(referrer)
-    return redirect(url_for('show_question', qid=qid))
-
-@app.route('/update_tag/<qid>', methods=['POST'])
-@login_required
-def update_tag(qid):
-    """API route to update a favorite's tag."""
-    if not is_logged_in():
-        return jsonify({"success": False, "msg": "未登录"}), 401
-    
-    user_id = get_user_id()
-    new_tag = request.form.get('tag', '')
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    try:
-        c.execute('UPDATE favorites SET tag=? WHERE user_id=? AND question_id=?',
-                  (new_tag, user_id, qid))
-        conn.commit()
-        return jsonify({"success": True, "msg": "标记更新成功"})
-    except Exception as e:
-        return jsonify({"success": False, "msg": f"更新失败: {str(e)}"}), 500
-    finally:
-        conn.close()
-
-@app.route('/favorites')
-@login_required
-def show_favorites():
-    """Route to view favorites."""
-    user_id = get_user_id()
-    
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        SELECT f.question_id, f.tag, q.stem 
-        FROM favorites f 
-        JOIN questions q ON f.question_id=q.id 
-        WHERE f.user_id=?
-    ''', (user_id,))
-    
-    rows = c.fetchall()
-    conn.close()
-    
-    favorites_data = [
-        {'question_id': r['question_id'], 'tag': r['tag'], 'stem': r['stem']} 
-        for r in rows
-    ]
-    
-    return render_template('favorites.html', favorites=favorites_data)
-
-##############################
-# Sequential Mode Routes #
-##############################
-
-@app.route('/sequential_start')
-@login_required
-def sequential_start():
-    """Route to start or continue sequential answering mode."""
-    user_id = get_user_id()
-    conn = get_db()
-    c = conn.cursor()
-
-    # Check if user has a saved position
-    c.execute('SELECT current_seq_qid FROM users WHERE id=?', (user_id,))
-    user_data = c.fetchone()
-    
-    if user_data and user_data['current_seq_qid']:
-        # Continue from last browsed position (start from where user left off)
-        current_qid = user_data['current_seq_qid']
-    else:
-        # Find the first unanswered question
-        c.execute('''
-            SELECT id
-            FROM questions
-            WHERE id NOT IN (
-                SELECT question_id FROM history WHERE user_id = ?
-            )
-            ORDER BY CAST(id AS INTEGER) ASC
-            LIMIT 1
-        ''', (user_id,))
-        row = c.fetchone()
-        
-        if row is None:
-            # If all questions are answered, find the first question
-            c.execute('''
-                SELECT id
-                FROM questions
-                ORDER BY CAST(id AS INTEGER) ASC
-                LIMIT 1
-            ''')
-            row = c.fetchone()
-            
-            if row is None:
-                conn.close()
-                flash("题库中没有题目！", "error")
-                return redirect(url_for('index'))
-            
-            current_qid = row['id']
-            flash("所有题目已完成，从第一题重新开始。", "info")
-        else:
-            current_qid = row['id']
-        
-        # Save the position
-        c.execute(
-            'UPDATE users SET current_seq_qid = ? WHERE id = ?',
-            (current_qid, user_id)
-        )
-        conn.commit()
-    
-    conn.close()
-    return redirect(url_for('show_sequential_question', qid=current_qid))
-
-@app.route('/sequential/<qid>', methods=['GET', 'POST'])
-@login_required
-def show_sequential_question(qid):
-    """Route to show and handle sequential questions."""
-    user_id = get_user_id()
-    q = fetch_question(qid)
-    
-    if q is None:
-        flash("题目不存在", "error")
-        return redirect(url_for('index'))
-
-    next_qid = None
-    result_msg = None
-    user_answer_str = ""
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    # Update current_seq_qid to the current question when viewing it
-    c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?', (qid, user_id))
-    conn.commit()
-    
-    # Handle POST request (user submitted an answer)
-    if request.method == 'POST':
-        user_answer = request.form.getlist('answer')
-        user_answer_str = "".join(sorted(user_answer))
-        correct = int(user_answer_str == "".join(sorted(q['answer'])))
-        
-        # Save answer to history
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) '
-                  'VALUES (?,?,?,?)',
-                  (user_id, qid, user_answer_str, correct))
-        
-        # Find next unanswered question with higher ID
-        c.execute('''
-            SELECT id FROM questions
-            WHERE CAST(id AS INTEGER) > ?
-              AND id NOT IN (
-                  SELECT question_id FROM history WHERE user_id = ?
-              )
-            ORDER BY CAST(id AS INTEGER) ASC
-            LIMIT 1
-        ''', (int(qid), user_id))
-        
-        row = c.fetchone()
-        if row:
-            next_qid = row['id']
-            c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
-                      (next_qid, user_id))
-        else:
-            # Check if there are any questions left to answer
-            c.execute('''
-                SELECT id FROM questions
-                WHERE id NOT IN (
-                    SELECT question_id FROM history WHERE user_id = ?
-                )
-                ORDER BY CAST(id AS INTEGER) ASC
-                LIMIT 1
-            ''', (user_id,))
-            
-            row = c.fetchone()
-            if row:
-                next_qid = row['id']
-                c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
-                          (next_qid, user_id))
-            else:
-                # All questions answered, reset to first question
-                c.execute('''
-                    SELECT id FROM questions
-                    ORDER BY CAST(id AS INTEGER) ASC
-                    LIMIT 1
-                ''')
-                row = c.fetchone()
-                if row:
-                    next_qid = row['id']
-                    c.execute('UPDATE users SET current_seq_qid = ? WHERE id = ?',
-                              (next_qid, user_id))
-                    flash("所有题目已完成，从第一题重新开始。", "info")
-                else:
-                    c.execute('UPDATE users SET current_seq_qid = NULL WHERE id = ?',
-                              (user_id,))
-            
-        result_msg = "回答正确！" if correct else f"回答错误，正确答案：{q['answer']}"
-        flash(result_msg, "success" if correct else "error")
-    
-    # Get progress statistics
-    c.execute('SELECT COUNT(*) AS total FROM questions')
-    total = c.fetchone()['total']
-    
-    c.execute('SELECT COUNT(DISTINCT question_id) AS answered '
-              'FROM history WHERE user_id = ?', (user_id,))
-    answered = c.fetchone()['answered']
-    
-    conn.commit()
-    conn.close()
-    
-    is_fav = is_favorite(user_id, qid)
-    
-    return render_template('question.html',
-                          question=q,
-                          result_msg=result_msg,
-                          next_qid=next_qid,
-                          sequential_mode=True,
-                          user_answer=user_answer_str,
-                          answered=answered,
-                          total=total,
-                          is_favorite=is_fav)
-
-##############################
-# Timed Mode & Exam Routes #
-##############################
-
-@app.route('/modes')
-@login_required
-def modes():
-    """Route to select quiz mode."""
-    return render_template('index.html', mode_select=True, current_year=datetime.now().year)
-
-@app.route('/start_timed_mode', methods=['POST'])
-@login_required
-def start_timed_mode():
-    """Route to start timed mode quiz."""
-    user_id = get_user_id()
-    
-    # Configuration for timed mode
-    question_count = int(request.form.get('question_count', 5))
-    duration_minutes = int(request.form.get('duration', 10))
-    
-    question_ids = fetch_random_question_ids(question_count)
-    start_time = datetime.now()
-    duration = duration_minutes * 60  # Convert minutes to seconds
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    try:
-        c.execute('''
-            INSERT INTO exam_sessions 
-            (user_id, mode, question_ids, start_time, duration) 
-            VALUES (?,?,?,?,?)
-        ''', (user_id, 'timed', json.dumps(question_ids), start_time, duration))
-        
-        exam_id = c.lastrowid
-        conn.commit()
-        session['current_exam_id'] = exam_id
-        
-        return redirect(url_for('timed_mode'))
-    except Exception as e:
-        flash(f"启动定时模式失败: {str(e)}", "error")
-        return redirect(url_for('index'))
-    finally:
-        conn.close()
-
-@app.route('/timed_mode')
-@login_required
-def timed_mode():
-    """Route for timed mode quiz interface."""
-    user_id = get_user_id()
-    exam_id = session.get('current_exam_id')
-    
-    if not exam_id:
-        flash("未启动定时模式", "error")
-        return redirect(url_for('index'))
-    
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM exam_sessions WHERE id=? AND user_id=?', (exam_id, user_id))
-    exam = c.fetchone()
-    conn.close()
-    
-    if not exam:
-        flash("无法找到考试会话", "error")
-        return redirect(url_for('index'))
-    
-    question_ids = json.loads(exam['question_ids'])
-    start_time = datetime.strptime(exam['start_time'], '%Y-%m-%d %H:%M:%S.%f')
-    end_time = start_time + timedelta(seconds=exam['duration'])
-    
-    remaining = (end_time - datetime.now()).total_seconds()
-    if remaining <= 0:
-        # Time's up, auto-submit
-        return redirect(url_for('submit_timed_mode'))
-    
-    questions_list = [fetch_question(qid) for qid in question_ids]
-    return render_template('timed_mode.html', questions=questions_list, remaining=remaining)
-
-@app.route('/submit_timed_mode', methods=['POST', 'GET'])
-@login_required
-def submit_timed_mode():
-    """Route to submit answers from timed mode."""
-    user_id = get_user_id()
-    exam_id = session.get('current_exam_id')
-    
-    if not exam_id:
-        flash("没有正在进行的定时模式", "error")
-        return redirect(url_for('index'))
-    
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM exam_sessions WHERE id=? AND user_id=?', (exam_id, user_id))
-    exam = c.fetchone()
-    
-    if not exam:
-        conn.close()
-        flash("无法找到考试会话", "error")
-        return redirect(url_for('index'))
-    
-    question_ids = json.loads(exam['question_ids'])
-    
-    # Process answers
-    correct_count = 0
-    total = len(question_ids)
-    
-    for qid in question_ids:
-        user_answer = request.form.getlist(f'answer_{qid}')
-        q = fetch_question(qid)
-        
-        if not q:
-            continue
-            
-        user_answer_str = "".join(sorted(user_answer))
-        correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
-        
-        if correct:
-            correct_count += 1
-            
-        # Save to history
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-                  (user_id, qid, user_answer_str, correct))
-    
-    # Mark session as completed and save score
-    score = (correct_count / total * 100) if total > 0 else 0
-    c.execute('UPDATE exam_sessions SET completed=1, score=? WHERE id=?', (score, exam_id))
-    conn.commit()
-    conn.close()
-    
-    # Clear session
-    session.pop('current_exam_id', None)
-    
-    flash(f"定时模式结束！正确率：{correct_count}/{total} = {score:.2f}%", 
-          "success" if score >= 60 else "error")
-    
-    return redirect(url_for('statistics'))
-
-@app.route('/start_exam', methods=['POST'])
-@login_required
-def start_exam():
-    """Route to start exam mode."""
-    user_id = get_user_id()
-    
-    # Configuration
-    question_count = int(request.form.get('question_count', 10))
-    
-    question_ids = fetch_random_question_ids(question_count)
-    start_time = datetime.now()
-    duration = 0  # 0 means no time limit
-    
-    conn = get_db()
-    c = conn.cursor()
-    
-    try:
-        c.execute('''
-            INSERT INTO exam_sessions 
-            (user_id, mode, question_ids, start_time, duration) 
-            VALUES (?,?,?,?,?)
-        ''', (user_id, 'exam', json.dumps(question_ids), start_time, duration))
-        
-        exam_id = c.lastrowid
-        conn.commit()
-        session['current_exam_id'] = exam_id
-        
-        return redirect(url_for('exam'))
-    except Exception as e:
-        flash(f"启动模拟考试失败: {str(e)}", "error")
-        return redirect(url_for('index'))
-    finally:
-        conn.close()
-
-@app.route('/exam')
-@login_required
-def exam():
-    """Route for exam mode interface."""
-    user_id = get_user_id()
-    exam_id = session.get('current_exam_id')
-    
-    if not exam_id:
-        flash("未启动考试模式", "error")
-        return redirect(url_for('index'))
-    
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM exam_sessions WHERE id=? AND user_id=?', (exam_id, user_id))
-    exam = c.fetchone()
-    conn.close()
-    
-    if not exam:
-        flash("无法找到考试", "error")
-        return redirect(url_for('index'))
-    
-    question_ids = json.loads(exam['question_ids'])
-    questions_list = [fetch_question(qid) for qid in question_ids]
-    
-    return render_template('exam.html', questions=questions_list)
-
-@app.route('/submit_exam', methods=['POST'])
-@login_required
-def submit_exam():
-    """Route to submit answers from exam mode."""
-    user_id = get_user_id()
-    exam_id = session.get('current_exam_id')
-    
-    if not exam_id:
-        return jsonify({
-            "success": False,
-            "msg": "没有正在进行的考试"
-        }), 400
-    
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('SELECT * FROM exam_sessions WHERE id=? AND user_id=?', (exam_id, user_id))
-    exam = c.fetchone()
-    
-    if not exam:
-        conn.close()
-        return jsonify({
-            "success": False,
-            "msg": "无法找到考试"
-        }), 404
-    
-    question_ids = json.loads(exam['question_ids'])
-    
-    # Process answers
-    correct_count = 0
-    total = len(question_ids)
-    question_results = []
-    
-    for qid in question_ids:
-        user_answer = request.form.getlist(f'answer_{qid}')
-        q = fetch_question(qid)
-        
-        if not q:
-            continue
-            
-        user_answer_str = "".join(sorted(user_answer))
-        correct = 1 if user_answer_str == "".join(sorted(q['answer'])) else 0
-        
-        if correct:
-            correct_count += 1
-            
-        # Save to history
-        c.execute('INSERT INTO history (user_id, question_id, user_answer, correct) VALUES (?,?,?,?)',
-                  (user_id, qid, user_answer_str, correct))
-        
-        # Add to results
-        question_results.append({
-            "id": qid,
-            "stem": q['stem'],
-            "user_answer": user_answer_str,
-            "correct_answer": q['answer'],
-            "is_correct": correct == 1
-        })
-    
-    # Mark session as completed and save score
-    score = (correct_count / total * 100) if total > 0 else 0
-    c.execute('UPDATE exam_sessions SET completed=1, score=? WHERE id=?', (score, exam_id))
-    conn.commit()
-    conn.close()
-    
-    # Clear session
-    session.pop('current_exam_id', None)
-    
-    # Return detailed results
-    return jsonify({
-        "success": True,
-        "correct_count": correct_count,
-        "total": total,
-        "score": score,
-        "results": question_results
-    })
-
-##############################
-# Statistics Routes #
-##############################
-
-@app.route('/statistics')
-@login_required
-def statistics():
-    """Route to view user statistics."""
-    user_id = get_user_id()
-    conn = get_db()
-    c = conn.cursor()
-    
-    # Overall accuracy
-    c.execute('''
-        SELECT 
-            COUNT(*) as total, 
-            SUM(correct) as correct_count 
-        FROM history 
-        WHERE user_id=?
-    ''', (user_id,))
-    
-    row = c.fetchone()
-    total = row['total'] if row['total'] else 0
-    correct_count = row['correct_count'] if row['correct_count'] else 0
-    overall_accuracy = (correct_count/total*100) if total>0 else 0
-    
-    # Stats by difficulty
-    c.execute('''
-        SELECT 
-            q.difficulty, 
-            COUNT(*) as total, 
-            SUM(h.correct) as correct_count
-        FROM history h 
-        JOIN questions q ON h.question_id=q.id
-        WHERE h.user_id=?
-        GROUP BY q.difficulty
-    ''', (user_id,))
-    
-    difficulty_stats = []
-    for r in c.fetchall():
-        difficulty_stats.append({
-            'difficulty': r['difficulty'] or '未分类',
-            'total': r['total'],
-            'correct_count': r['correct_count'],
-            'accuracy': (r['correct_count']/r['total']*100) if r['total']>0 else 0
-        })
-    
-    # Stats by category
-    c.execute('''
-        SELECT 
-            q.category, 
-            COUNT(*) as total, 
-            SUM(h.correct) as correct_count
-        FROM history h 
-        JOIN questions q ON h.question_id=q.id
-        WHERE h.user_id=?
-        GROUP BY q.category
-    ''', (user_id,))
-    
-    category_stats = []
-    for r in c.fetchall():
-        category_stats.append({
-            'category': r['category'] or '未分类',
-            'total': r['total'],
-            'correct_count': r['correct_count'],
-            'accuracy': (r['correct_count']/r['total']*100) if r['total']>0 else 0
-        })
-    
-    # Most wrong questions
-    c.execute('''
-        SELECT 
-            h.question_id, 
-            COUNT(*) as wrong_times, 
-            q.stem
-        FROM history h 
-        JOIN questions q ON h.question_id=q.id
-        WHERE h.user_id=? AND h.correct=0
-        GROUP BY h.question_id
-        ORDER BY wrong_times DESC
-        LIMIT 10
-    ''', (user_id,))
-    
-    worst_questions = []
-    for r in c.fetchall():
-        worst_questions.append({
-            'question_id': r['question_id'],
-            'stem': r['stem'],
-            'wrong_times': r['wrong_times']
-        })
-    
-    # Recent exams
-    c.execute('''
-        SELECT 
-            id, 
-            mode, 
-            start_time, 
-            score, 
-            (SELECT COUNT(*) FROM JSON_EACH(question_ids)) as question_count
-        FROM exam_sessions
-        WHERE user_id=? AND completed=1
-        ORDER BY start_time DESC
-        LIMIT 5
-    ''', (user_id,))
-    
-    recent_exams = []
-    for r in c.fetchall():
-        recent_exams.append({
-            'id': r['id'],
-            'mode': r['mode'],
-            'start_time': r['start_time'],
-            'score': r['score'],
-            'question_count': r['question_count']
-        })
-    
-    conn.close()
-    
-    return render_template('statistics.html', 
-                          overall_accuracy=overall_accuracy,
-                          difficulty_stats=difficulty_stats,
-                          category_stats=category_stats,
-                          worst_questions=worst_questions,
-                          recent_exams=recent_exams)
-
-##############################
-# APK Download Routes #
-##############################
-
-@app.route('/ExamMasterAndroid/<filename>')
-def download_apk(filename):
-    """Handle APK file downloads."""
-    try:
-        # Security check: only allow .apk files
-        if not filename.endswith('.apk'):
-            abort(404)
-        
-        # Use absolute path based on script location
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        apk_path = os.path.join(script_dir, 'ExamMasterAndroid', filename)
-        
-        # Check if file exists
-        if not os.path.exists(apk_path):
-            abort(404)
-        
-        # Send file with proper headers
-        return send_file(
-            apk_path, 
-            as_attachment=True, 
-            download_name=filename,
-            mimetype='application/vnd.android.package-archive'
-        )
-        
-    except Exception as e:
-        print(f"Error in download_apk: {e}")
-        abort(404)
-
-##############################
-# Error Handlers #
-##############################
 
 @app.errorhandler(404)
-def page_not_found(e):
-    """Handle 404 errors."""
-    return render_template('error.html', 
-                          error_code=404, 
-                          error_message="页面不存在"), 404
+def not_found(error):
+    return render_template('error.html'), 404
 
-@app.errorhandler(500)
-def server_error(e):
-    """Handle 500 errors."""
-    return render_template('error.html', 
-                          error_code=500, 
-                          error_message="服务器内部错误"), 500
-
-##############################
-# Application Entry Point #
-##############################
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", debug=True, port=32220)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 32220)), debug=os.environ.get('FLASK_DEBUG') == '1')

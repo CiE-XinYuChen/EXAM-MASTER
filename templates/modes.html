@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% from '_components.html' import icon %}
+{% block title %}专注练习与考试{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-heading"><div><p class="eyebrow">FOCUS & UNDERSTAND</p><h1>今天，怎么练？</h1><p class="lede">给自己一段不被打扰的时间。</p></div></div>
+  <div class="mode-grid practice-modes" id="practice">{% for mode,label,description,glyph in [('random','随机练习','打散顺序，发现还没掌握的知识','shuffle'),('sequential','顺序练习','自动记住进度，循序渐进地理解','book'),('wrong','错题练习','重看曾经答错的题目，巩固薄弱处','history'),('favorites','收藏练习','从你标记的重点开始','star')] %}<a href="{{ url_for('practice',mode=mode) }}" class="panel mode-card">{{ icon(glyph) }}<strong>{{ label }}</strong><span>{{ description }}</span>{{ icon('arrow') }}</a>{% endfor %}</div>
+  <div class="exam-layout section-gap" id="exam"><form method="post" action="{{ url_for('start_exam') }}" class="panel setup-panel"><span class="pill">自定义试卷</span><h2 class="roomy">准备好，再出发。</h2>
+    <div class="form-grid"><label>考试模式<select name="mode" id="exam-mode"><option value="exam">模拟考试 · 不限时</option><option value="timed">限时考试 · 自动交卷</option></select></label><label>题目数量<input name="question_count" type="number" min="1" value="10" required></label><label>题目分类<select name="category"><option value="">全部分类</option>{% for category in choices.category %}<option>{{ category }}</option>{% endfor %}</select></label><label>题目类型<select name="type"><option value="">全部题型</option>{% for type in types %}<option>{{ type }}</option>{% endfor %}</select></label><label id="exam-duration">考试时长（分钟）<input name="duration" type="number" min="1" value="20"></label></div>
+    <div class="form-bottom"><span class="muted small">题库共 {{ total }} 题，不足时使用全部可用题目。</span><button class="button primary" {% if not total %}disabled{% endif %}>开始考试 {{ icon('arrow') }}</button></div>
+  </form><aside class="exam-notes"><span class="eyebrow">BEFORE YOU BEGIN</span><h2>只管认真作答。</h2><ol><li>所有题目等权计分，多选题需全部选对。</li><li>草稿会保存在当前浏览器，刷新可以继续。</li><li>交卷后统一显示结果与解析。</li><li>限时考试的倒计时结束后自动交卷。</li></ol>{% if session.get('current_exam_id') %}<a class="button" href="{{ url_for('exam',exam_id=session.current_exam_id) }}">继续上次的考试 {{ icon('arrow') }}</a>{% endif %}</aside></div>
+</section>
+{% endblock %}

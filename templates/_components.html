@@ -1,0 +1,21 @@
+{% macro icon(name) -%}<svg aria-hidden="true"><use href="#i-{{ name }}"/></svg>{%- endmacro %}
+
+{% macro pagination(page, pages, total, filters={}) %}
+<footer class="pagination"><span>{{ total }} 条 · 每页 20 条</span><div class="actions">{% if page > 1 %}<a class="icon-button" href="{{ url_for(request.endpoint, page=page-1, **filters) }}" aria-label="上一页">‹</a>{% endif %}<span class="page-number">{{ page }} / {{ pages }}</span>{% if page < pages %}<a class="icon-button" href="{{ url_for(request.endpoint, page=page+1, **filters) }}" aria-label="下一页">›</a>{% endif %}</div></footer>
+{% endmacro %}
+
+{% macro answers(q, name, selected='', locked=false) %}
+<fieldset class="answer-options" {% if locked %}disabled{% endif %}>
+  <legend class="sr-only">{{ q.qtype }}作答</legend>
+  {% if q.qtype == '填空题' %}<label>你的答案<textarea name="{{ name }}" rows="2" placeholder="填写答案">{{ selected }}</textarea></label>
+  {% else %}{% for key, value in q.options.items() %}
+    {% set checked = key in selected if q.qtype == '多选题' else key == selected %}
+    {% set correct = key in q.answer if q.qtype == '多选题' else key == q.answer %}
+    <label class="answer-option {{ 'correct' if locked and correct else 'incorrect' if locked and checked else '' }}"><input type="{{ 'checkbox' if q.qtype == '多选题' else 'radio' }}" name="{{ name }}" value="{{ key }}" {% if checked %}checked{% endif %}>{% if q.qtype != '判断题' %}<span class="option-letter">{{ key }}</span>{% endif %}<span>{{ value }}</span></label>
+  {% endfor %}{% endif %}
+</fieldset>
+{% endmacro %}
+
+{% macro feedback(q, result) %}
+<div class="feedback {{ 'wrong' if not result.correct }}" role="status"><h3>{{ '回答正确' if result.correct else '再巩固一下' }}</h3><p>你的答案：{{ result.user_answer or '未作答' }} · 正确答案：{{ q.answer }}</p>{% if q.explanation %}<div class="explanation"><span class="label">答案解析</span><p>{{ q.explanation }}</p></div>{% endif %}</div>
+{% endmacro %}

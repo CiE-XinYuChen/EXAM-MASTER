@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% from '_components.html' import icon %}
+{% block title %}{{ '编辑题目' if editing else '添加题目' }}{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-heading"><div><p class="eyebrow">QUESTION EDITOR</p><h1>{{ self.title() }}</h1><p class="lede">把问题写清楚，把理解留在解析里。</p></div><a class="button" href="{{ url_for('questions') }}">返回题库</a></div>
+  <form method="post" class="panel setup-panel editor-panel">
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    <div class="form-grid three"><label>题号<input name="id" value="{{ question.id }}" required {% if editing %}readonly{% endif %}></label><label>题型<select name="qtype" id="question-type">{% for type in types %}<option {% if question.qtype == type %}selected{% endif %}>{{ type }}</option>{% endfor %}</select></label><label>难度<input name="difficulty" value="{{ question.difficulty }}" list="difficulty-list"></label></div>
+    <datalist id="difficulty-list">{% for value in ['简单','中等','困难','无'] %}<option value="{{ value }}">{% endfor %}</datalist>
+    <label>分类<input name="category" value="{{ question.category }}" list="category-list" placeholder="例如：计算机基础"></label><datalist id="category-list">{% for value in choices.category %}<option value="{{ value }}">{% endfor %}</datalist>
+    <label>题干<textarea name="stem" rows="3" required placeholder="请输入完整、清晰的题目描述">{{ question.stem }}</textarea></label>
+    <fieldset id="editor-options"><legend>选项 <span class="muted small">至少填写两个选项，最多支持 A–E</span></legend><div class="option-fields">{% for key in letters %}<label><span>{{ key }}</span><input name="{{ key }}" value="{{ question.options.get(key,'') }}" aria-label="选项 {{ key }}"></label>{% endfor %}</div></fieldset>
+    <label>答案<input name="answer" value="{{ question.answer }}" required aria-describedby="answer-hint"><small class="muted" id="answer-hint">选择题填写选项字母；判断题填写正确或错误；填空题填写完整答案。</small></label>
+    <label>解析 <span class="muted small">可选</span><textarea name="explanation" rows="4" placeholder="解释正确答案与容易混淆的知识点">{{ question.explanation }}</textarea></label>
+    <div class="form-bottom"><a class="button" href="{{ url_for('questions') }}">取消</a><button class="button primary">{{ icon('check') }}保存题目</button></div>
+  </form>
+  {% if editing %}<form method="post" action="{{ url_for('delete_question',qid=question.id) }}" class="delete-row" data-confirm="删除这道题？已有答题记录和考试结果会保留。"><button class="text-button danger">{{ icon('trash') }}删除这道题</button></form>{% endif %}
+</section>
+{% endblock %}

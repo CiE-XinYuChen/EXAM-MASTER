@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% from '_components.html' import icon %}
+{% block title %}{{ '创建账号' if register else '欢迎回来' }}{% endblock %}
+{% block content %}
+<section class="login-page"><div class="login-story"><a href="{{ url_for('login') }}" class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>EXAM<span class="brand-second">MASTER</span></span></a><div><span class="eyebrow">MAKE KNOWLEDGE YOURS</span><h1>学过的，<br>都成为自己的。</h1><p>整理题库，专注练习，回顾每一点进步。<br>你的学习，有一个安静的地方。</p></div><span class="small">一道题，一个更清晰的答案。</span></div>
+  <div class="login-form-wrap"><form method="post"><span class="pill">你的学习工作台</span><h2>{{ '从这里，开始积累' if register else '欢迎回来' }}</h2><p class="muted">{{ '创建账号，保存属于你的学习记录。' if register else '登录，接着上一次的积累。' }}</p>
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    <label>用户名<input name="username" value="{{ request.form.get('username','') }}" required autocomplete="username" placeholder="输入用户名"></label><label>密码<input name="password" type="password" required {% if register %}minlength="6"{% endif %} autocomplete="{{ 'new-password' if register else 'current-password' }}" placeholder="{{ '至少 6 位' if register else '输入密码' }}"></label>
+    {% if register %}<label>确认密码<input name="confirm_password" type="password" required minlength="6" autocomplete="new-password" placeholder="再次输入密码"></label>{% endif %}
+    <button class="button primary full-width">{{ '创建账号' if register else '登录工作台' }}{{ icon('arrow') }}</button><p class="login-demo small">{{ '已经有账号？' if register else '还没有账号？' }}<a class="subtle-link" href="{{ url_for('login' if register else 'register') }}">{{ '返回登录' if register else '创建账号' }} →</a></p>
+  </form></div>
+</section>
+{% endblock %}
