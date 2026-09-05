@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">EXAM-MASTER</title>
+  <desc id="desc">深墨色书页与三条白色横线，沿用学习工作台的书本标识。</desc>
+  <rect width="160" height="160" rx="36" fill="#F4F7FC"/>
+  <g transform="rotate(-3 80 80)">
+    <rect x="37" y="28" width="87" height="104" rx="13" fill="#17202C"/>
+    <path d="M48 29V131" stroke="#3B76D3" stroke-width="5"/>
+    <path d="M65 57H103M65 80H91M65 103H103" stroke="white" stroke-width="9" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% from '_components.html' import icon %}
+{% block title %}{{ '学习统计' if request.endpoint == 'statistics' else '概览' }}{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-heading"><div><p class="eyebrow">YOUR LEARNING SPACE</p><h1>给今天，留一点进步</h1><p class="lede">{{ g.user.username }}，从一道题开始，找到自己的学习节奏。</p></div><a class="button primary" href="{{ url_for('practice',mode='sequential') }}">{{ '继续顺序练习' if g.user.current_seq_qid else '开始练习' }} {{ icon('arrow') }}</a></div>
+  <div class="stats-grid">{% for label, value, unit, caption in [('题库总量',stats.total,'题','随时开始，按自己的节奏'),('已练习',stats.answered,'题','完成题库的 ' ~ stats.progress ~ '%'),('答题正确率',stats.accuracy,'%','累计 ' ~ stats.attempts ~ ' 次作答'),('待巩固错题',stats.wrong,'题','回顾薄弱处，让理解更扎实')] %}<section class="panel stat"><span class="label">{{ label }}</span><div class="big-number">{{ value }}<span>{{ unit }}</span></div><p class="quiet small">{{ caption }}</p></section>{% endfor %}</div>
+  <div class="two-column">
+    <section class="panel padded"><p class="eyebrow">NEXT SMALL STEP</p><h2>把练过的，变成会的。</h2><p class="muted roomy">随机练习发现盲区，错题复习巩固理解。<br>不必赶进度，先把这一题弄明白。</p><div>{% for mode,label,description in [('random','随机练习','从未答题目中随机抽取'),('sequential','顺序练习','接着上一次的进度继续'),('wrong','回顾错题','重新理解曾经出错的题目'),('favorites','收藏练习','重温你标记的重点')] %}<a class="route-row" href="{{ url_for('practice',mode=mode) }}"><span><strong>{{ label }}</strong><small>{{ description }}</small></span>{{ icon('arrow') }}</a>{% endfor %}</div></section>
+    <section class="panel padded"><div class="section-heading"><h2>最近考试</h2><a class="subtle-link" href="{{ url_for('modes') }}">开始考试 →</a></div>{% for exam in recent %}<a class="route-row" href="{{ url_for('exam',exam_id=exam.id) }}"><span><strong>{{ '限时考试' if exam.mode == 'timed' else '模拟考试' }}</strong><small>{{ exam.start_time|replace('T',' ') }}</small></span><strong class="score-text">{{ '%g'|format(exam.score or 0) }}<small> 分</small></strong></a>{% else %}<div class="empty-state">{{ icon('clock') }}<h3>还没有考试记录</h3><p>完成一场模拟考试，了解自己的掌握程度。</p></div>{% endfor %}</section>
+  </div>
+  <div class="two-column section-gap">{% for field,label in [('category','按分类回顾'),('difficulty','按难度回顾')] %}<section class="panel padded"><h2>{{ label }}</h2>{% for row in groups[field] %}<div class="stat-row"><div><strong>{{ row.name }}</strong><span class="quiet small">{{ row.n }} 次作答 · 正确率 {{ row.accuracy|int }}%</span></div><progress value="{{ row.accuracy }}" max="100">{{ row.accuracy }}%</progress></div>{% else %}<p class="muted roomy">练习之后，这里会显示你的掌握情况。</p>{% endfor %}</section>{% endfor %}</div>
+  {% if worst %}<section class="panel padded section-gap"><div class="section-heading"><h2>值得再看一眼</h2><a class="subtle-link" href="{{ url_for('wrong') }}">全部错题 →</a></div>{% for q in worst %}<a class="route-row" href="{{ url_for('show_question',qid=q.id) }}"><span>{{ q.stem }}</span><span class="pill">答错 {{ q.n }} 次</span></a>{% endfor %}</section>{% endif %}
+</section>
+{% endblock %}

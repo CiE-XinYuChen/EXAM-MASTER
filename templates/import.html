@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% from '_components.html' import icon %}
+{% block title %}导入题库{% endblock %}
+{% block content %}
+<section class="page">
+  <div class="page-heading"><div><p class="eyebrow">BRING YOUR QUESTIONS</p><h1>把题库，带到这里</h1><p class="lede">兼容现有中文 CSV 格式，也可以从字段模板开始。</p></div><a class="button" href="{{ url_for('questions') }}">返回题库</a></div>
+  <form method="post" enctype="multipart/form-data" class="panel setup-panel">
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    <label class="file-drop">{{ icon('upload') }}<strong>选择 CSV 文件</strong><span>UTF-8 编码 · 单选、多选、判断与填空</span><input name="file" type="file" accept=".csv,text/csv" required aria-label="选择 CSV 题库文件"></label>
+    <a class="text-button" href="{{ url_for('export_questions',template=1) }}">{{ icon('download') }}下载字段模板</a>
+    <div class="import-guide"><h3>同题号更新，新题号添加</h3><p>导入会覆盖相同题号的题目内容，保留学习记录。缺少题干、答案或选项的记录会保留为待补全，暂不进入练习。缺少题号、题型不支持或文件内题号重复时，会提示具体行号，整份文件都不会写入。</p><dl><dt>必需列</dt><dd>题号、题干、答案、题型</dd><dt>可选列</dt><dd>A、B、C、D、E、难度、类别、解析</dd><dt>答案示例</dt><dd>单选 A · 多选 ACD · 判断 正确/错误 · 填空 北京</dd></dl></div>
+    <div class="form-bottom"><span class="muted small">请确认题号与已有题目是否重复。</span><button class="button primary">导入题库 {{ icon('arrow') }}</button></div>
+  </form>
+</section>
+{% endblock %}

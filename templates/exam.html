@@ -1,118 +1,21 @@
 {% extends 'base.html' %}
-
-{% block title %}模拟考试 - ExamMaster{% endblock %}
-
+{% from '_components.html' import icon, answers, feedback %}
+{% block title %}{{ '考试结果' if exam.completed else '限时考试' if exam.mode == 'timed' else '模拟考试' }}{% endblock %}
+{% block body_class %}focus-screen{% endblock %}
 {% block content %}
-<div class="card">
-    <div class="card-title d-flex justify-content-between align-items-center">
-        <div>
-            <i class="fas fa-clipboard-list"></i> 模拟考试
-        </div>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">
-            <i class="fas fa-home"></i> 返回主页
-        </a>
-    </div>
-    
-    <form id="examForm" method="post" action="{{ url_for('submit_exam') }}" class="mb-4">
-        {% for question in questions %}
-        <div class="question-container mb-4">
-            <div class="question-header">
-                <span class="question-number">题目 {{ question.id }}</span>
-                {% if question.difficulty == '简单' %}
-                <span class="question-difficulty difficulty-easy">简单</span>
-                {% elif question.difficulty == '中等' %}
-                <span class="question-difficulty difficulty-medium">中等</span>
-                {% else %}
-                <span class="question-difficulty difficulty-hard">困难</span>
-                {% endif %}
-            </div>
-            <div class="question-stem">{{ question.stem }}</div>
-            <div class="options-list">
-                {% for opt_key, opt_val in question.options.items() %}
-                <div class="option-item">
-                    <label class="option-label">
-                        {% if question.type == '单选题' %}
-                            <input type="radio" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox" required>
-                        {% else %}
-                            <input type="checkbox" name="answer_{{ question.id }}" value="{{ opt_key }}" class="option-checkbox">
-                        {% endif %}
-                        <span class="option-text">{{ opt_key }}. {{ opt_val }}</span>
-                    </label>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endfor %}
-        <button type="submit" class="btn btn-primary">提交试卷</button>
-    </form>
-
-    <!-- 用于显示考试结果的区域 -->
-    <div id="examResult" class="mt-4"></div>
-</div>
-
+<section class="page focus-page">
+  <div class="page-heading"><div><p class="eyebrow">A MOMENT TO TEST YOURSELF</p><h1>{{ '这一次，看见进步' if exam.completed else '专心作答' }}</h1><p class="lede">{{ '回顾答案，把模糊的地方弄清楚。' if exam.completed else '所有题目等权计分；交卷后查看答案与解析。' }}</p></div><a class="button" href="{{ url_for('modes') }}">{{ '再来一场' if exam.completed else '返回学习空间' }}</a></div>
+  {% if exam.completed %}
+    <section class="panel score-panel" data-clear-draft="exam-{{ exam.id }}"><div><span class="label">本次得分</span><div class="big-number">{{ '%g'|format(exam.score or 0) }}<span>/ 100</span></div></div><div><h2>{{ '继续保持，也别忘了回顾。' if exam.score and exam.score >= 60 else '每一处错题，都是下一步的方向。' }}</h2><p class="muted">{{ exam.start_time|replace('T',' ') }} · {{ '限时考试' if exam.mode == 'timed' else '模拟考试' }}</p><a class="text-button" href="{{ url_for('wrong') }}">回顾错题 {{ icon('arrow') }}</a></div></section>
+    {% if legacy %}<div class="notice">这场旧版考试只保存了总分，没有逐题结果。</div>{% endif %}
+  {% endif %}
+  <form method="post" action="{{ url_for('exam', exam_id=exam.id) }}" id="exam-form" {% if not exam.completed %}data-exam="exam-{{ exam.id }}" data-draft="exam-{{ exam.id }}" data-deadline="{{ deadline }}"{% endif %}>
+    {% if not exam.completed %}<div class="session-bar panel"><span>共 {{ questions|length }} 题<span class="desktop-only"> · 草稿自动保存在当前浏览器</span><span class="mobile-only"> · 自动存草稿</span></span><div class="actions">{% if deadline %}<span class="timer" id="countdown" aria-label="剩余时间">计算中…</span>{% else %}<span class="quiet small">不限时</span>{% endif %}<button class="button primary compact desktop-only">提交试卷</button></div></div><noscript><div class="notice">请启用 JavaScript 以使用倒计时和草稿恢复。你仍可手动交卷。</div></noscript>{% endif %}
+    <nav class="question-nav {{ 'desktop-only' if not exam.completed }}" aria-label="答题卡">{% for row in questions %}<a href="#exam-question-{{ loop.index }}" class="{{ 'success' if row.correct else 'error' if exam.completed else '' }}">{{ loop.index }}</a>{% endfor %}</nav>
+    {% for row in questions %}<section class="panel question-card" id="exam-question-{{ loop.index }}"><div class="question-card-top"><span class="eyebrow">QUESTION {{ '%02d'|format(loop.index) }}</span><span class="pill">{{ row.qtype }}</span></div><h2 class="question-stem">{{ row.stem }}</h2>{{ answers(row, 'answer_' ~ row.id, row.user_answer|default(''), exam.completed) }}{% if exam.completed %}{{ feedback(row, row) }}{% endif %}</section>{% endfor %}
+    {% if not exam.completed %}<div class="form-bottom exam-submit"><span class="muted small">未作答的题目按错误计分。</span><button class="button primary">提交试卷 {{ icon('check') }}</button></div>{% endif %}
+  </form>
+  {% if not exam.completed %}<dialog class="bottom-sheet" id="exam-sheet" aria-labelledby="exam-sheet-title"><div class="section-heading"><h2 id="exam-sheet-title">检查答题卡</h2><button class="button" type="button" data-close-exam>继续答题</button></div><p class="muted" id="exam-status" aria-live="polite"></p><nav class="question-nav" aria-label="跳转到题目">{% for row in questions %}<a href="#exam-question-{{ loop.index }}">{{ loop.index }}</a>{% endfor %}</nav><p class="muted small">已答题目会标记为蓝色；未作答按错误计分。</p><button class="button primary full-width" form="exam-form">确认交卷 {{ icon('check') }}</button></dialog>{% endif %}
+</section>
 {% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const examForm = document.getElementById('examForm');
-    examForm.addEventListener('submit', function(e) {
-        e.preventDefault(); // 阻止表单默认提交行为
-
-        // 使用FormData获取用户选择的答案
-        const formData = new FormData(examForm);
-
-        // 使用fetch以POST方式提交到后端submit_exam路由
-        fetch(examForm.getAttribute('action'), {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // 显示考试结果在当前页面
-                const resultDiv = document.getElementById('examResult');
-                const correctCount = data.correct_count;
-                const total = data.total;
-                const score = data.score.toFixed(2);
-                
-                // 使用标准样式显示结果
-                resultDiv.innerHTML = `
-                <div class="alert ${score >= 60 ? 'alert-success' : 'alert-danger'}">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <h3 class="mb-0">考试结束</h3>
-                        <span class="badge ${score >= 60 ? 'badge-success' : 'badge-danger'}">${score}%</span>
-                    </div>
-                    <div class="progress-container mb-2">
-                        <div class="progress-header">
-                            <span class="progress-title">得分情况</span>
-                            <span class="progress-value">${correctCount}/${total}</span>
-                        </div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" style="width: ${score}%"></div>
-                        </div>
-                    </div>
-                    <p class="mb-0">你已完成本次模拟考试，可以查看<a href="${data.result_url || '#'}">详细结果</a>。</p>
-                </div>`;
-            } else {
-                // 显示标准错误消息
-                const resultDiv = document.getElementById('examResult');
-                resultDiv.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i> 提交失败，请重试。
-                </div>`;
-            }
-        })
-        .catch(err => {
-            console.error("提交考试请求失败:", err);
-            // 显示标准错误消息
-            const resultDiv = document.getElementById('examResult');
-            resultDiv.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-circle"></i> 提交考试请求失败，请稍后再试。
-            </div>`;
-        });
-    });
-});
-</script>
-{% endblock %}
+{% block mobile_nav %}{% if not exam.completed %}<nav class="mobile-dock exam-dock" aria-label="考试操作"><button class="button" type="button" data-exam-step="-1">上一题</button><button class="dock-tool" type="button" data-open-exam><strong id="exam-position">1 / {{ questions|length }}</strong><span>答题卡</span></button><button class="button primary" type="button" data-exam-step="1">下一题</button></nav>{% else %}{{ super() }}{% endif %}{% endblock %}

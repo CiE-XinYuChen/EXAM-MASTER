@@ -1,322 +1,44 @@
-<!DOCTYPE html>
+{% from '_components.html' import icon %}
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ExamMaster{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
-    <!-- 额外样式 -->
-    {% block styles %}{% endblock %}
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#fafbfc">
+  <title>{% block title %}学习工作台{% endblock %} · EXAM-MASTER</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body>
-    <!-- 导航栏 -->
-    <nav>
-        <div class="nav-left">
-            <a href="{{ url_for('index') }}" class="nav-logo">
-                <i class="fas fa-book-open"></i> ExamMaster
-            </a>
-        </div>
-        
-        <!-- 移动端菜单按钮 -->
-        <button class="menu-toggle" id="menuToggle">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <!-- 导航链接 -->
-        <div class="nav-links" id="navLinks">
-            <a href="{{ url_for('sequential_start') }}" class="nav-link{% if request.path == url_for('sequential_start') %} active{% endif %}">
-                <i class="fas fa-list-ol"></i> 顺序答题
-            </a>
-            <a href="{{ url_for('random_question') }}" class="nav-link{% if request.path == url_for('random_question') %} active{% endif %}">
-                <i class="fas fa-random"></i> 随机答题
-            </a>
-            <a href="{{ url_for('search') }}" class="nav-link{% if request.path == url_for('search') %} active{% endif %}">
-                <i class="fas fa-search"></i> 搜索题目
-            </a>
-            <a href="{{ url_for('filter_questions') }}" class="nav-link{% if request.path == url_for('filter_questions') %} active{% endif %}">
-                <i class="fas fa-filter"></i> 筛选题目
-            </a>
-            <a href="{{ url_for('wrong_questions') }}" class="nav-link{% if request.path == url_for('wrong_questions') %} active{% endif %}">
-                <i class="fas fa-times-circle"></i> 错题本
-            </a>
-            <a href="{{ url_for('show_favorites') }}" class="nav-link{% if request.path == url_for('show_favorites') %} active{% endif %}">
-                <i class="fas fa-star"></i> 我的收藏
-            </a>
-            <a href="{{ url_for('show_history') }}" class="nav-link{% if request.path == url_for('show_history') %} active{% endif %}">
-                <i class="fas fa-history"></i> 答题历史
-            </a>
-            <a href="{{ url_for('statistics') }}" class="nav-link{% if request.path == url_for('statistics') %} active{% endif %}">
-                <i class="fas fa-chart-bar"></i> 统计分析
-            </a>
-        </div>
-        
-        <!-- 用户操作 -->
-        <div class="nav-right">
-            <!-- 移除退出按钮，已移到错题练习页面下方 -->
-        </div>
+<body class="{% block body_class %}{% endblock %}">
+  {% include '_icons.html' %}
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  {% if g.user %}
+  <button class="nav-scrim" id="nav-scrim" aria-label="关闭导航" hidden></button>
+  <aside class="sidebar" id="sidebar">
+    <a href="{{ url_for('questions') }}" class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>EXAM<span class="brand-second">MASTER</span></span></a>
+    <span class="nav-label">学习工作台</span>
+    <nav class="nav-list" aria-label="主导航">
+      {% for endpoint, label, glyph in [('index','概览','grid'),('questions','题库','book'),('modes','专注练习与考试','pen'),('history','学习记录','history'),('statistics','学习统计','grid')] %}
+      <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint == endpoint }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}{{ label }}{% if endpoint == 'questions' %}<span class="nav-count">{{ bank_total }}</span>{% endif %}</a>
+      {% endfor %}
     </nav>
-    
-    <!-- Flash消息 -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="container">
-                {% for category, message in messages %}
-                    <div class="alert {% if category == 'error' %}alert-danger{% elif category == 'success' %}alert-success{% else %}alert-info{% endif %}">
-                        {% if category == 'error' %}
-                            <i class="fas fa-exclamation-circle"></i>
-                        {% elif category == 'success' %}
-                            <i class="fas fa-check-circle"></i>
-                        {% else %}
-                            <i class="fas fa-info-circle"></i>
-                        {% endif %}
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-    
-    <!-- 主要内容 -->
-    <main class="container">
-        {% block content %}{% endblock %}
+    <span class="nav-label second-label">我的收集</span>
+    <nav class="nav-list" aria-label="我的收集">
+      <a href="{{ url_for('favorites') }}" class="{{ 'active' if request.endpoint == 'favorites' }}">{{ icon('star') }}我的收藏</a>
+      <a href="{{ url_for('wrong') }}" class="{{ 'active' if request.endpoint == 'wrong' }}">{{ icon('book') }}错题集</a>
+    </nav>
+    <nav class="nav-list mobile-only mobile-tools" aria-label="页面工具">{% block mobile_tools %}<a href="{{ url_for('edit_question') }}">{{ icon('plus') }}添加题目</a><a href="{{ url_for('import_questions') }}">{{ icon('upload') }}导入 CSV</a>{% endblock %}</nav>
+    <div class="sidebar-note"><span class="tiny-label">ONE QUESTION AT A TIME</span><p>每一道题，<br>都是理解的下一步。</p><span class="fine-rule"></span><small>保持专注，慢慢积累。</small></div>
+    <a class="account" href="{{ url_for('logout') }}" aria-label="退出登录"><span class="avatar">{{ g.user.username[0] }}</span><span><strong>{{ g.user.username }}</strong><small>退出登录</small></span>{{ icon('logout') }}</a>
+    <button class="button mobile-only" type="button" data-menu aria-controls="sidebar" aria-expanded="false">收起菜单</button>
+  </aside>
+  {% endif %}
+  <div class="{{ 'workspace' if g.user else 'auth-workspace' }}">
+    {% if g.user %}<header class="topbar"><div class="topbar-left"><span class="breadcrumb">我的学习空间<span>/</span><strong>{{ self.title() }}</strong></span></div><span class="quiet small">{{ today }}</span></header>{% endif %}
+    <main id="main" tabindex="-1">
+      {% for category, message in get_flashed_messages(with_categories=true) %}<div class="notice {{ category }}" role="status">{{ message }}</div>{% endfor %}
+      {% block content %}{% endblock %}
     </main>
-    
-    <!-- 页脚 -->
-    <footer class="footer">
-        <div class="container">
-            <p class="footer-text">
-                &copy; {{ current_year|default(2023) }} ExamMaster | 
-                <a href="https://github.com/CiE-XinYuChen/EXAM-MASTER" class="footer-link" target="_blank">
-                    <i class="fab fa-github"></i> GitHub
-                </a> | 
-                <a href="mailto:xinyu-c@outlook.com" class="footer-link">
-                    <i class="fas fa-envelope"></i> 联系我们
-                </a>
-            </p>
-            <p class="footer-text mt-1">
-                <a href="https://beian.miit.gov.cn/" target="_blank" class="footer-link">吉ICP备2023007431h号-2</a>
-            </p>
-        </div>
-    </footer>
-    
-    <!-- JavaScript -->
-    <script>
-        // 移动端菜单切换和优化
-        document.addEventListener('DOMContentLoaded', function() {
-            const menuToggle = document.getElementById('menuToggle');
-            const navLinks = document.getElementById('navLinks');
-            const navLinksItems = document.querySelectorAll('.nav-link');
-            const body = document.body;
-            
-            // 移动端菜单切换
-            if (menuToggle && navLinks) {
-                menuToggle.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleMenu();
-                });
-                
-                // 点击菜单项关闭菜单（仅在移动端）
-                navLinksItems.forEach(item => {
-                    item.addEventListener('click', function() {
-                        if (window.innerWidth <= 768) {
-                            closeMenu();
-                        }
-                    });
-                });
-                
-                // 点击其他区域关闭菜单
-                document.addEventListener('click', function(e) {
-                    if (navLinks.classList.contains('active') && 
-                        !navLinks.contains(e.target) && 
-                        e.target !== menuToggle) {
-                        closeMenu();
-                    }
-                });
-                
-                // 监听窗口大小变化，调整菜单显示
-                window.addEventListener('resize', function() {
-                    if (window.innerWidth > 768 && navLinks.classList.contains('active')) {
-                        navLinks.classList.remove('active');
-                        updateMenuIcon(false);
-                        body.style.overflow = '';
-                    }
-                });
-            }
-            
-            // 创建背景遮罩元素
-            let menuBackdrop;
-            
-            // 初始化遮罩
-            function initBackdrop() {
-                if (!document.querySelector('.menu-backdrop')) {
-                    menuBackdrop = document.createElement('div');
-                    menuBackdrop.className = 'menu-backdrop';
-                    document.body.appendChild(menuBackdrop);
-                    
-                    // 点击遮罩关闭菜单
-                    menuBackdrop.addEventListener('click', closeMenu);
-                } else {
-                    menuBackdrop = document.querySelector('.menu-backdrop');
-                }
-            }
-            
-            // 初始化
-            initBackdrop();
-            
-            // 菜单切换功能
-            function toggleMenu() {
-                const isActive = navLinks.classList.toggle('active');
-                updateMenuIcon(isActive);
-                
-                // 切换背景遮罩
-                if (isActive) {
-                    menuBackdrop.classList.add('active');
-                } else {
-                    menuBackdrop.classList.remove('active');
-                }
-                
-                // 当菜单打开时禁止背景滚动（仅移动端）
-                if (window.innerWidth <= 768) {
-                    body.style.overflow = isActive ? 'hidden' : '';
-                }
-            }
-            
-            // 关闭菜单
-            function closeMenu() {
-                navLinks.classList.remove('active');
-                menuBackdrop.classList.remove('active');
-                updateMenuIcon(false);
-                body.style.overflow = '';
-            }
-            
-            // 更新菜单图标
-            function updateMenuIcon(isActive) {
-                const icon = menuToggle.querySelector('i');
-                if (isActive) {
-                    icon.classList.remove('fa-bars');
-                    icon.classList.add('fa-times');
-                } else {
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-bars');
-                }
-            }
-            
-            // 添加移动端swipe手势支持
-            let touchStartX = 0;
-            let touchEndX = 0;
-            
-            document.addEventListener('touchstart', function(e) {
-                touchStartX = e.changedTouches[0].screenX;
-            }, false);
-            
-            document.addEventListener('touchend', function(e) {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, false);
-            
-            function handleSwipe() {
-                const swipeThreshold = 100; // 最小滑动距离
-                
-                // 从左往右滑动，打开菜单
-                if (touchEndX - touchStartX > swipeThreshold && window.innerWidth <= 768) {
-                    if (!navLinks.classList.contains('active')) {
-                        toggleMenu();
-                    }
-                }
-                
-                // 从右往左滑动，关闭菜单
-                if (touchStartX - touchEndX > swipeThreshold && window.innerWidth <= 768) {
-                    if (navLinks.classList.contains('active')) {
-                        closeMenu();
-                    }
-                }
-            }
-            
-            // Flash消息自动消失
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.opacity = '0';
-                    setTimeout(() => {
-                        alert.style.display = 'none';
-                    }, 500);
-                }, 5000);
-            });
-            
-            // 检测是否为移动设备，添加相应的类
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            if (isMobile) {
-                document.body.classList.add('mobile-device');
-            }
-            
-            // 处理表格滚动指示器
-            const tableContainers = document.querySelectorAll('.table-container');
-            tableContainers.forEach(container => {
-                // 添加滚动提示文本（仅在移动端）
-                if (window.innerWidth <= 768) {
-                    const hint = document.createElement('div');
-                    hint.className = 'table-scroll-hint';
-                    hint.innerHTML = '<i class="fas fa-arrows-left-right"></i> 左右滑动查看更多';
-                    container.insertBefore(hint, container.firstChild);
-                }
-                
-                // 检查表格是否可滚动
-                function checkScrollable() {
-                    if (container.scrollWidth > container.clientWidth) {
-                        container.classList.add('is-scrollable');
-                    } else {
-                        container.classList.remove('is-scrollable');
-                    }
-                }
-                
-                // 初始检查
-                checkScrollable();
-                
-                // 监听窗口大小变化
-                window.addEventListener('resize', checkScrollable);
-                
-                // 监听滚动事件，处理滚动指示器
-                container.addEventListener('scroll', function() {
-                    const scrollLeft = container.scrollLeft;
-                    const maxScroll = container.scrollWidth - container.clientWidth;
-                    
-                    // 如果滚动到最右侧，隐藏右侧指示器
-                    if (scrollLeft >= maxScroll - 5) {
-                        container.classList.add('scrolled-end');
-                    } else {
-                        container.classList.remove('scrolled-end');
-                    }
-                });
-            });
-            
-            // 处理卡片式移动表格
-            const cardTables = document.querySelectorAll('.table.table-card-mobile');
-            cardTables.forEach(table => {
-                // 获取表头内容，用于生成移动端标签
-                const headerCells = table.querySelectorAll('thead th');
-                const headerTexts = Array.from(headerCells).map(cell => cell.textContent.trim());
-                
-                // 为每个数据单元格添加data-label属性
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    cells.forEach((cell, index) => {
-                        if (index < headerTexts.length) {
-                            cell.setAttribute('data-label', headerTexts[index]);
-                        }
-                    });
-                });
-            });
-        });
-    </script>
-    
-    <!-- 额外脚本 -->
-    {% block scripts %}{% endblock %}
+    {% if g.user %}{% block mobile_nav %}<nav class="mobile-dock mobile-nav" aria-label="快捷导航">{% for endpoint, label, glyph in [('questions','题库','book'),('modes','练习','pen'),('wrong','错题','history')] %}<a href="{{ url_for(endpoint) }}" {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span></a>{% endfor %}<button type="button" data-menu aria-label="更多功能" aria-controls="sidebar" aria-expanded="false">{{ icon('menu') }}<span>更多</span></button></nav>{% endblock %}{% endif %}
+  </div>
 </body>
 </html>

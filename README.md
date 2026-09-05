@@ -1,173 +1,192 @@
-# EXAM-MASTER
-# dev_2.0 分支发布第一个预览版！专为适配移动端触摸体验，采用基于Flutter开发的web/iOS/Android客户端，拥有更丰富的题库（包括多媒体）和更好的UI，交互体验，main分支不会再维护。
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-2.0+-green.svg)
-![Python](https://img.shields.io/badge/Python-3.6+-blue.svg)
-![Android](https://img.shields.io/badge/Android-v3.0-green.svg)
-![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Mobile-blue.svg)
+<p align="center">
+  <img src="docs/assets/logo.svg" width="104" height="104" alt="EXAM-MASTER Logo">
+</p>
 
-一款基于 **Flask** 实现的全平台在线刷题系统，现已支持 **Web端** 和 **Android移动端**。提供从题库管理、用户注册登录，到随机出题、顺序答题、定时模式、模拟考试，以及收藏、标记、统计分析等多种功能，帮助用户随时随地高效提升学习和练习效果。
+<h1 align="center">EXAM-MASTER</h1>
 
-## 🌟 功能特性
+<p align="center">一道题，一个更清晰的答案。</p>
+<p align="center">轻量的 Python 网页题库 · 专注练习 · 模拟考试 · 手机单手操作</p>
 
-### 📱 多平台支持
-- **Web端**: 现代化响应式设计，支持桌面和移动浏览器
-- **Android端**: 原生Android应用 (v3.0)，流畅的移动体验
-- **同步数据**: 跨平台数据同步，随时切换设备继续学习
+EXAM-MASTER 把题库整理、日常刷题和考前复习放在同一个学习工作台。使用 **Flask + SQLite + Jinja**，页面由服务器直接渲染，搭配原生 CSS 与少量 JavaScript；安装 Python 依赖后即可运行，无前端构建步骤。
 
-### 📝 用户管理
-- **注册与登录**: 安全的用户账户创建与登录系统
-- **个人数据跟踪**: 自动保存学习进度与题目记录
-- **智能续答**: 系统记忆答题进度，无缝继续学习
+## 本次重构
 
-### 📚 题库管理
-- **CSV导入题库**: 便捷的题库导入功能
-- **多种题型支持**: 单选题、多选题、判断题、填空题等
-- **分类与难度系统**: 按类别和难度对题目进行组织
-- **题目浏览**: 分页浏览所有题目，支持快速定位
+新版围绕“代码更少、题库管理完整、手机操作方便”重新整理了 Web 应用，保留登录、多用户学习记录和原有学习模式。
 
-### 📋 答题模式
-- **随机答题**: 快速练习，从题库随机抽题
-- **顺序答题**: 从上次停止的位置开始，系统实时记录进度，保证下次访问时能无缝继续
-- **错题本**: 专注复习做错的题目，针对性提升
-- **定时模式**: 在规定时间内完成题目，提高效率
-- **模拟考试**: 模拟真实考试环境，一次性提交所有答案
+| 改动 | 现在的体验 |
+| --- | --- |
+| 精简架构 | 合并搜索、筛选、收藏和错题列表；复用判题、考试与草稿逻辑，后端集中在 `app.py` 和 `db.py`。 |
+| 补齐题库管理 | 网页新增、编辑、删除题目，维护分类、难度与解析，上传和导出 CSV。 |
+| 重新设计前端 | 基于 Open Design 的冷白、深墨和蓝色视觉，统一题库、练习、考试、记录和登录页面。 |
+| 手机单手操作 | 底部导航与展开菜单；短题选项靠近下半屏，收藏、提交和下一题固定在底部。 |
+| 手机逐题考试 | 每次显示一道题，底部翻题，展开答题卡检查后交卷；刷新恢复草稿与题序。 |
+| 完整学习记录 | 保留随机未答、顺序续答、错题和收藏复习；考试保存题目快照，提交后可以重新查看结果。 |
+| 修复旧版问题 | 修正填空判分、限时脚本、筛选续答和历史题号复用等问题，增加功能回归测试。 |
 
-### 🔍 查找与筛选
-- **关键词搜索**: 通过题干内容或题号快速查找题目
-- **智能筛选**: 按题型、类别、难度等条件筛选题目
-- **全站搜索**: 支持跨页面搜索，不限于当前页面
-- **筛选芯片**: 移动端友好的筛选界面，一键切换题型
+### 代码规模
 
-### 🔖 个性化学习
-- **收藏与标记**: 将重要题目加入收藏夹，添加个性化标记
-- **答题历史**: 完整记录所有已答题目及正确情况
-- **统计分析**: 详细的答题统计，包括正确率、难度分布和学习进度
-- **学习轨迹**: 追踪学习路径，了解知识掌握情况
+| 统计范围 | 重构前 | 当前版本 |
+| --- | ---: | ---: |
+| Python 运行源码 | 1,494 行 | 578 行 |
+| Web 运行源码 | 7,624 行 | 1,350 行 |
+| Web 源码字节数 | 243,717 | 111,538 |
 
-## 💻 技术栈
+按源码字节统计，Web 代码减少 **54.2%**。统计于 2026-09-05，以原版提交 `75a45d1` 为基准，包含后端、HTML、CSS 和 JavaScript；不包含测试、文档、图片、题库数据及 Android。当前规模包含本次手机操作适配。
 
-### Web端
-- **后端**: Python + Flask
-- **数据库**: SQLite
-- **前端**: HTML/CSS + JavaScript + Jinja2模板引擎
-- **UI框架**: Bootstrap工具类 + 自定义CSS
-- **数据格式**: CSV导入题库、JSON存储选项
+## 界面预览
 
-### Android端
-- **开发语言**: Kotlin
-- **UI框架**: Jetpack Compose
-- **架构模式**: MVVM + Repository Pattern
-- **数据库**: Room (SQLite)
-- **网络请求**: Retrofit + OkHttp
+以下截图来自当前运行中的系统，使用独立演示账号与仓库附带题库。桌面为 1440px 宽，手机为 390 × 844 的浏览器视口；截图中的作答仅用于展示。
 
-## 🚀 快速开始
+### 桌面题库
 
-### Web端部署
+统一搜索、组合筛选、收藏与 CSV 管理，直接进入题目练习或编辑。
 
-1. **克隆仓库**
-   ```bash
-   git clone https://github.com/CiE-XinYuChen/EXAM-MASTER.git
-   cd EXAM-MASTER
-   ```
+![桌面题库：881 道原始题目、组合筛选与导入导出](docs/assets/desktop-library.png)
 
-2. **安装依赖**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 手机练习与考试
 
-3. **启动应用**
-   ```bash
-   python app.py
-   ```
-   应用将在 http://localhost:32220 上运行
+常见题目尽量一屏完成；长题保留正常字号与滚动空间。主要按钮高 52px，选项触控区域至少 56px，底部留出设备安全区。
 
-### Android端安装
+<table>
+  <tr>
+    <th>专注练习</th>
+    <th>逐题考试</th>
+    <th>检查答题卡</th>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/mobile-practice.png" width="260" alt="手机练习：选项靠近下半屏，底部收藏与提交"></td>
+    <td><img src="docs/assets/mobile-exam.png" width="260" alt="手机考试：每次一道题，底部上一题与下一题"></td>
+    <td><img src="docs/assets/mobile-answer-sheet.png" width="260" alt="底部答题卡：查看已答和未答题目，确认后交卷"></td>
+  </tr>
+</table>
 
-1. **直接下载APK**
-   - 访问项目首页或[Releases页面](https://github.com/CiE-XinYuChen/EXAM-MASTER/releases)
-   - 下载最新版本 `exammaster-v3.0.apk`
-   
-2. **安装说明**
-   - 允许"未知来源"应用安装
-   - 安装后输入Web端相同的服务器地址即可同步数据
+<details>
+<summary>查看桌面题目编辑界面</summary>
 
-3. **本地编译**（可选）
-   ```bash
-   cd ExamMasterAndroid
-   ./gradlew assembleDebug
-   ```
+题干、选项、答案、分类、难度和解析在同一张表单维护，支持单选、多选、判断与填空。
 
-### 题库格式
+![桌面题目编辑：完整题目字段与解析维护](docs/assets/desktop-editor.png)
 
-题库使用CSV格式，包含以下字段：
-- 题号: 题目唯一标识
-- 题干: 题目内容
-- A, B, C, D, E: 选项（可选）
-- 答案: 正确答案，如"A"或"ABCD"（多选）
-- 难度: 题目难度级别
-- 题型: 如"单选题"、"多选题"等
-- 类别: 题目所属类别（可选）
+</details>
 
-## 📖 使用指南
+## 功能
 
-### 基本操作
+| 模块 | 支持内容 |
+| --- | --- |
+| 题库管理 | 新增、编辑、删除；关键词搜索；题型、分类、难度组合筛选；分页；CSV 导入导出。 |
+| 日常练习 | 随机未答、顺序续答、错题复习、收藏复习；提交后查看答案与解析；未提交答案保存为浏览器草稿。 |
+| 模拟与限时考试 | 自定义题数、分类、题型和时长；答题草稿；到期自动交卷；结果与题目快照持久保存。 |
+| 个人学习 | 收藏标签、答题历史、统计与个人记录重置；不同账号的学习记录独立保存。 |
 
-1. **注册/登录**: 首次使用需注册账号，之后直接登录
-2. **导航菜单**: 页面顶部提供多种功能入口
-3. **答题流程**: 
-   - 选择答题模式（随机/顺序/错题等）
-   - 选择答案后提交
-   - 系统自动判断正确性并记录
+**账号与题库：**当前没有单独的管理员角色。注册并登录后，所有账号都可以管理共享题库；收藏、作答历史、顺序进度和考试记录按账号区分。
 
-### 特殊功能
+**计分方式：**各题等权计分；多选必须选全且不能多选，未作答按错误计分。填空按文字顺序匹配。
 
-- **搜索题目**: 在"搜索题目"页面输入关键词
-- **收藏题目**: 在答题页面点击"收藏"按钮，在"我的收藏"中查看
-- **顺序刷题**: 系统实时记录进度，随时退出后下次访问将自动从上次答题位置继续
-- **统计分析**: 在"统计与反馈"页面查看个人学习数据
+## 快速开始
 
-## 🔄 最近更新
+需要 **Python 3.10 或以上**。
 
-### v3.0 - Android端正式发布 (2025-05)
-- **🎉 Android应用上线**: 原生Android应用正式发布，支持离线使用
-- **📱 移动端优化**: 完全重写移动端浏览题目UI，现代化卡片设计
-- **🔍 全站搜索**: 搜索和筛选功能从前端改为后端实现，支持跨页面操作
-- **🛠 UI修复**: 修复电脑端布局串位问题，完善CSS工具类定义
-- **🎯 筛选增强**: 修复移动端筛选芯片显示问题，正确显示所有题型
+```bash
+git clone https://github.com/CiE-XinYuChen/EXAM-MASTER.git
+cd EXAM-MASTER
+python3 -m venv venv
+venv/bin/python -m pip install -r requirements.txt
+venv/bin/python app.py
+```
 
-### v2.1 - Web端功能完善 (2025-05)
-- **🔧 顺序答题优化**: 智能记忆答题进度，从上次停止位置继续
-- **📊 统计功能增强**: 更详细的学习数据分析和可视化
-- **🎨 响应式优化**: 改进移动端浏览体验和交互设计
+<details>
+<summary>Windows PowerShell 启动方式</summary>
 
-### v2.0 - 核心功能重构 (2025-04)
-- **🏗 架构升级**: 重构核心答题逻辑，提升系统稳定性
-- **💾 数据持久化**: 优化数据存储和查询性能
-- **🎪 界面美化**: 全新UI设计，提升用户体验
+克隆仓库并进入项目目录后运行：
 
-## 📊 项目截图
-![86e83be8fcebbb8110a59f5929e77f96](https://github.com/user-attachments/assets/0b41c79d-5a42-4136-ae2e-a4c5c37b5520)
-![8d8919fb3dba32585d0e2e01d4378df0](https://github.com/user-attachments/assets/a2a7c83b-ab16-430a-92ed-2c71877d86a3)
-![9c083e6f3509c0741c710f0140f08ae7](https://github.com/user-attachments/assets/91be6aaf-b1c0-4f06-a19b-ef713526a132)
-![01b260ee29663d9f5e0236636785404e](https://github.com/user-attachments/assets/5cb79c3b-beaa-4fe6-af98-a2dc593ed79c)
-![032c2c61fd1e51511bf03a83aae71e10](https://github.com/user-attachments/assets/e00a6d37-e086-42a0-92ac-028ad7e6298c)
+```powershell
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.\venv\Scripts\python.exe app.py
+```
 
+</details>
 
-## 🛠 开发者信息
+打开 **[http://127.0.0.1:32220](http://127.0.0.1:32220)**，创建账号后登录。同一局域网中的手机可以访问 `http://电脑的局域网IP:32220`。
 
-- **作者**: ShayneChen
-- **联系方式**: [xinyu-c@outlook.com](mailto:xinyu-c@outlook.com)
-- **项目主页**: [GitHub](https://github.com/CiE-XinYuChen/EXAM-MASTER)
+首次启动会创建 `database.db` 并导入 `questions.csv`。已有数据库会增量添加所需字段，保留原有账号和学习数据；清空题库后，重启不会重新导入原始 CSV。
 
-## 📄 许可证
+### 配置
 
-本项目基于 MIT 许可证开源。
+通过环境变量覆盖默认配置：
 
----
+| 变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `PORT` | `32220` | 网页监听端口。 |
+| `EXAM_DATABASE` | 项目目录下的 `database.db` | SQLite 数据库路径。 |
+| `EXAM_SEED_CSV` | 项目目录下的 `questions.csv` | 首次初始化时导入的 CSV；空字符串表示从空题库开始。 |
+| `SECRET_KEY` | 本地开发固定值 | Flask 会话签名密钥。 |
+| `FLASK_DEBUG` | `0` | 设为 `1` 开启开发调试。 |
 
-欢迎提交Issue或Pull Request，共同完善本系统！
+例如，在 macOS / Linux 上使用另一个端口：
 
+```bash
+PORT=8080 venv/bin/python app.py
+```
 
+## 题库与 CSV
 
+仓库附带 **881 道原始题目**，包括 481 道单选和 400 道多选。其中 18 题缺少题干，1 题的答案引用了缺失选项，均保留并标为“待补全”；当前有 862 题可用于练习与组卷。
 
+在网页中补全题目后即可参与练习。新系统也支持自行添加判断题和填空题。
+
+CSV 使用 UTF-8 编码，可带 BOM。必需列为 `题号、题干、答案、题型`，可选列为 `A、B、C、D、E、难度、类别、解析`。导入页面提供模板下载。
+
+```csv
+题号,题干,A,B,C,D,E,答案,难度,题型,类别,解析
+example-1,Python 文件的扩展名是什么？,.py,.js,,,,A,简单,单选题,编程,Python 源文件通常使用 .py 扩展名。
+```
+
+- **导入：**同题号更新，新题号新增；结构或格式错误时整批不写入，内容不完整的题目可作为待补全题导入。
+- **导出：**导出当前筛选条件下的全部题目，使用 UTF-8 BOM，便于表格软件打开。
+- **答案：**单选如 `B`，多选如 `ACD`，判断使用 `正确` / `错误`，填空填写完整文本。
+- **删除：**移除题目及其收藏关联，已有答题记录和考试快照保留；新增题目不会复用这些历史记录中的题号。
+
+## 项目结构
+
+```text
+EXAM-MASTER/
+├── app.py               # 页面、登录、题库管理、练习、考试与统计
+├── db.py                # SQLite、数据初始化、题目格式、判题与 CSV
+├── templates/           # Jinja 页面与共享组件
+├── static/              # 样式、导航、手机翻题、计时与草稿
+├── tests/test_app.py    # 临时 SQLite 功能回归测试
+├── docs/assets/         # Logo 与当前系统截图
+├── questions.csv        # 原始题库
+└── requirements.txt     # Python 运行依赖
+```
+
+本轮重构只覆盖网页，`ExamMasterAndroid/` 保留原样。设计来源见 [Open Design 说明](docs/open-design.md)，架构取舍与验证见 [重构说明](docs/superpowers/specs/2026-09-05-web-refactor-design.md)。
+
+## 验证
+
+```bash
+venv/bin/python -m unittest discover -s tests -v
+```
+
+目前有 **21 项功能回归测试**，覆盖题目管理、CSV 往返与回滚、四种题型、多用户记录、筛选续答、收藏、考试快照、重复提交和旧数据库升级。
+
+浏览器已检查 360、390、430px 手机宽度及桌面布局，走通收藏、草稿恢复、逐题考试与到期自动交卷。手机尺寸模拟通过，iOS / Android 真机的软键盘与握持手感仍需实测。详见 [手机适配记录](docs/superpowers/plans/2026-09-05-mobile-ergonomics.md)。
+
+## Star History
+
+如果这个项目对你有帮助，欢迎在 [GitHub](https://github.com/CiE-XinYuChen/EXAM-MASTER) 点亮一颗 Star。
+
+<a href="https://www.star-history.com/?repos=CiE-XinYuChen%2FEXAM-MASTER&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=CiE-XinYuChen/EXAM-MASTER&amp;type=Date&amp;theme=dark">
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=CiE-XinYuChen/EXAM-MASTER&amp;type=Date">
+    <img alt="EXAM-MASTER 的 GitHub Star History 趋势图" src="https://api.star-history.com/svg?repos=CiE-XinYuChen/EXAM-MASTER&amp;type=Date" width="800">
+  </picture>
+</a>
+
+图表由 [Star History](https://www.star-history.com/blog/how-to-use-github-star-history/) 提供，随服务刷新并适配明暗主题；点击图表可查看完整趋势。
+
+## 许可证
+
+[MIT License](LICENSE) · Copyright © 2024 Shayne Chen
